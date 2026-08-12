@@ -6,9 +6,6 @@ on:
     branches:
       - master
       - main
-    # Only run if files in the backend folder changed
-    paths:
-      - "backend/**"
 
 jobs:
   deploy-aws-cdk:
