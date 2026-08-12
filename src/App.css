@@ -214,3 +214,24 @@ body {
   border: none;
   cursor: pointer;
 }
+
+/* --- Fix for native date/month inputs --- */
+.ios-form-group input[type="month"] {
+  color: var(--ios-text);
+  font-family: inherit;
+  min-height: 44px;
+}
+
+/* Forces WebKit browsers to show the default mm/yyyy text */
+.ios-form-group input[type="month"]::-webkit-datetime-edit-month-field,
+.ios-form-group input[type="month"]::-webkit-datetime-edit-year-field,
+.ios-form-group input[type="month"]::-webkit-datetime-edit-text {
+  color: var(--ios-text-sec);
+}
+
+/* Changes text to black once a valid date is selected */
+.ios-form-group input[type="month"]:valid::-webkit-datetime-edit-month-field,
+.ios-form-group input[type="month"]:valid::-webkit-datetime-edit-year-field,
+.ios-form-group input[type="month"]:valid::-webkit-datetime-edit-text {
+  color: var(--ios-text);
+}

@@ -55,6 +55,8 @@ const BillsTool = () => {
   const [amount, setAmount] = useState("");
   const [payeeName, setPayeeName] = useState("");
   const [dueDayOfMonth, setDueDayOfMonth] = useState("");
+  const [hasEndDate, setHasEndDate] = useState(false);
+  const [endDate, setEndDate] = useState(""); // Format: YYYY-MM
 
   const loadBills = async () => {
     setLoading(true);
@@ -75,24 +77,54 @@ const BillsTool = () => {
 
   const handleAddBill = async (e) => {
     e.preventDefault();
-    if (!name || !amount || !payeeName || !dueDayOfMonth) return;
 
-    await fetch(`${API_BASE}/bills`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name,
-        amount: Number(amount),
-        payeeName,
-        dueDayOfMonth: Number(dueDayOfMonth),
-      }),
-    });
+    // 1. Check for missing fields
+    if (!name || !amount || !payeeName || !dueDayOfMonth) {
+      alert(
+        "Please fill out all 4 required fields (Name, Amount, Payee, Due Day).",
+      );
+      return;
+    }
 
-    setName("");
-    setAmount("");
-    setPayeeName("");
-    setDueDayOfMonth("");
-    loadBills();
+    // 2. Check if checkbox is checked but no date is selected
+    if (hasEndDate && !endDate) {
+      alert("Please select a specific End Month, or uncheck the box.");
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/bills`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          amount: Number(amount),
+          payeeName,
+          dueDayOfMonth: Number(dueDayOfMonth),
+          // Clean up the date string to just YYYY-MM in case the browser adds days
+          endDate: hasEndDate ? endDate.substring(0, 7) : null,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server returned ${response.status}`);
+      }
+
+      // Success! Clear the form and reload
+      setName("");
+      setAmount("");
+      setPayeeName("");
+      setDueDayOfMonth("");
+      setHasEndDate(false);
+      setEndDate("");
+      loadBills();
+    } catch (error) {
+      console.error(error);
+      alert(
+        "Error saving bill! Check the terminal or browser console. Details: " +
+          error.message,
+      );
+    }
   };
 
   const handleDelete = async (billId) => {
@@ -103,6 +135,31 @@ const BillsTool = () => {
       loadBills();
     }
   };
+
+  // --- SMART SORTING ENGINE ---
+  const today = new Date();
+  const currentDay = today.getDate();
+  const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+
+  const processedBills = bills
+    .filter((bill) => {
+      // 1. Hide bills if their end date was last month (or earlier)
+      if (bill.endDate && bill.endDate < currentMonthStr) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      // 2. Figure out if the bill is due later this month, or next month
+      const aIsNextMonth = a.dueDayOfMonth < currentDay ? 1 : 0;
+      const bIsNextMonth = b.dueDayOfMonth < currentDay ? 1 : 0;
+
+      // 3. Put this month's bills at the top, next month's at the bottom
+      if (aIsNextMonth !== bIsNextMonth) {
+        return aIsNextMonth - bIsNextMonth;
+      }
+      // 4. Sort numerically by day
+      return a.dueDayOfMonth - b.dueDayOfMonth;
+    });
+  // -----------------------------
 
   return (
     <div className="view tool-view">
@@ -122,12 +179,12 @@ const BillsTool = () => {
             <div className="ios-list-item">
               <p>Loading...</p>
             </div>
-          ) : bills.length === 0 ? (
+          ) : processedBills.length === 0 ? (
             <div className="ios-list-item">
               <p className="text-secondary">No bills setup.</p>
             </div>
           ) : (
-            bills.map((bill) => (
+            processedBills.map((bill) => (
               <div key={bill.billId} className="ios-list-item">
                 <div className="item-details">
                   <strong>{bill.name}</strong>
@@ -174,6 +231,44 @@ const BillsTool = () => {
             value={dueDayOfMonth}
             onChange={(e) => setDueDayOfMonth(e.target.value)}
           />
+
+          {/* --- NEW END DATE LOGIC --- */}
+          <div
+            className="ios-list-item"
+            style={{ borderBottom: "none", fontSize: "15px" }}
+          >
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                color: "var(--ios-text-sec)",
+                cursor: "pointer",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={hasEndDate}
+                onChange={(e) => setHasEndDate(e.target.checked)}
+                style={{ width: "auto", border: "none" }}
+              />
+              Bill ends on a specific month?
+            </label>
+          </div>
+          {hasEndDate && (
+            <input
+              placeholder="End Month (e.g., 2027-05)"
+              type={endDate ? "month" : "text"}
+              onFocus={(e) => (e.target.type = "month")}
+              onBlur={(e) => {
+                if (!e.target.value) e.target.type = "text";
+              }}
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+          )}
+          {/* --------------------------- */}
+
           <button type="submit" className="ios-submit-btn">
             Add Bill
           </button>

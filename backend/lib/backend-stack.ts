@@ -99,6 +99,13 @@ export class BackendStack extends cdk.Stack {
       defaultCorsPreflightOptions: {
         allowOrigins: apigateway.Cors.ALL_ORIGINS, // We will lock this down to CloudFront later
         allowMethods: apigateway.Cors.ALL_METHODS,
+        allowHeaders: [
+          "Content-Type",
+          "X-Amz-Date",
+          "Authorization",
+          "X-Api-Key",
+          "X-Amz-Security-Token",
+        ],
       },
     });
 
