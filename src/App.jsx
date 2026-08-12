@@ -8,7 +8,9 @@ import {
 } from "react-router-dom";
 import "./App.css";
 
-const API_BASE = "https://irobpmcv4k.execute-api.us-east-2.amazonaws.com";
+const API_BASE =
+  import.meta.env.VITE_API_BASE ||
+  "https://irobpmcv4k.execute-api.us-east-2.amazonaws.com";
 
 // --- Component: Home Launchpad ---
 const HomeHub = () => {
