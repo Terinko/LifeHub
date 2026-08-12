@@ -1,0 +1,70 @@
+.app {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 24px 16px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+h1 {
+  font-size: 28px;
+  margin-bottom: 4px;
+}
+
+h2 {
+  font-size: 18px;
+  font-weight: 500;
+  color: #666;
+  margin-bottom: 20px;
+}
+
+.add-bill-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 24px;
+  padding: 16px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+}
+
+.add-bill-form input {
+  padding: 10px 12px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 16px;
+}
+
+.add-bill-form button {
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  background: #0066ff;
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bill-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bill-card {
+  display: flex;
+  flex-direction: column;
+  padding: 14px 16px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  gap: 2px;
+}
+
+.bill-card strong {
+  font-size: 16px;
+}
+
+.bill-card span {
+  font-size: 14px;
+  color: #666;
+}
