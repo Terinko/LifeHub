@@ -1,280 +1,216 @@
-/* --- Global Theme Variables --- */
+/* --- iOS Theme Variables --- */
 :root {
-  --bg-primary: #111113;
-  --bg-secondary: #1e1e21;
-  --text-primary: #fcfcfd;
-  --text-secondary: #a6a6a9;
-  --accent: #0066ff;
-  --accent-disabled: #4c4d51;
-  --border: #313134;
-  --danger: #ff3b30;
-  --safe-top: env(safe-area-inset-top); /* iPhone Notch padding */
-  --safe-bottom: env(safe-area-inset-bottom); /* iPhone Home Bar padding */
+  --ios-bg: #f2f2f7; /* Standard iOS system background */
+  --ios-card: #ffffff;
+  --ios-text: #000000;
+  --ios-text-sec: #8e8e93;
+  --ios-blue: #007aff;
+  --ios-red: #ff3b30;
+  --ios-border: #c6c6c8;
+  --safe-top: env(safe-area-inset-top);
+  --safe-bottom: env(safe-area-inset-bottom);
 }
 
-/* --- Global Reset for Mobile --- */
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  -webkit-tap-highlight-color: transparent; /* Removes blue highlights on tap */
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
+  background-color: var(--ios-bg);
+  color: var(--ios-text);
   font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  overflow: hidden; /* Main window shouldn't scroll */
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
 }
 
-/* --- Core App Layout --- */
-.app.hub-layout {
+.app.ios-layout {
   display: flex;
   flex-direction: column;
   height: 100vh;
   width: 100%;
-  max-width: 480px; /* Kept for desktop simulation */
-  margin: 0 auto;
-}
-
-.content-area {
-  flex: 1;
-  overflow-y: auto; /* Views scroll independently */
-  padding-top: var(--safe-top); /* Accommodate notch */
-  padding-bottom: calc(
-    70px + var(--safe-bottom)
-  ); /* Accommodate navigation bar */
-}
-
-.view {
-  padding: 24px 16px;
-}
-
-/* --- Typography --- */
-.hub-header {
-  margin-bottom: 24px;
-}
-.hub-header h1 {
-  font-size: 26px;
-  font-weight: 700;
-}
-.hub-header p {
-  color: var(--text-secondary);
-  font-size: 14px;
-}
-h2 {
-  font-size: 18px;
-  margin-bottom: 16px;
-}
-
-/* --- Bottom Navigation --- */
-.bottom-nav {
-  position: fixed;
-  bottom: 0;
-  width: 100%;
   max-width: 480px;
-  background-color: var(--bg-secondary);
-  border-top: 1px solid var(--border);
-  display: flex;
-  justify-content: space-around;
-  padding-bottom: var(--safe-bottom); /* Accommodate Home Bar */
-  height: calc(65px + var(--safe-bottom));
-  z-index: 1000;
-}
-
-.bottom-nav a {
-  text-decoration: none;
-  color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 1;
-}
-
-.bottom-nav a.active-nav {
-  color: var(--accent);
-  background-color: #0d121c; /* subtle highlight */
-}
-
-.disabled-nav {
-  color: var(--accent-disabled) !important;
-  pointer-events: none;
-}
-
-.nav-icon-wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-}
-.nav-emoji {
-  font-size: 22px;
-}
-.nav-label {
-  font-size: 10px;
-  font-weight: 500;
-  text-transform: uppercase;
-}
-
-/* --- Dashboard Specifics --- */
-.summary-widget {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 24px;
-}
-
-.stat-card {
-  flex: 1;
-  background-color: var(--bg-secondary);
-  padding: 16px;
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.stat-card label {
-  color: var(--text-secondary);
-  font-size: 12px;
-  text-transform: uppercase;
-  margin-bottom: 4px;
-}
-
-.stat-value {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--accent);
-}
-
-.stat-label {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-top: 2px;
-}
-
-/* --- Improved Bill Card Aesthetic --- */
-.bills-container {
-  display: flex;
-  flex-direction: column;
-}
-
-.loading-state,
-.empty-state {
-  color: var(--text-secondary);
-  font-size: 14px;
-  padding: 12px;
-  background: var(--bg-secondary);
-  border-radius: 8px;
-}
-
-.bill-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.bill-card.new-aesthetic {
-  background-color: var(--bg-secondary);
-  padding: 16px;
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 8px;
+  margin: 0 auto;
   position: relative;
 }
 
-.card-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  grid-column: 1 / -1;
-}
-.card-header strong {
-  font-size: 16px;
-  color: var(--text-primary);
+.view {
+  flex: 1;
+  overflow-y: auto;
+  padding-top: var(--safe-top);
+  padding-bottom: calc(20px + var(--safe-bottom));
 }
 
-.due-badge {
-  background-color: #273b5f;
-  color: var(--accent);
-  font-size: 10px;
+/* --- Home Hub / Launchpad --- */
+.launchpad-view {
+  padding: calc(40px + var(--safe-top)) 24px 24px;
+}
+
+.ios-header-large h1 {
+  font-size: 34px;
   font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 10px;
-  text-transform: uppercase;
+  letter-spacing: -0.5px;
+  margin-bottom: 32px;
 }
 
-.card-body {
-  grid-column: 1 / 2;
+.tool-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px 16px;
+}
+
+.tool-card {
   display: flex;
   flex-direction: column;
-}
-.card-body span {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--accent);
-}
-.card-body span.payee-info {
-  font-size: 12px;
-  font-weight: 400;
-  color: var(--text-secondary);
-  margin-top: -2px;
+  align-items: center;
+  text-decoration: none;
+  gap: 8px;
 }
 
-.delete-btn.minimal {
+.tool-card.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.tool-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 14px; /* iOS icon radius */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 28px;
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.tool-name {
+  font-size: 12px;
+  color: var(--ios-text);
+  text-align: center;
+}
+
+/* --- Tool View Navigation --- */
+.ios-nav-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background-color: rgba(242, 242, 247, 0.8);
+  backdrop-filter: blur(10px);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 0.5px solid var(--ios-border);
+}
+
+.ios-nav-bar h2 {
+  font-size: 17px;
+  font-weight: 600;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.ios-back-btn {
   background: none;
   border: none;
-  color: var(--danger);
-  font-size: 18px;
-  padding: 8px;
+  color: var(--ios-blue);
+  font-size: 17px;
   cursor: pointer;
-  position: absolute;
-  top: 12px;
-  right: 12px;
+  display: flex;
+  align-items: center;
 }
 
-/* --- Form Aesthetics --- */
-.add-bill-form.modern {
+.nav-right-placeholder {
+  width: 50px; /* Balances the flex layout for absolute centered title */
+}
+
+/* --- Tool Content (Lists & Forms) --- */
+.tool-content {
+  padding: 20px 16px;
+}
+
+.section-title {
+  font-size: 13px;
+  text-transform: uppercase;
+  color: var(--ios-text-sec);
+  margin: 24px 0 8px 16px;
+}
+
+.ios-list-group,
+.ios-form-group {
+  background-color: var(--ios-card);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.ios-list-item,
+.ios-form-group input {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 0.5px solid var(--ios-border);
+  font-size: 17px;
+}
+
+.ios-list-item:last-child,
+.ios-form-group input:last-of-type {
+  border-bottom: none;
+}
+
+.ios-form-group input {
+  width: 100%;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  background: transparent;
+  color: var(--ios-text);
+  outline: none;
+}
+
+.ios-form-group input::placeholder {
+  color: var(--ios-text-sec);
+}
+
+.item-details {
   display: flex;
   flex-direction: column;
+}
+
+.text-secondary {
+  font-size: 15px;
+  color: var(--ios-text-sec);
+}
+
+.item-right {
+  display: flex;
+  align-items: center;
   gap: 12px;
-  background-color: var(--bg-secondary);
-  padding: 20px;
-  border-radius: 12px;
-  border: 1px solid var(--border);
 }
 
-.add-bill-form.modern input {
-  padding: 14px;
-  background: var(--bg-primary);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text-primary);
-  font-size: 16px;
+.due-text {
+  font-size: 15px;
+  color: var(--ios-text-sec);
 }
 
-.add-bill-form.modern input::placeholder {
-  color: var(--accent-disabled);
-}
-
-.add-bill-form.modern button {
-  padding: 16px;
-  margin-top: 10px;
+.ios-delete-btn {
+  background: none;
   border: none;
-  border-radius: 8px;
-  background-color: var(--accent);
-  color: white;
-  font-size: 16px;
-  font-weight: 600;
+  color: var(--ios-red);
+  font-size: 20px;
   cursor: pointer;
 }
 
-.form-status {
-  font-size: 14px;
-  color: var(--text-secondary);
-  text-align: center;
-  margin-top: 8px;
+.ios-submit-btn {
+  width: 100%;
+  padding: 14px;
+  background-color: var(--ios-card);
+  color: var(--ios-blue);
+  font-size: 17px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
 }
