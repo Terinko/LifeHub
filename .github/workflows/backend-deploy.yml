@@ -31,6 +31,14 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1 # Change this if your region is different (e.g., us-east-2)
 
+        # NEW: Install React dependencies (runs in root directory)
+      - name: Install Frontend Dependencies
+        run: npm install
+
+      # NEW: Build the React app (creates the /dist folder)
+      - name: Build Frontend
+        run: npm run build
+
       - name: Install Dependencies
         working-directory: ./backend
         run: npm ci

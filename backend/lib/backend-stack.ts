@@ -5,10 +5,62 @@ import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as path from "path";
+import * as s3 from "aws-cdk-lib/aws-s3";
+import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
+import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
+import * as s3deploy from "aws-cdk-lib/aws-s3-deployment";
 
 export class BackendStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
+
+    // ==========================================
+    // FRONTEND INFRASTRUCTURE
+    // ==========================================
+
+    // 1. Create a secure S3 Bucket to hold the React code
+    const websiteBucket = new s3.Bucket(this, "LifeHubWebsiteBucket", {
+      publicReadAccess: false,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+    });
+
+    // 2. Create a CloudFront CDN to serve the app globally via HTTPS
+    const distribution = new cloudfront.Distribution(
+      this,
+      "LifeHubDistribution",
+      {
+        defaultBehavior: {
+          origin: new origins.S3Origin(websiteBucket),
+          viewerProtocolPolicy:
+            cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        },
+        defaultRootObject: "index.html",
+        // This tells CloudFront to route all traffic to index.html (required for React routers later)
+        errorResponses: [
+          {
+            httpStatus: 404,
+            responseHttpStatus: 200,
+            responsePagePath: "/index.html",
+          },
+        ],
+      },
+    );
+
+    // 3. Deploy the compiled Vite app (the 'dist' folder) to the S3 bucket
+    new s3deploy.BucketDeployment(this, "DeployLifeHubWebsite", {
+      sources: [s3deploy.Source.asset(path.join(__dirname, "../../dist"))],
+      destinationBucket: websiteBucket,
+      distribution,
+      distributionPaths: ["/*"], // Tells CloudFront to clear its cache on a new deployment
+    });
+
+    // 4. Print the URL to the console when deployment finishes
+    new cdk.CfnOutput(this, "WebsiteURL", {
+      value: `https://${distribution.distributionDomainName}`,
+      description: "Your LifeHub Mobile App URL",
+    });
 
     // 1. Create the DynamoDB Table
     const billsTable = new dynamodb.Table(this, "BillsTable", {
