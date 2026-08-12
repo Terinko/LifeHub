@@ -235,3 +235,411 @@ body {
 .ios-form-group input[type="month"]:valid::-webkit-datetime-edit-text {
   color: var(--ios-text);
 }
+
+/* --- Bill Group Headers --- */
+.group-header {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 32px 16px 12px;
+  color: var(--ios-text);
+  letter-spacing: -0.3px;
+}
+
+/* --- Status Toggle Buttons --- */
+.status-btn {
+  padding: 6px 14px;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+  width: 110px;
+  text-align: center;
+}
+
+.status-unpaid {
+  background: #ffeceb;
+  color: var(--ios-red);
+}
+
+.status-paid {
+  background: #fff0d1;
+  color: #b87a00; /* Darker yellow/orange for contrast */
+}
+
+.status-settled {
+  background: #e4f8ea;
+  color: #248a3d;
+}
+
+/* --- Bill Item Enhancements --- */
+.bill-item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 0.5px solid var(--ios-border);
+  background: var(--ios-card);
+}
+.bill-item-row:last-child {
+  border-bottom: none;
+}
+.bill-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.bill-title {
+  font-size: 17px;
+  font-weight: 500;
+}
+.bill-meta {
+  font-size: 14px;
+  color: var(--ios-text-sec);
+}
+.urgency-badge {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ios-red);
+  margin-top: 2px;
+}
+
+/* --- Standalone Bill Cards --- */
+.bill-card-container {
+  padding: 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.bill-card {
+  background-color: var(--ios-card);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.bill-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.bill-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bill-title {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+}
+
+.bill-meta {
+  font-size: 15px;
+  color: var(--ios-text-sec);
+}
+
+.urgency-badge {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ios-red);
+  margin-top: 2px;
+}
+
+/* --- Card Actions (Bottom Row) --- */
+.bill-card-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 0.5px solid var(--ios-border);
+  padding-top: 12px;
+}
+
+.status-btn {
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+  width: 120px;
+  text-align: center;
+}
+
+/* --- Navigation Add Button --- */
+.ios-add-btn {
+  background: none;
+  border: none;
+  color: var(--ios-blue);
+  font-size: 28px;
+  font-weight: 300;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: 50px;
+  padding-bottom: 4px;
+}
+
+/* --- iOS Modal / Sheet --- */
+.ios-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.ios-modal {
+  background: var(--ios-bg);
+  width: 90%;
+  max-width: 400px;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ios-modal-header {
+  padding: 16px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 17px;
+  border-bottom: 0.5px solid var(--ios-border);
+  position: relative;
+  background: var(--ios-card);
+}
+
+.ios-modal-close {
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  background: none;
+  border: none;
+  color: var(--ios-blue);
+  font-size: 17px;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.ios-modal-content {
+  padding: 16px;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(40px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* --- Clickable Card Enhancements --- */
+.bill-card-content {
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.bill-card-content:active {
+  opacity: 0.6;
+}
+
+/* --- Detail Modal Specifics --- */
+.ios-textarea {
+  width: 100%;
+  background: var(--ios-bg);
+  border: 1px solid var(--ios-border);
+  border-radius: 8px;
+  padding: 12px;
+  font-family: inherit;
+  font-size: 15px;
+  color: var(--ios-text);
+  min-height: 80px;
+  resize: vertical;
+  margin-top: 8px;
+  outline: none;
+}
+
+.ios-textarea::placeholder {
+  color: var(--ios-text-sec);
+}
+
+/* --- Payer Tracking Styles --- */
+.payer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+  background: var(--ios-bg);
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--ios-border);
+}
+
+.payer-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.payer-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--ios-border);
+  padding: 8px 4px;
+  font-size: 15px;
+  color: var(--ios-text);
+  outline: none;
+}
+
+.payer-checkbox {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--ios-blue);
+  cursor: pointer;
+}
+
+.payer-remove-btn {
+  color: var(--ios-red);
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.add-payer-btn {
+  background: none;
+  border: none;
+  color: var(--ios-blue);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  padding: 4px 0;
+  display: inline-block;
+}
+
+/* --- Stacked Card Effect --- */
+.bill-card-wrapper {
+  position: relative;
+  margin-bottom: 8px;
+}
+
+/* Creates the visual illusion of cards stacked behind the main one */
+.bill-card-wrapper::before,
+.bill-card-wrapper::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  height: 100%;
+  background: var(--ios-card);
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: transform 0.2s ease;
+  z-index: -1;
+}
+
+.bill-card-wrapper::before {
+  bottom: -4px;
+  transform: scale(0.97);
+  opacity: 0.7;
+}
+
+.bill-card-wrapper::after {
+  bottom: -8px;
+  transform: scale(0.94);
+  opacity: 0.4;
+}
+
+.bill-card {
+  z-index: 2;
+  position: relative;
+}
+
+/* --- Calendar View Styles --- */
+.calendar-container {
+  background: var(--ios-card);
+  border-radius: 16px;
+  padding: 16px;
+  margin: 0 16px 24px 16px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+}
+
+.calendar-header {
+  font-size: 17px;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  text-align: center;
+}
+
+.calendar-day-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ios-text-sec);
+  padding-bottom: 4px;
+}
+
+.calendar-cell {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  border-radius: 8px;
+  background: var(--ios-bg);
+  position: relative;
+}
+
+.calendar-cell.empty {
+  background: transparent;
+}
+
+.dot-indicator-container {
+  display: flex;
+  gap: 3px;
+  margin-top: 2px;
+  height: 6px;
+}
+
+.cal-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+
+.cal-dot.red {
+  background-color: var(--ios-red);
+}
+
+.cal-dot.green {
+  background-color: #34c759;
+}
