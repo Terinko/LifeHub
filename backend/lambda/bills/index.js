@@ -1,4 +1,5 @@
 /* eslint-disable no-undef */
+const crypto = require("crypto");
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const {
   DynamoDBDocumentClient,
@@ -6,84 +7,147 @@ const {
   PutCommand,
   DeleteCommand,
 } = require("@aws-sdk/lib-dynamodb");
-const { randomUUID } = require("crypto");
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
+
 const TABLE_NAME = process.env.TABLE_NAME;
 
 const headers = {
+  "Content-Type": "application/json",
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "Content-Type,X-Amz-Date,Authorization,X-Api-Key",
-  "Access-Control-Allow-Methods": "OPTIONS,GET,POST,DELETE",
+  "Access-Control-Allow-Headers": "Content-Type,Authorization",
+  "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
 };
 
 exports.handler = async (event) => {
-  const method = event.httpMethod || event.requestContext?.http?.method;
+  console.log("Received event:", JSON.stringify(event, null, 2));
+
+  const method = event.requestContext?.http?.method || event.httpMethod;
 
   try {
-    // 1. GET ALL BILLS
-    if (method === "GET") {
-      const data = await docClient.send(
-        new ScanCommand({ TableName: TABLE_NAME }),
-      );
-      return { statusCode: 200, headers, body: JSON.stringify(data.Items) };
-    }
+    switch (method) {
+      // ==========================================
+      // GET: Retrieve all bills (Attaches both 'id' and 'billId')
+      // ==========================================
+      case "GET": {
+        const data = await docClient.send(
+          new ScanCommand({ TableName: TABLE_NAME }),
+        );
 
-    // 2. CREATE A BILL
-    if (method === "POST") {
-      const body = JSON.parse(event.body || "{}");
-      const newBill = {
-        billId: randomUUID(),
-        name: body.name,
-        amount: body.amount,
-        payeeName: body.payeeName,
-        dueDayOfMonth: body.dueDayOfMonth,
-        endDate: body.endDate || null,
-        lastPaidMonth: "never",
-      };
+        // Map items so both 'id' and 'billId' are always present
+        const items = (data.Items || []).map((item) => {
+          const itemKey = item.id || item.billId || item._id;
+          return {
+            ...item,
+            id: itemKey,
+            billId: itemKey,
+          };
+        });
 
-      await docClient.send(
-        new PutCommand({ TableName: TABLE_NAME, Item: newBill }),
-      );
-      return { statusCode: 201, headers, body: JSON.stringify(newBill) };
-    }
-
-    // 3. DELETE A BILL
-    if (method === "DELETE") {
-      const queryParams = event.queryStringParameters || {};
-      const billId = queryParams.billId;
-
-      if (!billId) {
         return {
-          statusCode: 400,
+          statusCode: 200,
           headers,
-          body: JSON.stringify({ error: "Missing billId" }),
+          body: JSON.stringify(items),
         };
       }
 
-      await docClient.send(
-        new DeleteCommand({ TableName: TABLE_NAME, Key: { billId } }),
-      );
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({ message: "Deleted" }),
-      };
-    }
+      // ==========================================
+      // POST: Create / Save a new bill
+      // ==========================================
+      case "POST": {
+        const body = event.body ? JSON.parse(event.body) : {};
+        const itemKey =
+          body.id || body.billId || body._id || crypto.randomUUID();
 
-    return {
-      statusCode: 404,
-      headers,
-      body: JSON.stringify({ error: "Route not found" }),
-    };
+        const newBill = {
+          ...body,
+          id: itemKey,
+          billId: itemKey,
+        };
+
+        await docClient.send(
+          new PutCommand({
+            TableName: TABLE_NAME,
+            Item: newBill,
+          }),
+        );
+
+        return {
+          statusCode: 201,
+          headers,
+          body: JSON.stringify(newBill),
+        };
+      }
+
+      // ==========================================
+      // DELETE: Delete a bill by ID
+      // ==========================================
+      case "DELETE": {
+        let id =
+          event.queryStringParameters?.id ||
+          event.queryStringParameters?.billId ||
+          event.queryStringParameters?._id ||
+          event.pathParameters?.id;
+
+        if (!id && event.rawPath) {
+          const pathSegments = event.rawPath.split("/").filter(Boolean);
+          if (pathSegments.length > 1) {
+            id = pathSegments[pathSegments.length - 1];
+          }
+        }
+
+        if (!id && event.body) {
+          try {
+            const body = JSON.parse(event.body);
+            id = body.id || body.billId || body._id;
+          } catch (err) {
+            console.error("Could not parse JSON body during DELETE:", err);
+          }
+        }
+
+        // Guard against missing or string "undefined"/"null" IDs
+        if (!id || id === "undefined" || id === "null") {
+          console.error("DELETE failed: Invalid or undefined ID passed:", id);
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({
+              message: "Invalid or missing bill ID",
+            }),
+          };
+        }
+
+        await docClient.send(
+          new DeleteCommand({
+            TableName: TABLE_NAME,
+            Key: { id },
+          }),
+        );
+
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({ message: "Bill deleted successfully", id }),
+        };
+      }
+
+      default:
+        return {
+          statusCode: 405,
+          headers,
+          body: JSON.stringify({ message: `Method ${method} Not Allowed` }),
+        };
+    }
   } catch (error) {
     console.error("Handler error:", error);
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: error.message }),
+      body: JSON.stringify({
+        message: "Internal Server Error",
+        error: error.message,
+      }),
     };
   }
 };
