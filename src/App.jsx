@@ -10,7 +10,7 @@ import "./App.css";
 
 const API_BASE =
   import.meta.env.VITE_API_BASE ||
-  "https://irobpmcv4k.execute-api.us-east-2.amazonaws.com";
+  "https://9im6v06twk.execute-api.us-east-1.amazonaws.com";
 
 // --- Component: Home Launchpad ---
 const HomeHub = () => {
