@@ -1,70 +1,280 @@
-.app {
-  max-width: 480px;
-  margin: 0 auto;
-  padding: 24px 16px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+/* --- Global Theme Variables --- */
+:root {
+  --bg-primary: #111113;
+  --bg-secondary: #1e1e21;
+  --text-primary: #fcfcfd;
+  --text-secondary: #a6a6a9;
+  --accent: #0066ff;
+  --accent-disabled: #4c4d51;
+  --border: #313134;
+  --danger: #ff3b30;
+  --safe-top: env(safe-area-inset-top); /* iPhone Notch padding */
+  --safe-bottom: env(safe-area-inset-bottom); /* iPhone Home Bar padding */
 }
 
-h1 {
-  font-size: 28px;
+/* --- Global Reset for Mobile --- */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent; /* Removes blue highlights on tap */
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow: hidden; /* Main window shouldn't scroll */
+}
+
+/* --- Core App Layout --- */
+.app.hub-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+  max-width: 480px; /* Kept for desktop simulation */
+  margin: 0 auto;
+}
+
+.content-area {
+  flex: 1;
+  overflow-y: auto; /* Views scroll independently */
+  padding-top: var(--safe-top); /* Accommodate notch */
+  padding-bottom: calc(
+    70px + var(--safe-bottom)
+  ); /* Accommodate navigation bar */
+}
+
+.view {
+  padding: 24px 16px;
+}
+
+/* --- Typography --- */
+.hub-header {
+  margin-bottom: 24px;
+}
+.hub-header h1 {
+  font-size: 26px;
+  font-weight: 700;
+}
+.hub-header p {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+h2 {
+  font-size: 18px;
+  margin-bottom: 16px;
+}
+
+/* --- Bottom Navigation --- */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  max-width: 480px;
+  background-color: var(--bg-secondary);
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-around;
+  padding-bottom: var(--safe-bottom); /* Accommodate Home Bar */
+  height: calc(65px + var(--safe-bottom));
+  z-index: 1000;
+}
+
+.bottom-nav a {
+  text-decoration: none;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.bottom-nav a.active-nav {
+  color: var(--accent);
+  background-color: #0d121c; /* subtle highlight */
+}
+
+.disabled-nav {
+  color: var(--accent-disabled) !important;
+  pointer-events: none;
+}
+
+.nav-icon-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.nav-emoji {
+  font-size: 22px;
+}
+.nav-label {
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+/* --- Dashboard Specifics --- */
+.summary-widget {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  flex: 1;
+  background-color: var(--bg-secondary);
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.stat-card label {
+  color: var(--text-secondary);
+  font-size: 12px;
+  text-transform: uppercase;
   margin-bottom: 4px;
 }
 
-h2 {
-  font-size: 18px;
-  font-weight: 500;
-  color: #666;
-  margin-bottom: 20px;
+.stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent);
 }
 
-.add-bill-form {
+.stat-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+/* --- Improved Bill Card Aesthetic --- */
+.bills-container {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-bottom: 24px;
-  padding: 16px;
-  border: 1px solid #ddd;
-  border-radius: 10px;
 }
 
-.add-bill-form input {
-  padding: 10px 12px;
-  border: 1px solid #ccc;
+.loading-state,
+.empty-state {
+  color: var(--text-secondary);
+  font-size: 14px;
+  padding: 12px;
+  background: var(--bg-secondary);
   border-radius: 8px;
+}
+
+.bill-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bill-card.new-aesthetic {
+  background-color: var(--bg-secondary);
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  position: relative;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  grid-column: 1 / -1;
+}
+.card-header strong {
+  font-size: 16px;
+  color: var(--text-primary);
+}
+
+.due-badge {
+  background-color: #273b5f;
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 10px;
+  text-transform: uppercase;
+}
+
+.card-body {
+  grid-column: 1 / 2;
+  display: flex;
+  flex-direction: column;
+}
+.card-body span {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--accent);
+}
+.card-body span.payee-info {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  margin-top: -2px;
+}
+
+.delete-btn.minimal {
+  background: none;
+  border: none;
+  color: var(--danger);
+  font-size: 18px;
+  padding: 8px;
+  cursor: pointer;
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+
+/* --- Form Aesthetics --- */
+.add-bill-form.modern {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background-color: var(--bg-secondary);
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.add-bill-form.modern input {
+  padding: 14px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
   font-size: 16px;
 }
 
-.add-bill-form button {
-  padding: 12px;
+.add-bill-form.modern input::placeholder {
+  color: var(--accent-disabled);
+}
+
+.add-bill-form.modern button {
+  padding: 16px;
+  margin-top: 10px;
   border: none;
   border-radius: 8px;
-  background: #0066ff;
+  background-color: var(--accent);
   color: white;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
 }
 
-.bill-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.bill-card {
-  display: flex;
-  flex-direction: column;
-  padding: 14px 16px;
-  border: 1px solid #ddd;
-  border-radius: 10px;
-  gap: 2px;
-}
-
-.bill-card strong {
-  font-size: 16px;
-}
-
-.bill-card span {
+.form-status {
   font-size: 14px;
-  color: #666;
+  color: var(--text-secondary);
+  text-align: center;
+  margin-top: 8px;
 }
