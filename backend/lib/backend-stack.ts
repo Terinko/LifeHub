@@ -94,10 +94,10 @@ export class BackendStack extends cdk.Stack {
     billsTable.grantWriteData(deleteBillLambda);
 
     // 4. Create the API Gateway (REST API)
+    // 1. Create the API with global CORS preflight enabled
     const api = new apigateway.RestApi(this, "LifeHubApi", {
-      restApiName: "LifeHub Enterprise API",
       defaultCorsPreflightOptions: {
-        allowOrigins: apigateway.Cors.ALL_ORIGINS, // We will lock this down to CloudFront later
+        allowOrigins: apigateway.Cors.ALL_ORIGINS,
         allowMethods: apigateway.Cors.ALL_METHODS,
         allowHeaders: [
           "Content-Type",
@@ -109,8 +109,10 @@ export class BackendStack extends cdk.Stack {
       },
     });
 
-    // 5. Wire the API Routes to the Lambdas
+    // 2. Create the /bills resource explicitly
     const billsResource = api.root.addResource("bills");
+
+    // 3. Attach your Lambda integrations to /bills
     billsResource.addMethod(
       "GET",
       new apigateway.LambdaIntegration(getBillsLambda),
