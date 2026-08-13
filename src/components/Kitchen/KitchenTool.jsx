@@ -30,6 +30,11 @@ const KitchenTool = () => {
   const [checkingRecipeId, setCheckingRecipeId] = useState(null);
   const [recipePlan, setRecipePlan] = useState(null);
 
+  // Portion multiplier per recipe (defaults to 1x). Keyed by recipe.sk so
+  // each recipe card remembers its own selection.
+  const [portionBySk, setPortionBySk] = useState({});
+  const getPortion = (sk) => portionBySk[sk] || 1;
+
   const loadData = async () => {
     setLoading(true);
     try {
@@ -135,10 +140,17 @@ const KitchenTool = () => {
     }
   };
 
+  const [savingRecipe, setSavingRecipe] = useState(false);
+
   const handleSaveRecipe = async () => {
     if (!recipeName || !recipeIngredientsText)
       return alert("Please provide a name and paste the ingredients!");
+    setSavingRecipe(true);
     try {
+      // This call now parses ingredientsText into structured data
+      // (one-time Gemini call), so it takes a moment longer than a plain
+      // save — but "Can I make this?" is instant afterward since it never
+      // has to call Gemini again for this recipe.
       await fetch(`${API_BASE}/kitchen`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -157,9 +169,12 @@ const KitchenTool = () => {
     } catch (e) {
       alert("Failed to save recipe.");
     }
+    setSavingRecipe(false);
   };
 
-  // --- 1. ASK THE AI IF WE CAN MAKE IT ---
+  // --- 1. CHECK IF WE CAN MAKE IT (local math on the backend; falls back
+  //        to Gemini only for older recipes saved before ingredient
+  //        parsing existed) ---
   const handleCheckRecipe = async (recipe) => {
     setCheckingRecipeId(recipe.sk);
     try {
@@ -170,6 +185,7 @@ const KitchenTool = () => {
           action: "CHECK_RECIPE",
           recipe: recipe,
           inventory: pantry,
+          multiplier: getPortion(recipe.sk),
         }),
       });
       const result = await response.json();
@@ -391,6 +407,38 @@ const KitchenTool = () => {
                     </a>
                   )}
 
+                  <div
+                    className="portion-selector"
+                    style={{ display: "flex", gap: "6px", margin: "8px 0" }}
+                  >
+                    {[0.5, 1, 2, 3].map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() =>
+                          setPortionBySk((prev) => ({
+                            ...prev,
+                            [recipe.sk]: p,
+                          }))
+                        }
+                        style={{
+                          flex: 1,
+                          padding: "6px 0",
+                          borderRadius: "8px",
+                          border: "1px solid #D8D8D2",
+                          background:
+                            getPortion(recipe.sk) === p ? "#3A3D36" : "#F4F4F0",
+                          color:
+                            getPortion(recipe.sk) === p ? "#fff" : "#3A3D36",
+                          fontSize: "13px",
+                          fontWeight: 600,
+                        }}
+                      >
+                        {p}x
+                      </button>
+                    ))}
+                  </div>
+
                   <button
                     className="cooked-btn"
                     onClick={() => handleCheckRecipe(recipe)}
@@ -401,7 +449,7 @@ const KitchenTool = () => {
                   >
                     {checkingRecipeId === recipe.sk
                       ? "Checking Pantry..."
-                      : "Can I make this?"}
+                      : `Can I make ${getPortion(recipe.sk)}x this?`}
                   </button>
                 </div>
               ))
@@ -575,8 +623,10 @@ const KitchenTool = () => {
               <button
                 onClick={handleSaveRecipe}
                 className="ios-submit-btn full-width"
+                disabled={savingRecipe}
+                style={{ opacity: savingRecipe ? 0.7 : 1 }}
               >
-                Save Recipe
+                {savingRecipe ? "Parsing ingredients..." : "Save Recipe"}
               </button>
             </div>
           </div>
