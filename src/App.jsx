@@ -73,7 +73,6 @@ const BillsTool = () => {
   const [viewedMonthIndex, setViewedMonthIndex] = useState(today.getMonth());
   const [selectedCalendarDay, setSelectedCalendarDay] = useState(null);
 
-  // Helper to generate YYYY-MM string for the currently viewed month
   const viewedMonthKey = `${viewedYear}-${String(viewedMonthIndex + 1).padStart(2, "0")}`;
 
   const handlePrevMonth = () => {
@@ -129,15 +128,16 @@ const BillsTool = () => {
           payeeName,
           dueDayOfMonth: Number(dueDayOfMonth),
           endDate: hasEndDate ? endDate.substring(0, 7) : null,
-          statusHistory: {}, // Initialized empty history object
+          statusHistory: {},
           notes: "",
           isShared: isShared,
+          // NEW: Initializing with paidHistory instead of hasPaid
           payers: isShared
             ? [
                 {
                   id: window.crypto.randomUUID(),
                   name: "Person 1",
-                  hasPaid: false,
+                  paidHistory: {},
                 },
               ]
             : [],
@@ -167,7 +167,6 @@ const BillsTool = () => {
     }
   };
 
-  // --- MONTH-SPECIFIC STATUS TOGGLE ---
   const handleToggleStatus = async (bill) => {
     const history = bill.statusHistory || {};
     const currentStatus = history[viewedMonthKey] || "UNPAID";
@@ -213,7 +212,6 @@ const BillsTool = () => {
     }
   };
 
-  // --- CALENDAR & LIST CALCULATIONS ---
   const currentDay = today.getDate();
   const currentRealMonth = today.getMonth();
   const currentRealYear = today.getFullYear();
@@ -247,7 +245,6 @@ const BillsTool = () => {
 
   const calendarMap = {};
 
-  // Filter active bills for the viewed month
   const activeBillsForView = bills.filter((bill) => {
     if (bill.endDate) {
       const billEndDate = new Date(bill.endDate + "-01");
@@ -261,7 +258,6 @@ const BillsTool = () => {
     const day = bill.dueDayOfMonth;
     if (!calendarMap[day]) calendarMap[day] = [];
 
-    // Attach month-specific status for this evaluation
     const history = bill.statusHistory || {};
     const monthStatus = history[viewedMonthKey] || "UNPAID";
     calendarMap[day].push({ ...bill, currentMonthStatus: monthStatus });
@@ -301,7 +297,11 @@ const BillsTool = () => {
               setSelectedBill({
                 ...bill,
                 notes: bill.notes || "",
-                payers: bill.payers || [],
+                // NEW: Ensure payers array has paidHistory objects safely initialized
+                payers: (bill.payers || []).map((p) => ({
+                  ...p,
+                  paidHistory: p.paidHistory || {},
+                })),
                 isShared: bill.isShared || false,
                 statusHistory: bill.statusHistory || {},
               });
@@ -718,7 +718,7 @@ const BillsTool = () => {
                     className="section-title"
                     style={{ margin: "20px 0 4px 0" }}
                   >
-                    Who Owes You?
+                    Who Owes You For {monthNames[viewedMonthIndex]}?
                   </h4>
                   <div className="payer-list">
                     {selectedBill.payers.map((payer) => (
@@ -726,12 +726,19 @@ const BillsTool = () => {
                         <input
                           type="checkbox"
                           className="payer-checkbox"
-                          checked={payer.hasPaid}
+                          // NEW: Safely checks the month-specific boolean flag
+                          checked={!!payer.paidHistory?.[viewedMonthKey]}
                           onChange={(e) => {
                             const updatedPayers = selectedBill.payers.map(
                               (p) =>
                                 p.id === payer.id
-                                  ? { ...p, hasPaid: e.target.checked }
+                                  ? {
+                                      ...p,
+                                      paidHistory: {
+                                        ...p.paidHistory,
+                                        [viewedMonthKey]: e.target.checked,
+                                      },
+                                    }
                                   : p,
                             );
                             setSelectedBill({
@@ -778,10 +785,11 @@ const BillsTool = () => {
                     <button
                       className="add-payer-btn"
                       onClick={() => {
+                        // NEW: Initializes new payer with empty paidHistory dictionary
                         const newPayer = {
                           id: window.crypto.randomUUID(),
                           name: "",
-                          hasPaid: false,
+                          paidHistory: {},
                         };
                         setSelectedBill({
                           ...selectedBill,
