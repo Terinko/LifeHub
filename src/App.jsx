@@ -66,6 +66,7 @@ const BillsTool = () => {
   const [hasEndDate, setHasEndDate] = useState(false);
   const [endDate, setEndDate] = useState("");
   const [isShared, setIsShared] = useState(false);
+  const [isVariable, setIsVariable] = useState(false);
 
   // Calendar Navigation & Selection State
   const today = new Date();
@@ -113,7 +114,7 @@ const BillsTool = () => {
 
   const handleAddBill = async (e) => {
     e.preventDefault();
-    if (!name || !amount || !payeeName || !dueDayOfMonth) {
+    if (!name || (!isVariable && !amount) || !payeeName || !dueDayOfMonth) {
       alert("Please fill out all required fields.");
       return;
     }
@@ -124,14 +125,15 @@ const BillsTool = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,
-          amount: Number(amount),
+          amount: isVariable ? 0 : Number(amount),
           payeeName,
           dueDayOfMonth: Number(dueDayOfMonth),
           endDate: hasEndDate ? endDate.substring(0, 7) : null,
           statusHistory: {},
           notes: "",
           isShared: isShared,
-          // NEW: Initializing with paidHistory instead of hasPaid
+          isVariable: isVariable,
+          amountHistory: {},
           payers: isShared
             ? [
                 {
@@ -151,6 +153,7 @@ const BillsTool = () => {
       setHasEndDate(false);
       setEndDate("");
       setIsShared(false);
+      setIsVariable(false);
       setIsAddModalOpen(false);
       loadBills();
     } catch (error) {
@@ -288,6 +291,13 @@ const BillsTool = () => {
   const renderCard = (bill) => {
     const status = bill.currentMonthStatus || "UNPAID";
 
+    let displayAmount = `$${bill.amount}`;
+    if (bill.isVariable) {
+      const monthAmount = bill.amountHistory?.[viewedMonthKey];
+      displayAmount =
+        monthAmount !== undefined ? `$${monthAmount}` : "Amount TBD";
+    }
+
     return (
       <div key={bill.billId} className="bill-card-wrapper">
         <div className="bill-card">
@@ -297,12 +307,13 @@ const BillsTool = () => {
               setSelectedBill({
                 ...bill,
                 notes: bill.notes || "",
-                // NEW: Ensure payers array has paidHistory objects safely initialized
                 payers: (bill.payers || []).map((p) => ({
                   ...p,
                   paidHistory: p.paidHistory || {},
                 })),
                 isShared: bill.isShared || false,
+                isVariable: bill.isVariable || false,
+                amountHistory: bill.amountHistory || {},
                 statusHistory: bill.statusHistory || {},
               });
             }}
@@ -311,8 +322,23 @@ const BillsTool = () => {
               <div className="bill-card-info">
                 <span className="bill-title">{bill.name}</span>
                 <span className="bill-meta">
-                  ${bill.amount} to {bill.payeeName}
+                  <span
+                    style={{
+                      fontWeight:
+                        bill.isVariable && displayAmount === "Amount TBD"
+                          ? "600"
+                          : "400",
+                      color:
+                        bill.isVariable && displayAmount === "Amount TBD"
+                          ? "var(--ios-red)"
+                          : "inherit",
+                    }}
+                  >
+                    {displayAmount}
+                  </span>{" "}
+                  to {bill.payeeName}
                 </span>
+
                 {status === "UNPAID" && bill.daysLeft <= 5 ? (
                   <span className="urgency-badge">
                     Due in {bill.daysLeft} days (Day {bill.dueDayOfMonth})
@@ -335,6 +361,7 @@ const BillsTool = () => {
                   }}
                 >
                   {bill.isShared && <span>👥 Split Bill &nbsp;</span>}
+                  {bill.isVariable && <span>📊 Variable Cost &nbsp;</span>}
                   {bill.notes && <span>📝 Notes</span>}
                 </div>
               </div>
@@ -378,7 +405,7 @@ const BillsTool = () => {
       </header>
 
       <div className="tool-content" style={{ padding: "0 0 20px 0" }}>
-        {/* --- MINI CALENDAR VIEW --- */}
+        {/* --- MINI CALENDAR VIEW WITH MULTI-DOT SUPPORT --- */}
         <div className="calendar-container">
           <div
             className="calendar-header"
@@ -434,12 +461,6 @@ const BillsTool = () => {
             {Array.from({ length: daysInViewedMonth }).map((_, i) => {
               const dayNum = i + 1;
               const dayBills = calendarMap[dayNum] || [];
-              const statuses = dayBills.map((b) => b.currentMonthStatus);
-              const hasUnpaid = statuses.some(
-                (s) => s === "UNPAID" || s === "PAID",
-              );
-              const hasPaid =
-                statuses.length > 0 && statuses.every((s) => s === "SETTLED");
               const isToday =
                 dayNum === currentDay &&
                 viewedMonthIndex === currentRealMonth &&
@@ -464,11 +485,27 @@ const BillsTool = () => {
                   }}
                 >
                   <span>{dayNum}</span>
+                  {/* MULTI-DOT RENDERER */}
                   <div className="dot-indicator-container">
-                    {statuses.length > 0 && (
+                    {dayBills.slice(0, 3).map((bill, index) => {
+                      const isSettled = bill.currentMonthStatus === "SETTLED";
+                      return (
+                        <span
+                          key={index}
+                          className={`cal-dot ${isSettled ? "green" : "red"}`}
+                        ></span>
+                      );
+                    })}
+                    {dayBills.length > 3 && (
                       <span
-                        className={`cal-dot ${hasPaid && !hasUnpaid ? "green" : "red"}`}
-                      ></span>
+                        style={{
+                          fontSize: "8px",
+                          lineHeight: "5px",
+                          color: "var(--ios-text-sec)",
+                        }}
+                      >
+                        +
+                      </span>
                     )}
                   </div>
                 </div>
@@ -519,7 +556,7 @@ const BillsTool = () => {
                       }}
                     >
                       <span style={{ fontSize: "15px", fontWeight: "500" }}>
-                        {bill.name} (${bill.amount})
+                        {bill.name}
                       </span>
                       <button
                         onClick={() => handleToggleStatus(bill)}
@@ -597,12 +634,43 @@ const BillsTool = () => {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                 />
-                <input
-                  placeholder="Amount ($)"
-                  type="number"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                />
+
+                <div
+                  className="ios-list-item"
+                  style={{
+                    borderBottom: "none",
+                    fontSize: "15px",
+                    borderTop: "0.5px solid var(--ios-border)",
+                  }}
+                >
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      color: "var(--ios-text-sec)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isVariable}
+                      onChange={(e) => setIsVariable(e.target.checked)}
+                      style={{ width: "auto", border: "none" }}
+                    />
+                    Cost varies each month?
+                  </label>
+                </div>
+
+                {!isVariable && (
+                  <input
+                    placeholder="Amount ($)"
+                    type="number"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                  />
+                )}
+
                 <input
                   placeholder="Payee"
                   value={payeeName}
@@ -700,7 +768,38 @@ const BillsTool = () => {
               </button>
             </div>
             <div className="ios-modal-content">
-              <h4 className="section-title" style={{ margin: "0 0 4px 0" }}>
+              {selectedBill.isVariable && (
+                <>
+                  <h4 className="section-title" style={{ margin: "0 0 4px 0" }}>
+                    Amount for {monthNames[viewedMonthIndex]}
+                  </h4>
+                  <input
+                    type="number"
+                    className="ios-input-modal"
+                    placeholder="Enter amount (e.g., 145.20)"
+                    value={selectedBill.amountHistory?.[viewedMonthKey] ?? ""}
+                    onChange={(e) => {
+                      const newVal = e.target.value
+                        ? Number(e.target.value)
+                        : undefined;
+                      setSelectedBill({
+                        ...selectedBill,
+                        amountHistory: {
+                          ...selectedBill.amountHistory,
+                          [viewedMonthKey]: newVal,
+                        },
+                      });
+                    }}
+                  />
+                </>
+              )}
+
+              <h4
+                className="section-title"
+                style={{
+                  margin: `${selectedBill.isVariable ? "20px" : "0"} 0 4px 0`,
+                }}
+              >
                 Notes
               </h4>
               <textarea
@@ -726,7 +825,6 @@ const BillsTool = () => {
                         <input
                           type="checkbox"
                           className="payer-checkbox"
-                          // NEW: Safely checks the month-specific boolean flag
                           checked={!!payer.paidHistory?.[viewedMonthKey]}
                           onChange={(e) => {
                             const updatedPayers = selectedBill.payers.map(
@@ -785,7 +883,6 @@ const BillsTool = () => {
                     <button
                       className="add-payer-btn"
                       onClick={() => {
-                        // NEW: Initializes new payer with empty paidHistory dictionary
                         const newPayer = {
                           id: window.crypto.randomUUID(),
                           name: "",

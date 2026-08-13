@@ -643,3 +643,20 @@ body {
 .cal-dot.green {
   background-color: #34c759;
 }
+
+/* --- Modal Input Styles --- */
+.ios-input-modal {
+  width: 100%;
+  background: var(--ios-bg);
+  border: 1px solid var(--ios-border);
+  border-radius: 8px;
+  padding: 12px;
+  font-family: inherit;
+  font-size: 17px;
+  color: var(--ios-text);
+  outline: none;
+  margin-top: 8px;
+}
+.ios-input-modal::placeholder {
+  color: var(--ios-text-sec);
+}
