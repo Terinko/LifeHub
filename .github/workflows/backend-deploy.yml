@@ -44,3 +44,5 @@ jobs:
         working-directory: ./backend
         # --require-approval never tells CDK not to pause and wait for a human to type 'y'
         run: npx cdk deploy --require-approval never
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
