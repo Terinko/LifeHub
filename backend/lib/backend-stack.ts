@@ -188,5 +188,11 @@ export class BackendStack extends cdk.Stack {
       value: websiteBucket.bucketName,
       description: "Upload your React dist folder to this S3 bucket",
     });
+    new s3deploy.BucketDeployment(this, "DeployLifeHubWebsite", {
+      sources: [s3deploy.Source.asset(path.join(__dirname, "../../dist"))],
+      destinationBucket: websiteBucket,
+      distribution: distribution,
+      distributionPaths: ["/*"],
+    });
   }
 }
