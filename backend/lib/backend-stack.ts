@@ -9,6 +9,11 @@ import * as s3 from "aws-cdk-lib/aws-s3";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 import * as s3deploy from "aws-cdk-lib/aws-s3-deployment";
+import * as dotenv from "dotenv";
+import { Duration } from "aws-cdk-lib";
+
+// Load environment variables from .env file
+dotenv.config();
 
 export class BackendStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -19,6 +24,13 @@ export class BackendStack extends cdk.Stack {
     // ==========================================
     const billsTable = new dynamodb.Table(this, "BillsTable", {
       partitionKey: { name: "id", type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    const kitchenTable = new dynamodb.Table(this, "KitchenTable", {
+      partitionKey: { name: "pk", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "sk", type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
@@ -35,11 +47,24 @@ export class BackendStack extends cdk.Stack {
       },
     });
 
+    const kitchenLambda = new lambda.Function(this, "KitchenHandler", {
+      runtime: lambda.Runtime.NODEJS_24_X,
+      code: lambda.Code.fromAsset("lambda/kitchen"),
+      handler: "kitchen.handler",
+      environment: {
+        TABLE_NAME: kitchenTable.tableName,
+        GEMINI_API_KEY: process.env.GEMINI_API_KEY || "",
+        WALMART_PUBLISHER_ID: process.env.WALMART_PUBLISHER_ID || "",
+      },
+      timeout: cdk.Duration.seconds(30),
+    });
+
     // Grant Lambda permission to edit the database
     billsTable.grantReadWriteData(billsLambda);
+    kitchenTable.grantReadWriteData(kitchenLambda);
 
     // ==========================================
-    // 3. API ROUTING (API Gateway)
+    // 3. API ROUTING (API Gateway v2 HTTP API)
     // ==========================================
     const httpApi = new apigw.HttpApi(this, "LifeHubHttpApi", {
       corsPreflight: {
@@ -60,6 +85,11 @@ export class BackendStack extends cdk.Stack {
       billsLambda,
     );
 
+    const kitchenIntegration = new HttpLambdaIntegration(
+      "KitchenIntegration",
+      kitchenLambda,
+    );
+
     // Route 1: /bills
     httpApi.addRoutes({
       path: "/bills",
@@ -72,7 +102,7 @@ export class BackendStack extends cdk.Stack {
       integration: billsIntegration,
     });
 
-    // Route 2: /bills/{id} (Handles URLs like /bills/12345)
+    // Route 2: /bills/{id}
     httpApi.addRoutes({
       path: "/bills/{id}",
       methods: [
@@ -83,13 +113,36 @@ export class BackendStack extends cdk.Stack {
       integration: billsIntegration,
     });
 
+    // Route 3: /kitchen
+    httpApi.addRoutes({
+      path: "/kitchen",
+      methods: [
+        apigw.HttpMethod.GET,
+        apigw.HttpMethod.POST,
+        apigw.HttpMethod.PUT,
+        apigw.HttpMethod.DELETE,
+      ],
+      integration: kitchenIntegration,
+    });
+
+    // Route 4: /kitchen/{id}
+    httpApi.addRoutes({
+      path: "/kitchen/{id}",
+      methods: [
+        apigw.HttpMethod.GET,
+        apigw.HttpMethod.PUT,
+        apigw.HttpMethod.DELETE,
+      ],
+      integration: kitchenIntegration,
+    });
+
     // ==========================================
     // 4. FRONTEND HOSTING (S3 & CloudFront)
     // ==========================================
     const websiteBucket = new s3.Bucket(this, "LifeHubFrontendBucket", {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
-      autoDeleteObjects: true, // Cleans up the bucket if the stack is deleted
+      autoDeleteObjects: true,
     });
 
     const distribution = new cloudfront.Distribution(
@@ -103,13 +156,11 @@ export class BackendStack extends cdk.Stack {
         },
         defaultRootObject: "index.html",
         errorResponses: [
-          // Add this new block to handle the S3 Access Denied errors
           {
             httpStatus: 403,
             responseHttpStatus: 200,
             responsePagePath: "/index.html",
           },
-          // Keep your existing 404 block just in case
           {
             httpStatus: 404,
             responseHttpStatus: 200,
@@ -137,12 +188,10 @@ export class BackendStack extends cdk.Stack {
       description: "Upload your React dist folder to this S3 bucket",
     });
 
-    // Automate the upload of the React files to S3
     new s3deploy.BucketDeployment(this, "DeployLifeHubWebsite", {
-      // This assumes your frontend folder is next to your backend folder in your repo
       sources: [s3deploy.Source.asset(path.join(__dirname, "../../dist"))],
       destinationBucket: websiteBucket,
-      distribution: distribution, // This automatically clears the CloudFront cache!
+      distribution: distribution,
       distributionPaths: ["/*"],
     });
   }

@@ -1,0 +1,190 @@
+/* --- Mini Calendar --- */
+.calendar-container {
+  background: var(--ios-card);
+  border-radius: 12px;
+  padding: 16px;
+  margin: 0 16px 24px 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+.calendar-header {
+  font-weight: 600;
+  font-size: 17px;
+  margin-bottom: 12px;
+}
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  text-align: center;
+}
+.calendar-day-name {
+  font-size: 12px;
+  color: var(--ios-text-sec);
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+.calendar-cell {
+  position: relative;
+  height: 36px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 15px;
+  transition: all 0.2s ease;
+}
+.calendar-cell.empty {
+  background: transparent;
+}
+.dot-indicator-container {
+  display: flex;
+  gap: 2px;
+  margin-top: 2px;
+  height: 4px;
+  align-items: center;
+}
+.cal-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+}
+.cal-dot.red {
+  background-color: var(--ios-red);
+}
+.cal-dot.green {
+  background-color: var(--ios-green);
+}
+
+/* --- Bill Cards --- */
+.group-header {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 16px 12px 16px;
+  color: var(--ios-text);
+}
+.bill-card-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0 16px 24px 16px;
+}
+.bill-card-wrapper {
+  background: var(--ios-card);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+}
+.bill-card {
+  display: flex;
+  flex-direction: column;
+}
+.bill-card-content {
+  padding: 16px;
+  cursor: pointer;
+}
+.bill-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.bill-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.bill-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--ios-text);
+}
+.bill-meta {
+  font-size: 15px;
+  color: var(--ios-text-sec);
+}
+.urgency-badge {
+  font-size: 13px;
+  color: var(--ios-red);
+  font-weight: 500;
+  background: rgba(255, 59, 48, 0.1);
+  padding: 4px 8px;
+  border-radius: 6px;
+  display: inline-block;
+  margin-top: 4px;
+  width: fit-content;
+}
+.bill-card-actions {
+  display: flex;
+  border-top: 0.5px solid var(--ios-border);
+}
+.bill-card-actions button {
+  flex: 1;
+  padding: 12px;
+  background: transparent;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ios-delete-btn {
+  color: var(--ios-red);
+  border-right: 0.5px solid var(--ios-border) !important;
+}
+.status-btn {
+  font-size: 15px;
+}
+.status-unpaid {
+  color: var(--ios-red);
+}
+.status-paid {
+  color: #ff9500;
+}
+.status-settled {
+  color: var(--ios-green);
+}
+
+/* --- Payers (Shared Bills) --- */
+.payer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.payer-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--ios-bg);
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--ios-border);
+}
+.payer-checkbox {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--ios-blue);
+  cursor: pointer;
+}
+.payer-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 16px;
+  color: var(--ios-text);
+  outline: none;
+}
+.payer-remove-btn {
+  background: none;
+  border: none;
+  color: var(--ios-text-sec);
+  font-size: 16px;
+  cursor: pointer;
+}
+.add-payer-btn {
+  background: none;
+  border: none;
+  color: var(--ios-blue);
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  padding: 4px 0;
+}

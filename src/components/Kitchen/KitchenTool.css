@@ -1,0 +1,376 @@
+/* --- THEME 1: ORGANIC MINIMALIST (REFINED LAYOUT) --- */
+.tool-view {
+  background-color: #f9f9f6;
+  color: #3a3d36;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  font-family:
+    "Inter",
+    -apple-system,
+    sans-serif;
+  overflow: hidden;
+}
+
+/* --- HEADER & NAVIGATION --- */
+.ios-nav-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 20px 16px;
+  background-color: #f9f9f6;
+  flex-shrink: 0;
+}
+
+.ios-nav-bar h2 {
+  font-weight: 700;
+  font-size: 24px;
+  margin: 0;
+  color: #2c3029;
+}
+
+.ios-back-btn {
+  background: none;
+  border: none;
+  font-size: 16px;
+  font-weight: 600;
+  color: #798f7a;
+  cursor: pointer;
+  padding: 0;
+}
+
+.ios-add-btn {
+  background: #798f7a;
+  color: white;
+  height: 36px;
+  width: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  border: none;
+  cursor: pointer;
+}
+
+/* --- TAB CONTROL & SUMMARY --- */
+.ios-segmented-control {
+  display: flex;
+  background: #eaeae4;
+  border-radius: 30px;
+  margin: 0 20px 16px;
+  padding: 4px;
+  flex-shrink: 0;
+}
+
+.segmented-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 10px 0;
+  font-weight: 600;
+  color: #8c9288;
+  border-radius: 26px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.segmented-btn.active {
+  background: white;
+  color: #3a3d36;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.tab-summary {
+  padding: 0 24px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #8c9288;
+  flex-shrink: 0;
+}
+
+/* --- SCROLLABLE CONTENT --- */
+.tool-content {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 24px; /* Padding above sticky bar */
+}
+
+.list-container {
+  padding: 0 20px;
+}
+
+/* --- EMPTY STATES --- */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  color: #8c9288;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.8;
+}
+
+.empty-state p {
+  font-weight: 600;
+  font-size: 18px;
+  margin: 0 0 8px 0;
+  color: #3a3d36;
+}
+
+.empty-state small {
+  font-size: 14px;
+}
+
+/* --- LIST ITEMS (ALIGNMENT MASTERCLASS) --- */
+.kitchen-list-item {
+  background: white;
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  border: 1px solid #f0f0eb;
+}
+
+.item-left-group {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+  overflow: hidden;
+}
+
+.item-right-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.kitchen-item-name {
+  font-weight: 600;
+  font-size: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- BADGES & BUTTONS --- */
+.qty-badge {
+  background: #e8f0e9;
+  color: #4c664d;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.clean-checkbox {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid #c4cfc5;
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+  transition: background 0.2s;
+}
+
+.clean-checkbox:active {
+  background: #e8f0e9;
+}
+
+.icon-btn {
+  background: transparent;
+  border: none;
+  color: #a3aca4;
+  font-size: 16px;
+  padding: 6px;
+  cursor: pointer;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    color 0.2s,
+    background 0.2s;
+}
+
+.icon-btn:hover {
+  background: #f4f4f0;
+  color: #3a3d36;
+}
+
+.icon-btn.delete:hover {
+  background: #ffebeb;
+  color: #e64848;
+}
+
+/* --- RECIPE CARDS --- */
+.recipe-card {
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  border: 1px solid #f0f0eb;
+}
+
+.recipe-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.recipe-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.recipe-link {
+  font-size: 14px;
+  color: #798f7a;
+  text-decoration: none;
+  font-weight: 500;
+  margin-bottom: 20px;
+  display: inline-block;
+}
+
+.cooked-btn {
+  background: #798f7a;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 14px;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  width: 100%;
+}
+
+/* --- STICKY BOTTOM BAR --- */
+.sticky-add-bar {
+  position: sticky;
+  bottom: 0;
+  background: #f9f9f6;
+  padding: 16px 20px;
+  border-top: 1px solid #eaeae4;
+  flex-shrink: 0;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.02);
+}
+
+.add-grocery-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.ios-input-modal {
+  background: white;
+  border: 1px solid #eaeae4;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 15px;
+  box-sizing: border-box;
+  color: #3a3d36;
+  transition: border 0.2s;
+}
+
+.ios-input-modal:focus {
+  outline: none;
+  border-color: #798f7a;
+}
+
+.item-input {
+  flex: 3;
+}
+.qty-input {
+  flex: 1;
+  padding: 12px 8px;
+  text-align: center;
+}
+.unit-input {
+  flex: 1;
+  padding: 12px 8px;
+  text-align: center;
+}
+
+.inline-add-btn {
+  background: #798f7a;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  height: 44px;
+  width: 44px;
+  flex-shrink: 0;
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* --- MODALS --- */
+.ios-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(44, 48, 41, 0.4);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  z-index: 100;
+}
+
+.ios-modal {
+  background: white;
+  width: 100%;
+  border-radius: 24px 24px 0 0;
+  padding: 24px;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.ios-modal-header {
+  font-size: 18px;
+  font-weight: 700;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.ios-modal-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: #a3aca4;
+  cursor: pointer;
+  padding: 0;
+}
+
+.ios-submit-btn.full-width {
+  width: 100%;
+  background: #798f7a;
+  color: white;
+  border: none;
+  padding: 14px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+}
