@@ -13,21 +13,22 @@ const KitchenTool = () => {
   const [kitchenData, setKitchenData] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Grocery List State
   const [newItemName, setNewItemName] = useState("");
   const [newItemQty, setNewItemQty] = useState("");
   const [newItemUnit, setNewItemUnit] = useState("");
 
-  // Recipe Modal State
   const [isRecipeModalOpen, setIsRecipeModalOpen] = useState(false);
   const [recipeName, setRecipeName] = useState("");
   const [recipeUrl, setRecipeUrl] = useState("");
   const [recipeIngredientsText, setRecipeIngredientsText] = useState("");
 
-  // Edit Item Modal State
   const [editingItem, setEditingItem] = useState(null);
   const [editQty, setEditQty] = useState("");
   const [editUnit, setEditUnit] = useState("");
+
+  // --- NEW AI CHECK STATES ---
+  const [checkingRecipeId, setCheckingRecipeId] = useState(null);
+  const [recipePlan, setRecipePlan] = useState(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -35,14 +36,11 @@ const KitchenTool = () => {
       const response = await fetch(`${API_BASE}/kitchen`);
       const data = await response.json();
       if (!response.ok) {
-        console.error("🚨 BACKEND ERROR:", data.error);
         setKitchenData([]);
-        setLoading(false);
         return;
       }
       setKitchenData(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error("Network or parsing error:", error);
       setKitchenData([]);
     }
     setLoading(false);
@@ -56,11 +54,9 @@ const KitchenTool = () => {
   const pantry = kitchenData.filter((item) => item.pk === "INVENTORY");
   const recipes = kitchenData.filter((item) => item.pk === "RECIPE");
 
-  // --- ADD GROCERY ITEM ---
   const handleAddGrocery = async (e) => {
     e.preventDefault();
     if (!newItemName) return;
-
     try {
       await fetch(`${API_BASE}/kitchen`, {
         method: "POST",
@@ -81,7 +77,6 @@ const KitchenTool = () => {
     }
   };
 
-  // --- MARK BOUGHT (Moves to Pantry) ---
   const handleMarkBought = async (item) => {
     try {
       await fetch(`${API_BASE}/kitchen/${item.sk}?pk=GROCERY`, {
@@ -103,24 +98,18 @@ const KitchenTool = () => {
     }
   };
 
-  // --- OPEN EDIT MODAL ---
   const openEditModal = (item) => {
     setEditingItem(item);
     setEditQty(item.pk === "GROCERY" ? item.quantity : item.currentQuantity);
     setEditUnit(item.unit || "");
   };
 
-  // --- SAVE EDITED ITEM ---
   const handleSaveEdit = async () => {
     if (!editingItem) return;
-
     const updatedItem = { ...editingItem, unit: editUnit };
-
-    if (editingItem.pk === "GROCERY") {
-      updatedItem.quantity = Number(editQty);
-    } else if (editingItem.pk === "INVENTORY") {
+    if (editingItem.pk === "GROCERY") updatedItem.quantity = Number(editQty);
+    else if (editingItem.pk === "INVENTORY")
       updatedItem.currentQuantity = Number(editQty);
-    }
 
     try {
       await fetch(`${API_BASE}/kitchen`, {
@@ -131,12 +120,10 @@ const KitchenTool = () => {
       setEditingItem(null);
       loadData();
     } catch (e) {
-      console.error(e);
       alert("Failed to update item.");
     }
   };
 
-  // --- DELETE FUNCTIONS ---
   const handleDeleteItem = async (item, pkType) => {
     try {
       await fetch(`${API_BASE}/kitchen/${item.sk}?pk=${pkType}`, {
@@ -148,13 +135,9 @@ const KitchenTool = () => {
     }
   };
 
-  // --- SAVE RECIPE WITH TEXT INGREDIENTS ---
   const handleSaveRecipe = async () => {
-    if (!recipeName || !recipeIngredientsText) {
-      alert("Please provide a name and paste the ingredients!");
-      return;
-    }
-
+    if (!recipeName || !recipeIngredientsText)
+      return alert("Please provide a name and paste the ingredients!");
     try {
       await fetch(`${API_BASE}/kitchen`, {
         method: "POST",
@@ -166,46 +149,89 @@ const KitchenTool = () => {
           ingredientsText: recipeIngredientsText,
         }),
       });
-
       setRecipeName("");
       setRecipeUrl("");
       setRecipeIngredientsText("");
       setIsRecipeModalOpen(false);
       loadData();
     } catch (e) {
-      console.error(e);
       alert("Failed to save recipe.");
     }
   };
 
-  // --- SMART AI ACTION: COOKED THIS ---
-  const handleCookedThis = async (recipe) => {
+  // --- 1. ASK THE AI IF WE CAN MAKE IT ---
+  const handleCheckRecipe = async (recipe) => {
+    setCheckingRecipeId(recipe.sk);
     try {
       const response = await fetch(`${API_BASE}/kitchen`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "COOKED_RECIPE",
+          action: "CHECK_RECIPE",
           recipe: recipe,
           inventory: pantry,
         }),
       });
-
       const result = await response.json();
-      if (!response.ok) {
-        throw new Error(
-          result.error || "Something went wrong processing the recipe.",
-        );
-      }
-      alert("Recipe processed successfully!");
-      loadData();
+      if (!response.ok) throw new Error(result.error);
+
+      setRecipePlan(result.aiMath);
     } catch (e) {
-      console.error(e);
       alert(e.message);
     }
+    setCheckingRecipeId(null);
   };
 
-  // --- DYNAMIC SUB-HEADER ---
+  // --- 2. EXECUTE: ADD MISSING TO GROCERY LIST ---
+  const handleAddMissingToList = async () => {
+    if (!recipePlan || !recipePlan.missingIngredients) return;
+
+    // Loop through missing items and POST each one to the database
+    for (const missing of recipePlan.missingIngredients) {
+      await fetch(`${API_BASE}/kitchen`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pk: "GROCERY",
+          name: missing.name,
+          quantity: missing.quantity,
+          unit: missing.unit,
+        }),
+      });
+    }
+    setRecipePlan(null);
+    loadData();
+    alert("Missing items added to your grocery list!");
+  };
+
+  // --- 3. EXECUTE: COOK IT AND DEDUCT INVENTORY ---
+  const handleExecuteCook = async () => {
+    if (!recipePlan || !recipePlan.updatedInventory) return;
+
+    for (const item of recipePlan.updatedInventory) {
+      if (item.currentQuantity <= 0) {
+        await fetch(`${API_BASE}/kitchen/${item.sk}?pk=INVENTORY`, {
+          method: "DELETE",
+        });
+      } else {
+        const originalItem = pantry.find((i) => i.sk === item.sk);
+        if (originalItem) {
+          await fetch(`${API_BASE}/kitchen`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ...originalItem,
+              currentQuantity: item.currentQuantity,
+            }),
+          });
+        }
+      }
+    }
+    setRecipePlan(null);
+    loadData();
+    alert("Inventory updated! Hope it was delicious.");
+  };
+
   const getTabSummary = () => {
     if (activeTab === "list") return `${groceries.length} items to buy`;
     if (activeTab === "pantry") return `${pantry.length} items in stock`;
@@ -228,7 +254,7 @@ const KitchenTool = () => {
             +
           </button>
         ) : (
-          <div style={{ width: "36px" }}></div> /* Spacer for alignment */
+          <div style={{ width: "36px" }}></div>
         )}
       </header>
 
@@ -255,9 +281,7 @@ const KitchenTool = () => {
 
       <div className="tab-summary">{getTabSummary()}</div>
 
-      {/* SCROLLABLE CONTENT AREA */}
       <div className="tool-content">
-        {/* --- GROCERY LIST TAB --- */}
         {activeTab === "list" && (
           <div className="list-container">
             {groceries.length === 0 ? (
@@ -299,7 +323,6 @@ const KitchenTool = () => {
           </div>
         )}
 
-        {/* --- PANTRY TAB --- */}
         {activeTab === "pantry" && (
           <div className="list-container">
             {pantry.length === 0 ? (
@@ -337,7 +360,6 @@ const KitchenTool = () => {
           </div>
         )}
 
-        {/* --- MEALS TAB --- */}
         {activeTab === "meals" && (
           <div className="list-container">
             {recipes.length === 0 ? (
@@ -358,7 +380,6 @@ const KitchenTool = () => {
                       ✕
                     </button>
                   </div>
-
                   {recipe.url && (
                     <a
                       href={recipe.url}
@@ -372,9 +393,15 @@ const KitchenTool = () => {
 
                   <button
                     className="cooked-btn"
-                    onClick={() => handleCookedThis(recipe)}
+                    onClick={() => handleCheckRecipe(recipe)}
+                    disabled={checkingRecipeId === recipe.sk}
+                    style={{
+                      opacity: checkingRecipeId === recipe.sk ? 0.7 : 1,
+                    }}
                   >
-                    Cooked This
+                    {checkingRecipeId === recipe.sk
+                      ? "Checking Pantry..."
+                      : "Can I make this?"}
                   </button>
                 </div>
               ))
@@ -383,7 +410,6 @@ const KitchenTool = () => {
         )}
       </div>
 
-      {/* --- STICKY BOTTOM BAR (List Tab Only) --- */}
       {activeTab === "list" && (
         <div className="sticky-add-bar">
           <form onSubmit={handleAddGrocery} className="add-grocery-form">
@@ -413,7 +439,99 @@ const KitchenTool = () => {
         </div>
       )}
 
-      {/* --- ADD RECIPE MODAL --- */}
+      {/* --- AI RECIPE PLAN POPUPS --- */}
+      {recipePlan && (
+        <div className="ios-modal-overlay">
+          <div className="ios-modal">
+            <div className="ios-modal-header">
+              {recipePlan.canMake ? "Yes, you can!" : "Not quite..."}
+              <button
+                className="ios-modal-close"
+                onClick={() => setRecipePlan(null)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="ios-modal-content">
+              {recipePlan.canMake ? (
+                <>
+                  <p
+                    style={{
+                      margin: "0 0 16px 0",
+                      color: "#4C664D",
+                      fontWeight: "600",
+                    }}
+                  >
+                    You have everything you need:
+                  </p>
+                  <ul
+                    style={{
+                      paddingLeft: "20px",
+                      marginBottom: "24px",
+                      color: "#3A3D36",
+                    }}
+                  >
+                    {recipePlan.requiredIngredients.map((ing, idx) => (
+                      <li key={idx} style={{ marginBottom: "6px" }}>
+                        {ing.quantity} {ing.unit} {ing.name}
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    onClick={handleExecuteCook}
+                    className="ios-submit-btn full-width"
+                  >
+                    Cooked This (Update Pantry)
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p
+                    style={{
+                      margin: "0 0 16px 0",
+                      color: "#E64848",
+                      fontWeight: "600",
+                    }}
+                  >
+                    You are missing:
+                  </p>
+                  <ul
+                    style={{
+                      paddingLeft: "20px",
+                      marginBottom: "24px",
+                      color: "#3A3D36",
+                    }}
+                  >
+                    {recipePlan.missingIngredients.map((ing, idx) => (
+                      <li key={idx} style={{ marginBottom: "6px" }}>
+                        {ing.quantity} {ing.unit} {ing.name}
+                      </li>
+                    ))}
+                  </ul>
+                  <div style={{ display: "flex", gap: "12px" }}>
+                    <button
+                      onClick={() => setRecipePlan(null)}
+                      className="ios-submit-btn full-width"
+                      style={{ background: "#F4F4F0", color: "#3A3D36" }}
+                    >
+                      No Thanks
+                    </button>
+                    <button
+                      onClick={handleAddMissingToList}
+                      className="ios-submit-btn full-width"
+                    >
+                      Add to List
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- ADD/EDIT MODALS (Kept identical to previous) --- */}
       {isRecipeModalOpen && (
         <div className="ios-modal-overlay">
           <div className="ios-modal">
@@ -465,7 +583,6 @@ const KitchenTool = () => {
         </div>
       )}
 
-      {/* --- EDIT ITEM MODAL --- */}
       {editingItem && (
         <div className="ios-modal-overlay">
           <div className="ios-modal">

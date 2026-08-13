@@ -36,11 +36,11 @@ exports.handler = async (event) => {
       const body = JSON.parse(event.body);
 
       // 1. THE SMART ACTION ROUTER (Gemini Engine)
-      if (body.action === "COOKED_RECIPE") {
+      if (body.action === "CHECK_RECIPE") {
         const { recipe, inventory } = body;
 
         const promptText = `
-          You are a strict, mathematical kitchen assistant. The user just cooked "${recipe.name}".
+          You are a strict, mathematical kitchen assistant. The user wants to know if they can cook "${recipe.name}".
           
           Here is the exact ingredients list for the recipe: 
           ${recipe.ingredientsText}
@@ -49,14 +49,18 @@ exports.handler = async (event) => {
           ${JSON.stringify(inventory)}
           
           Task: 
-          1. Extract the required ingredients STRICTLY from the recipe ingredients list provided above. Do not guess or add any ingredients that are not explicitly listed in the text.
-          2. Match those required ingredients to the inventory items. Handle standard unit conversions (e.g., cups to oz, lbs to oz, etc.).
-          3. Deduct the required quantities from the inventory quantities. 
-          4. If an inventory item reaches 0 or less, mark it to be removed.
-          5. If the user didn't have enough (or any) of an ingredient, calculate the deficit and list it in missingIngredients.
+          1. Extract the required ingredients STRICTLY from the recipe ingredients list.
+          2. Match those to the inventory items. Handle standard unit conversions (e.g., cups to oz, lbs to oz, etc.).
+          3. Determine if the user has enough of EVERY ingredient to make the recipe. If they are missing even a fraction of an ingredient, canMake is false.
+          4. Deduct the required quantities from the inventory to calculate updatedInventory. If an inventory item reaches 0 or less, mark it to be removed.
+          5. Calculate exactly what is missing and list it in missingIngredients.
           
           Return ONLY valid, raw JSON (no markdown formatting, no code blocks, no backticks). It must match this exact schema:
           {
+            "canMake": boolean,
+            "requiredIngredients": [
+              { "name": "ingredient_name", "quantity": number, "unit": "unit_string" }
+            ],
             "updatedInventory": [
               { "sk": "inventory_item_sk", "currentQuantity": number_remaining }
             ],
@@ -66,7 +70,6 @@ exports.handler = async (event) => {
           }
         `;
 
-        // USING THE CORRECT MODEL FROM YOUR SCREENSHOT
         const geminiRes = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${GEMINI_API_KEY}`,
           {
@@ -74,6 +77,11 @@ exports.handler = async (event) => {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               contents: [{ parts: [{ text: promptText }] }],
+              generationConfig: {
+                thinkingConfig: {
+                  thinkingLevel: "low",
+                },
+              },
             }),
           },
         );
@@ -105,6 +113,13 @@ exports.handler = async (event) => {
         let aiMath;
         try {
           aiMath = JSON.parse(aiResultText);
+
+          // Return the calculation back to React instead of writing to DB
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({ aiMath }),
+          };
           // eslint-disable-next-line no-unused-vars
         } catch (err) {
           console.error("🚨 AI RESPONSE WAS NOT JSON:", aiResultText);
@@ -116,63 +131,9 @@ exports.handler = async (event) => {
             }),
           };
         }
-
-        // --- Execute Database Updates Based on AI Math ---
-        if (aiMath.updatedInventory && aiMath.updatedInventory.length > 0) {
-          for (const item of aiMath.updatedInventory) {
-            if (item.currentQuantity <= 0) {
-              await dynamo.send(
-                new DeleteCommand({
-                  TableName: TABLE_NAME,
-                  Key: { pk: "INVENTORY", sk: item.sk },
-                }),
-              );
-            } else {
-              const originalItem = inventory.find((i) => i.sk === item.sk);
-              if (originalItem) {
-                await dynamo.send(
-                  new PutCommand({
-                    TableName: TABLE_NAME,
-                    Item: {
-                      ...originalItem,
-                      currentQuantity: item.currentQuantity,
-                    },
-                  }),
-                );
-              }
-            }
-          }
-        }
-
-        if (aiMath.missingIngredients && aiMath.missingIngredients.length > 0) {
-          for (const missing of aiMath.missingIngredients) {
-            await dynamo.send(
-              new PutCommand({
-                TableName: TABLE_NAME,
-                Item: {
-                  pk: "GROCERY",
-                  sk: crypto.randomUUID(),
-                  name: missing.name,
-                  quantity: missing.quantity,
-                  unit: missing.unit,
-                },
-              }),
-            );
-          }
-        }
-
-        return {
-          statusCode: 200,
-          headers,
-          body: JSON.stringify({
-            message:
-              "Inventory updated and missing items added to grocery list successfully!",
-            aiMath,
-          }),
-        };
       }
 
-      // 2. Standard Database Save
+      // 2. Standard Database Save (React uses this to execute the AI plan)
       const item = {
         pk: body.pk,
         sk: body.sk || crypto.randomUUID(),

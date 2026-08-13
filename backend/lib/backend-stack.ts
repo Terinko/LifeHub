@@ -57,6 +57,7 @@ export class BackendStack extends cdk.Stack {
         WALMART_PUBLISHER_ID: process.env.WALMART_PUBLISHER_ID || "",
       },
       timeout: cdk.Duration.seconds(30),
+      memorySize: 512,
     });
 
     // Grant Lambda permission to edit the database
@@ -186,13 +187,6 @@ export class BackendStack extends cdk.Stack {
     new cdk.CfnOutput(this, "S3BucketName", {
       value: websiteBucket.bucketName,
       description: "Upload your React dist folder to this S3 bucket",
-    });
-
-    new s3deploy.BucketDeployment(this, "DeployLifeHubWebsite", {
-      sources: [s3deploy.Source.asset(path.join(__dirname, "../../dist"))],
-      destinationBucket: websiteBucket,
-      distribution: distribution,
-      distributionPaths: ["/*"],
     });
   }
 }
