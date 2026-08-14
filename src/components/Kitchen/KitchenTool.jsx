@@ -63,6 +63,7 @@ const KitchenTool = () => {
     e.preventDefault();
     if (!newItemName) return;
     try {
+      // The backend now handles the duplicate checking and unit conversion
       await fetch(`${API_BASE}/kitchen`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -84,9 +85,11 @@ const KitchenTool = () => {
 
   const handleMarkBought = async (item) => {
     try {
+      // 1. Remove from grocery list
       await fetch(`${API_BASE}/kitchen/${item.sk}?pk=GROCERY`, {
         method: "DELETE",
       });
+      // 2. Add to pantry (Backend handles merging into existing pantry items)
       await fetch(`${API_BASE}/kitchen`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -117,6 +120,7 @@ const KitchenTool = () => {
       updatedItem.currentQuantity = Number(editQty);
 
     try {
+      // Explicitly passing editingItem.sk tells the backend this is a direct update
       await fetch(`${API_BASE}/kitchen`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -147,10 +151,6 @@ const KitchenTool = () => {
       return alert("Please provide a name and paste the ingredients!");
     setSavingRecipe(true);
     try {
-      // This call now parses ingredientsText into structured data
-      // (one-time Gemini call), so it takes a moment longer than a plain
-      // save — but "Can I make this?" is instant afterward since it never
-      // has to call Gemini again for this recipe.
       await fetch(`${API_BASE}/kitchen`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -172,9 +172,6 @@ const KitchenTool = () => {
     setSavingRecipe(false);
   };
 
-  // --- 1. CHECK IF WE CAN MAKE IT (local math on the backend; falls back
-  //        to Gemini only for older recipes saved before ingredient
-  //        parsing existed) ---
   const handleCheckRecipe = async (recipe) => {
     setCheckingRecipeId(recipe.sk);
     try {
@@ -198,11 +195,9 @@ const KitchenTool = () => {
     setCheckingRecipeId(null);
   };
 
-  // --- 2. EXECUTE: ADD MISSING TO GROCERY LIST ---
   const handleAddMissingToList = async () => {
     if (!recipePlan || !recipePlan.missingIngredients) return;
 
-    // Loop through missing items and POST each one to the database
     for (const missing of recipePlan.missingIngredients) {
       await fetch(`${API_BASE}/kitchen`, {
         method: "POST",
@@ -220,7 +215,6 @@ const KitchenTool = () => {
     alert("Missing items added to your grocery list!");
   };
 
-  // --- 3. EXECUTE: COOK IT AND DEDUCT INVENTORY ---
   const handleExecuteCook = async () => {
     if (!recipePlan || !recipePlan.updatedInventory) return;
 
@@ -579,7 +573,7 @@ const KitchenTool = () => {
         </div>
       )}
 
-      {/* --- ADD/EDIT MODALS (Kept identical to previous) --- */}
+      {/* --- ADD/EDIT MODALS --- */}
       {isRecipeModalOpen && (
         <div className="ios-modal-overlay">
           <div className="ios-modal">

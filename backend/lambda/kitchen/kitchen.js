@@ -17,8 +17,6 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 // ==========================================
 // UNIT CONVERSION + PANTRY MATH
-// (pure functions, no network calls — this is what makes
-// "Can I make this?" fast: it's just arithmetic now.)
 // ==========================================
 
 const UNIT_ALIASES = {
@@ -59,7 +57,6 @@ const UNIT_ALIASES = {
   pinches: "pinch",
 };
 
-// Everything in each group converts through a common base unit.
 const VOLUME_TO_ML = {
   cup: 236.588,
   tbsp: 14.7868,
@@ -77,14 +74,9 @@ function normalizeUnit(unit) {
 }
 
 function normalizeName(name) {
-  return (name || "").toString().trim().toLowerCase().replace(/s$/, ""); // crude singularize, good enough for pantry matching
+  return (name || "").toString().trim().toLowerCase().replace(/s$/, "");
 }
 
-// Converts a quantity between units IF they're in the same measurement
-// system (volume<->volume or weight<->weight). Returns null if the units
-// aren't comparable without ingredient-specific density data (e.g. cups of
-// flour vs grams of flour) — callers should treat null as "can't verify
-// automatically" rather than silently guessing.
 function convertUnit(quantity, fromUnit, toUnit) {
   const from = normalizeUnit(fromUnit);
   const to = normalizeUnit(toUnit);
@@ -98,9 +90,6 @@ function convertUnit(quantity, fromUnit, toUnit) {
   return null;
 }
 
-// Finds the best-guess inventory item for a recipe ingredient name.
-// Exact normalized match first, then a loose substring match
-// ("butter" matches "unsalted butter").
 function findInventoryMatch(name, inventory) {
   const target = normalizeName(name);
   return (
@@ -116,9 +105,6 @@ function round2(n) {
   return Math.round(n * 100) / 100;
 }
 
-// The core "can I make this?" logic. Pure, synchronous, no I/O — this is
-// what used to be a Gemini prompt. `multiplier` scales the recipe
-// (0.5 = half portions, 2 = double, etc).
 function checkPantry(requiredIngredients, inventory, multiplier) {
   const scaledRequired = requiredIngredients.map((ing) => ({
     name: ing.name,
@@ -142,8 +128,6 @@ function checkPantry(requiredIngredients, inventory, multiplier) {
     const have = convertUnit(match.currentQuantity, match.unit, req.unit);
 
     if (have === null) {
-      // Units aren't automatically comparable (e.g. inventory has "2 cups"
-      // but the recipe needs "grams"). Flag it rather than guess.
       canMake = false;
       missingIngredients.push({
         ...req,
@@ -184,11 +168,6 @@ function checkPantry(requiredIngredients, inventory, multiplier) {
 
 // ==========================================
 // GEMINI CALLS
-// Two distinct jobs, kept separate on purpose:
-//  - parseIngredientsWithGemini: freeform text -> structured data.
-//    Runs ONCE, when a recipe is saved.
-//  - legacyCheckWithGemini: fallback for recipes saved before this
-//    structured-parsing change existed (no `ingredients` field yet).
 // ==========================================
 
 async function parseIngredientsWithGemini(ingredientsText) {
@@ -209,8 +188,6 @@ async function parseIngredientsWithGemini(ingredientsText) {
       body: JSON.stringify({
         contents: [{ parts: [{ text: promptText }] }],
         generationConfig: {
-          // Pure extraction task — low thinking is faster and this doesn't
-          // need deep reasoning.
           thinkingConfig: { thinkingLevel: "low" },
           maxOutputTokens: 1024,
           responseMimeType: "application/json",
@@ -249,8 +226,6 @@ async function parseIngredientsWithGemini(ingredientsText) {
   }
 }
 
-// Old behavior, kept only as a fallback for recipes saved before structured
-// ingredients existed (no `recipe.ingredients` on the item yet).
 async function legacyCheckWithGemini(recipe, inventory, multiplier) {
   const promptText = `
     You are a strict, mathematical kitchen assistant. The user wants to know if they can cook "${recipe.name}" at ${multiplier}x the normal recipe quantities.
@@ -385,8 +360,7 @@ exports.handler = async (event) => {
     if (method === "POST" && path === "/kitchen") {
       const body = JSON.parse(event.body);
 
-      // 1. CHECK_RECIPE — now local math (fast, free), with a Gemini
-      //    fallback for recipes saved before structured ingredients existed.
+      // 1. CHECK_RECIPE
       if (body.action === "CHECK_RECIPE") {
         const { recipe, inventory } = body;
         const multiplier =
@@ -406,11 +380,6 @@ exports.handler = async (event) => {
             };
           }
 
-          // This recipe has no structured ingredients yet — most likely
-          // because the parse at save-time failed (e.g. a rate limit).
-          // Try once to (re)parse and persist it, so this recipe converges
-          // to the fast local-math path instead of hitting Gemini on every
-          // future check.
           const parsed = await parseIngredientsWithGemini(
             recipe.ingredientsText,
           );
@@ -429,9 +398,6 @@ exports.handler = async (event) => {
             };
           }
 
-          // Parsing failed again — fall back to the old one-shot Gemini
-          // check so the feature still works, just without the speed/quota
-          // benefit this time.
           const aiMath = await legacyCheckWithGemini(
             recipe,
             inventory,
@@ -454,20 +420,65 @@ exports.handler = async (event) => {
         }
       }
 
-      // 2. New recipe save: parse ingredientsText into structured data ONCE,
-      //    up front, instead of on every "Can I make this?" click.
+      // 2. New recipe save
       if (body.pk === "RECIPE" && body.ingredientsText && !body.ingredients) {
         body.ingredients = await parseIngredientsWithGemini(
           body.ingredientsText,
         );
       }
 
-      // 3. Standard Database Save
-      const item = {
+      // 3. Standard Database Save (with auto-merge logic)
+      let item = {
         pk: body.pk,
-        sk: body.sk || crypto.randomUUID(),
+        sk: body.sk,
         ...body,
       };
+
+      // Auto-merge logic for new items being added to grocery or inventory
+      if (!body.sk && (body.pk === "GROCERY" || body.pk === "INVENTORY")) {
+        const data = await dynamo.send(
+          new ScanCommand({ TableName: TABLE_NAME }),
+        );
+        const sameTypeItems = data.Items.filter((i) => i.pk === body.pk);
+
+        // Strict match only for adding items to avoid merging "Apple" into "Apple Juice"
+        const targetName = normalizeName(body.name);
+        const existingItem = sameTypeItems.find(
+          (i) => normalizeName(i.name) === targetName,
+        );
+
+        if (existingItem) {
+          const isPantry = body.pk === "INVENTORY";
+          const addQty = isPantry
+            ? Number(body.currentQuantity)
+            : Number(body.quantity);
+          const existingQty = isPantry
+            ? Number(existingItem.currentQuantity)
+            : Number(existingItem.quantity);
+
+          const convertedQty = convertUnit(
+            addQty,
+            body.unit,
+            existingItem.unit,
+          );
+
+          if (convertedQty !== null) {
+            item = { ...existingItem }; // retain original sk, unit, and other properties
+            if (isPantry) {
+              item.currentQuantity = round2(existingQty + convertedQty);
+            } else {
+              item.quantity = round2(existingQty + convertedQty);
+            }
+          } else {
+            item.sk = crypto.randomUUID();
+          }
+        } else {
+          item.sk = crypto.randomUUID();
+        }
+      } else if (!body.sk) {
+        // Fallback for recipes or edits where we didn't explicitly pass an SK
+        item.sk = crypto.randomUUID();
+      }
 
       await dynamo.send(
         new PutCommand({
