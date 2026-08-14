@@ -1,5 +1,5 @@
-/* eslint-disable preserve-caught-error */
 /* eslint-disable no-unused-vars */
+/* eslint-disable preserve-caught-error */
 /* eslint-disable no-undef */
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const {
@@ -202,7 +202,7 @@ async function parseIngredientsWithGemini(ingredientsText) {
   `;
 
   const geminiRes = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${GEMINI_API_KEY}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -294,6 +294,44 @@ async function legacyCheckWithGemini(recipe, inventory, multiplier) {
           thinkingConfig: { thinkingLevel: "low" },
           maxOutputTokens: 2048,
           responseMimeType: "application/json",
+          responseSchema: {
+            type: "OBJECT",
+            properties: {
+              canMake: { type: "BOOLEAN" },
+              requiredIngredients: {
+                type: "ARRAY",
+                items: {
+                  type: "OBJECT",
+                  properties: {
+                    name: { type: "STRING" },
+                    quantity: { type: "NUMBER" },
+                    unit: { type: "STRING" },
+                  },
+                },
+              },
+              updatedInventory: {
+                type: "ARRAY",
+                items: {
+                  type: "OBJECT",
+                  properties: {
+                    sk: { type: "STRING" },
+                    currentQuantity: { type: "NUMBER" },
+                  },
+                },
+              },
+              missingIngredients: {
+                type: "ARRAY",
+                items: {
+                  type: "OBJECT",
+                  properties: {
+                    name: { type: "STRING" },
+                    quantity: { type: "NUMBER" },
+                    unit: { type: "STRING" },
+                  },
+                },
+              },
+            },
+          },
         },
       }),
     },
@@ -368,9 +406,32 @@ exports.handler = async (event) => {
             };
           }
 
-          // Legacy path: this recipe was saved before we started parsing
-          // ingredients up front. Fall back to the old per-check Gemini call
-          // so old recipes still work without forcing a re-save.
+          // This recipe has no structured ingredients yet — most likely
+          // because the parse at save-time failed (e.g. a rate limit).
+          // Try once to (re)parse and persist it, so this recipe converges
+          // to the fast local-math path instead of hitting Gemini on every
+          // future check.
+          const parsed = await parseIngredientsWithGemini(
+            recipe.ingredientsText,
+          );
+          if (parsed.length > 0) {
+            await dynamo.send(
+              new PutCommand({
+                TableName: TABLE_NAME,
+                Item: { ...recipe, ingredients: parsed },
+              }),
+            );
+            const aiMath = checkPantry(parsed, inventory, multiplier);
+            return {
+              statusCode: 200,
+              headers,
+              body: JSON.stringify({ aiMath }),
+            };
+          }
+
+          // Parsing failed again — fall back to the old one-shot Gemini
+          // check so the feature still works, just without the speed/quota
+          // benefit this time.
           const aiMath = await legacyCheckWithGemini(
             recipe,
             inventory,
@@ -378,10 +439,17 @@ exports.handler = async (event) => {
           );
           return { statusCode: 200, headers, body: JSON.stringify({ aiMath }) };
         } catch (err) {
+          const isRateLimited =
+            err.message &&
+            /RESOURCE_EXHAUSTED|rate limit|quota/i.test(err.message);
           return {
             statusCode: 500,
             headers,
-            body: JSON.stringify({ error: err.message }),
+            body: JSON.stringify({
+              error: isRateLimited
+                ? "Gemini's free-tier limit was hit. Wait a bit and try again, or see the options for a more permanent fix."
+                : err.message,
+            }),
           };
         }
       }
