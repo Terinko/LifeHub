@@ -19,6 +19,21 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 // UNIT CONVERSION + PANTRY MATH
 // ==========================================
 
+// Add any items here that you always want to assume are in stock.
+// Ensure they are lowercase!
+const PANTRY_STAPLES = [
+  "salt",
+  "pepper",
+  "black pepper",
+  "oil",
+  "olive oil",
+  "vegetable oil",
+  "canola oil",
+  "butter",
+  "water",
+  "sugar",
+];
+
 const UNIT_ALIASES = {
   cup: "cup",
   cups: "cup",
@@ -117,6 +132,12 @@ function checkPantry(requiredIngredients, inventory, multiplier) {
   let canMake = true;
 
   for (const req of scaledRequired) {
+    // --- STAPLES BYPASS ---
+    // If the required ingredient is a staple, skip checking inventory and math entirely.
+    if (PANTRY_STAPLES.includes(normalizeName(req.name))) {
+      continue;
+    }
+
     const match = findInventoryMatch(req.name, inventory);
 
     if (!match) {
