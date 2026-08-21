@@ -22,6 +22,9 @@ const KitchenTool = () => {
   const [recipeUrl, setRecipeUrl] = useState("");
   const [recipeIngredientsText, setRecipeIngredientsText] = useState("");
 
+  // Track which recipe is currently being edited
+  const [editingRecipe, setEditingRecipe] = useState(null);
+
   const [editingItem, setEditingItem] = useState(null);
   const [editQty, setEditQty] = useState("");
   const [editUnit, setEditUnit] = useState("");
@@ -63,7 +66,6 @@ const KitchenTool = () => {
     e.preventDefault();
     if (!newItemName) return;
     try {
-      // The backend now handles the duplicate checking and unit conversion
       await fetch(`${API_BASE}/kitchen`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -85,11 +87,9 @@ const KitchenTool = () => {
 
   const handleMarkBought = async (item) => {
     try {
-      // 1. Remove from grocery list
       await fetch(`${API_BASE}/kitchen/${item.sk}?pk=GROCERY`, {
         method: "DELETE",
       });
-      // 2. Add to pantry (Backend handles merging into existing pantry items)
       await fetch(`${API_BASE}/kitchen`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -120,7 +120,6 @@ const KitchenTool = () => {
       updatedItem.currentQuantity = Number(editQty);
 
     try {
-      // Explicitly passing editingItem.sk tells the backend this is a direct update
       await fetch(`${API_BASE}/kitchen`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -150,20 +149,32 @@ const KitchenTool = () => {
     if (!recipeName || !recipeIngredientsText)
       return alert("Please provide a name and paste the ingredients!");
     setSavingRecipe(true);
+
+    // Prepare the payload. If we are editing, attach the existing SK
+    // Do NOT send the old `ingredients` array, so the backend is forced to re-parse the new text.
+    const payload = {
+      pk: "RECIPE",
+      name: recipeName,
+      url: recipeUrl,
+      ingredientsText: recipeIngredientsText,
+    };
+
+    if (editingRecipe) {
+      payload.sk = editingRecipe.sk;
+    }
+
     try {
       await fetch(`${API_BASE}/kitchen`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          pk: "RECIPE",
-          name: recipeName,
-          url: recipeUrl,
-          ingredientsText: recipeIngredientsText,
-        }),
+        body: JSON.stringify(payload),
       });
+
+      // Reset everything after save
       setRecipeName("");
       setRecipeUrl("");
       setRecipeIngredientsText("");
+      setEditingRecipe(null);
       setIsRecipeModalOpen(false);
       loadData();
     } catch (e) {
@@ -218,6 +229,28 @@ const KitchenTool = () => {
   const handleExecuteCook = async () => {
     if (!recipePlan || !recipePlan.updatedInventory) return;
 
+    // OPTIMISTIC UI UPDATE: Update local state immediately so the next click uses fresh math
+    setKitchenData((prevData) => {
+      let nextData = [...prevData];
+      for (const item of recipePlan.updatedInventory) {
+        if (item.currentQuantity <= 0) {
+          // Remove it from the UI if depleted
+          nextData = nextData.filter((i) => i.sk !== item.sk);
+        } else {
+          // Update quantity in the UI if remaining
+          const index = nextData.findIndex((i) => i.sk === item.sk);
+          if (index !== -1) {
+            nextData[index] = {
+              ...nextData[index],
+              currentQuantity: item.currentQuantity,
+            };
+          }
+        }
+      }
+      return nextData;
+    });
+
+    // Perform the actual backend updates
     for (const item of recipePlan.updatedInventory) {
       if (item.currentQuantity <= 0) {
         await fetch(`${API_BASE}/kitchen/${item.sk}?pk=INVENTORY`, {
@@ -237,8 +270,9 @@ const KitchenTool = () => {
         }
       }
     }
+
     setRecipePlan(null);
-    loadData();
+    loadData(); // This will now fetch strongly consistent data from DynamoDB
     alert("Inventory updated! Hope it was delicious.");
   };
 
@@ -247,6 +281,22 @@ const KitchenTool = () => {
     if (activeTab === "pantry") return `${pantry.length} items in stock`;
     if (activeTab === "meals") return `${recipes.length} saved recipes`;
     return "";
+  };
+
+  const closeRecipeModal = () => {
+    setIsRecipeModalOpen(false);
+    setEditingRecipe(null);
+    setRecipeName("");
+    setRecipeUrl("");
+    setRecipeIngredientsText("");
+  };
+
+  const openRecipeEdit = (recipe) => {
+    setEditingRecipe(recipe);
+    setRecipeName(recipe.name);
+    setRecipeUrl(recipe.url || "");
+    setRecipeIngredientsText(recipe.ingredientsText || "");
+    setIsRecipeModalOpen(true);
   };
 
   return (
@@ -259,7 +309,13 @@ const KitchenTool = () => {
         {activeTab === "meals" ? (
           <button
             className="ios-add-btn"
-            onClick={() => setIsRecipeModalOpen(true)}
+            onClick={() => {
+              setEditingRecipe(null);
+              setRecipeName("");
+              setRecipeUrl("");
+              setRecipeIngredientsText("");
+              setIsRecipeModalOpen(true);
+            }}
           >
             +
           </button>
@@ -383,12 +439,20 @@ const KitchenTool = () => {
                 <div key={recipe.sk} className="recipe-card">
                   <div className="recipe-header">
                     <h3 className="recipe-title">{recipe.name}</h3>
-                    <button
-                      className="icon-btn delete"
-                      onClick={() => handleDeleteItem(recipe, "RECIPE")}
-                    >
-                      ✕
-                    </button>
+                    <div>
+                      <button
+                        className="icon-btn"
+                        onClick={() => openRecipeEdit(recipe)}
+                      >
+                        ✎
+                      </button>
+                      <button
+                        className="icon-btn delete"
+                        onClick={() => handleDeleteItem(recipe, "RECIPE")}
+                      >
+                        ✕
+                      </button>
+                    </div>
                   </div>
                   {recipe.url && (
                     <a
@@ -573,16 +637,13 @@ const KitchenTool = () => {
         </div>
       )}
 
-      {/* --- ADD/EDIT MODALS --- */}
+      {/* --- RECIPE MODAL --- */}
       {isRecipeModalOpen && (
         <div className="ios-modal-overlay">
           <div className="ios-modal">
             <div className="ios-modal-header">
-              New Recipe
-              <button
-                className="ios-modal-close"
-                onClick={() => setIsRecipeModalOpen(false)}
-              >
+              {editingRecipe ? "Edit Recipe" : "New Recipe"}
+              <button className="ios-modal-close" onClick={closeRecipeModal}>
                 ✕
               </button>
             </div>
@@ -627,6 +688,7 @@ const KitchenTool = () => {
         </div>
       )}
 
+      {/* --- INVENTORY EDIT MODAL --- */}
       {editingItem && (
         <div className="ios-modal-overlay">
           <div className="ios-modal">

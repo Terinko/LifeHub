@@ -72,11 +72,37 @@ const Hub = () => {
               Kitchen
             </span>
           </div>
+
+          {/* Poker App Button */}
+          <div
+            onClick={() => navigate("/poker")}
+            style={{
+              background: "var(--ios-card)",
+              padding: "24px 16px",
+              borderRadius: "16px",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "12px",
+              cursor: "pointer",
+            }}
+          >
+            <span style={{ fontSize: "40px" }}>🃏</span>
+            <span
+              style={{
+                fontSize: "16px",
+                fontWeight: "600",
+                color: "var(--ios-text)",
+              }}
+            >
+              Poker
+            </span>
+          </div>
         </div>
       </div>
     </div>
   );
 };
 
-// THIS is the line your app was looking for!
 export default Hub;

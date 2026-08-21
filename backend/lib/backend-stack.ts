@@ -35,6 +35,13 @@ export class BackendStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
+    const pokerTable = new dynamodb.Table(this, "PokerTable", {
+      partitionKey: { name: "pk", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "sk", type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
     // ==========================================
     // 2. BACKEND LOGIC (Lambda)
     // ==========================================
@@ -60,9 +67,19 @@ export class BackendStack extends cdk.Stack {
       memorySize: 512,
     });
 
+    const pokerLambda = new lambda.Function(this, "PokerHandler", {
+      runtime: lambda.Runtime.NODEJS_18_X,
+      code: lambda.Code.fromAsset("lambda/poker"),
+      handler: "index.handler",
+      environment: {
+        TABLE_NAME: pokerTable.tableName,
+      },
+    });
+
     // Grant Lambda permission to edit the database
     billsTable.grantReadWriteData(billsLambda);
     kitchenTable.grantReadWriteData(kitchenLambda);
+    pokerTable.grantReadWriteData(pokerLambda);
 
     // ==========================================
     // 3. API ROUTING (API Gateway v2 HTTP API)
@@ -89,6 +106,11 @@ export class BackendStack extends cdk.Stack {
     const kitchenIntegration = new HttpLambdaIntegration(
       "KitchenIntegration",
       kitchenLambda,
+    );
+
+    const pokerIntegration = new HttpLambdaIntegration(
+      "PokerIntegration",
+      pokerLambda,
     );
 
     // Route 1: /bills
@@ -135,6 +157,28 @@ export class BackendStack extends cdk.Stack {
         apigw.HttpMethod.DELETE,
       ],
       integration: kitchenIntegration,
+    });
+
+    // Route 5: /poker
+    httpApi.addRoutes({
+      path: "/poker",
+      methods: [
+        apigw.HttpMethod.GET,
+        apigw.HttpMethod.POST,
+        apigw.HttpMethod.PUT,
+        apigw.HttpMethod.DELETE,
+      ],
+      integration: pokerIntegration,
+    });
+
+    httpApi.addRoutes({
+      path: "/poker/{id}",
+      methods: [
+        apigw.HttpMethod.GET,
+        apigw.HttpMethod.PUT,
+        apigw.HttpMethod.DELETE,
+      ],
+      integration: pokerIntegration,
     });
 
     // ==========================================

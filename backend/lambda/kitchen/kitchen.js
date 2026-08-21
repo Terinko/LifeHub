@@ -128,8 +128,11 @@ function checkPantry(requiredIngredients, inventory, multiplier) {
   }));
 
   const missingIngredients = [];
-  const updatedInventory = [];
+  const updatedInventoryMap = new Map(); // We use a map to track combined updates by 'sk'
   let canMake = true;
+
+  // Deep clone the inventory so we can progressively deduct from it during the loop
+  const workingInventory = JSON.parse(JSON.stringify(inventory));
 
   for (const req of scaledRequired) {
     // --- STAPLES BYPASS ---
@@ -138,7 +141,7 @@ function checkPantry(requiredIngredients, inventory, multiplier) {
       continue;
     }
 
-    const match = findInventoryMatch(req.name, inventory);
+    const match = findInventoryMatch(req.name, workingInventory);
 
     if (!match) {
       canMake = false;
@@ -146,6 +149,7 @@ function checkPantry(requiredIngredients, inventory, multiplier) {
       continue;
     }
 
+    // Check against the progressively depleting workingInventory
     const have = convertUnit(match.currentQuantity, match.unit, req.unit);
 
     if (have === null) {
@@ -164,7 +168,10 @@ function checkPantry(requiredIngredients, inventory, multiplier) {
         quantity: round2(req.quantity - have),
         unit: req.unit,
       });
-      updatedInventory.push({ sk: match.sk, currentQuantity: 0 });
+
+      // Deplete the working copy so subsequent checks see it's gone
+      match.currentQuantity = 0;
+      updatedInventoryMap.set(match.sk, 0);
     } else {
       const remaining = have - req.quantity;
       const remainingInOriginalUnit = convertUnit(
@@ -172,12 +179,23 @@ function checkPantry(requiredIngredients, inventory, multiplier) {
         req.unit,
         match.unit,
       );
-      updatedInventory.push({
-        sk: match.sk,
-        currentQuantity: round2(remainingInOriginalUnit),
-      });
+
+      const newQty = round2(remainingInOriginalUnit);
+
+      // Update the working copy for the next loop iteration
+      match.currentQuantity = newQty;
+      updatedInventoryMap.set(match.sk, newQty);
     }
   }
+
+  // Convert our map of updates back into the array format the frontend expects
+  const updatedInventory = Array.from(
+    updatedInventoryMap,
+    ([sk, currentQuantity]) => ({
+      sk,
+      currentQuantity,
+    }),
+  );
 
   return {
     canMake,
@@ -372,7 +390,10 @@ exports.handler = async (event) => {
     // --- GET: Fetch all data ---
     if (method === "GET" && path === "/kitchen") {
       const data = await dynamo.send(
-        new ScanCommand({ TableName: TABLE_NAME }),
+        new ScanCommand({
+          TableName: TABLE_NAME,
+          ConsistentRead: true,
+        }),
       );
       return { statusCode: 200, headers, body: JSON.stringify(data.Items) };
     }

@@ -1,0 +1,62 @@
+.tool-content {
+  padding: 16px;
+  padding-bottom: 80px; /* Space for scrolling past bottom */
+}
+
+.list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.recipe-card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  border: 1px solid #eaeaea;
+}
+
+.recipe-card h4 {
+  margin: 0 0 4px 0;
+  font-size: 16px;
+  color: #1c1c1e;
+}
+
+/* Reusing your iOS button styles specifically for the Poker layout */
+.ios-submit-btn {
+  background: #007aff;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.ios-submit-btn:active {
+  opacity: 0.7;
+}
+
+.ios-submit-btn.full-width {
+  width: 100%;
+  padding: 14px;
+}
+
+.ios-input-modal {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #d1d1d6;
+  font-size: 16px;
+  box-sizing: border-box;
+  background: #f2f2f7;
+  color: #1c1c1e;
+}
+
+.ios-input-modal:focus {
+  outline: none;
+  border-color: #007aff;
+  background: #ffffff;
+}
