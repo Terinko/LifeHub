@@ -4,7 +4,7 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const {
   DynamoDBDocumentClient,
-  ScanCommand,
+  QueryCommand,
   PutCommand,
   DeleteCommand,
 } = require("@aws-sdk/lib-dynamodb");
@@ -19,8 +19,6 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 // UNIT CONVERSION + PANTRY MATH
 // ==========================================
 
-// Add any items here that you always want to assume are in stock.
-// Ensure they are lowercase!
 const PANTRY_STAPLES = [
   "salt",
   "pepper",
@@ -128,15 +126,13 @@ function checkPantry(requiredIngredients, inventory, multiplier) {
   }));
 
   const missingIngredients = [];
-  const updatedInventoryMap = new Map(); // We use a map to track combined updates by 'sk'
+  const updatedInventoryMap = new Map();
   let canMake = true;
+  let canCookAnyway = true;
 
-  // Deep clone the inventory so we can progressively deduct from it during the loop
   const workingInventory = JSON.parse(JSON.stringify(inventory));
 
   for (const req of scaledRequired) {
-    // --- STAPLES BYPASS ---
-    // If the required ingredient is a staple, skip checking inventory and math entirely.
     if (PANTRY_STAPLES.includes(normalizeName(req.name))) {
       continue;
     }
@@ -145,15 +141,16 @@ function checkPantry(requiredIngredients, inventory, multiplier) {
 
     if (!match) {
       canMake = false;
+      canCookAnyway = false;
       missingIngredients.push(req);
       continue;
     }
 
-    // Check against the progressively depleting workingInventory
     const have = convertUnit(match.currentQuantity, match.unit, req.unit);
 
     if (have === null) {
       canMake = false;
+      canCookAnyway = false;
       missingIngredients.push({
         ...req,
         note: `check manually (have ${match.currentQuantity} ${match.unit})`,
@@ -163,13 +160,21 @@ function checkPantry(requiredIngredients, inventory, multiplier) {
 
     if (have < req.quantity) {
       canMake = false;
+      const missingQty = round2(req.quantity - have);
+      const isMinorShortage =
+        have > 0 && (missingQty <= req.quantity * 0.15 || missingQty <= 0.25);
+
+      if (!isMinorShortage) {
+        canCookAnyway = false;
+      }
+
       missingIngredients.push({
         name: req.name,
-        quantity: round2(req.quantity - have),
+        quantity: missingQty,
         unit: req.unit,
+        isMinorShortage: isMinorShortage,
       });
 
-      // Deplete the working copy so subsequent checks see it's gone
       match.currentQuantity = 0;
       updatedInventoryMap.set(match.sk, 0);
     } else {
@@ -181,14 +186,11 @@ function checkPantry(requiredIngredients, inventory, multiplier) {
       );
 
       const newQty = round2(remainingInOriginalUnit);
-
-      // Update the working copy for the next loop iteration
       match.currentQuantity = newQty;
       updatedInventoryMap.set(match.sk, newQty);
     }
   }
 
-  // Convert our map of updates back into the array format the frontend expects
   const updatedInventory = Array.from(
     updatedInventoryMap,
     ([sk, currentQuantity]) => ({
@@ -199,6 +201,7 @@ function checkPantry(requiredIngredients, inventory, multiplier) {
 
   return {
     canMake,
+    canCookAnyway,
     requiredIngredients: scaledRequired,
     updatedInventory,
     missingIngredients,
@@ -220,14 +223,13 @@ async function parseIngredientsWithGemini(ingredientsText) {
   `;
 
   const geminiRes = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts: [{ text: promptText }] }],
         generationConfig: {
-          thinkingConfig: { thinkingLevel: "low" },
           maxOutputTokens: 1024,
           responseMimeType: "application/json",
           responseSchema: {
@@ -298,14 +300,13 @@ async function legacyCheckWithGemini(recipe, inventory, multiplier) {
   `;
 
   const geminiRes = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${GEMINI_API_KEY}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts: [{ text: promptText }] }],
         generationConfig: {
-          thinkingConfig: { thinkingLevel: "low" },
           maxOutputTokens: 2048,
           responseMimeType: "application/json",
           responseSchema: {
@@ -377,25 +378,48 @@ async function legacyCheckWithGemini(recipe, inventory, multiplier) {
   }
 }
 
+// ==========================================
+// MAIN HANDLER
+// ==========================================
+
 exports.handler = async (event) => {
   const headers = {
     "Access-Control-Allow-Origin": "*",
     "Content-Type": "application/json",
   };
 
+  const userId =
+    event.requestContext?.authorizer?.jwt?.claims?.sub || "PENDING_AUTH_USER";
+
   try {
     const method = event.requestContext.http.method;
     const path = event.requestContext.http.path;
 
-    // --- GET: Fetch all data ---
+    // --- GET: Fetch all user-scoped kitchen items ---
     if (method === "GET" && path === "/kitchen") {
-      const data = await dynamo.send(
-        new ScanCommand({
-          TableName: TABLE_NAME,
-          ConsistentRead: true,
-        }),
-      );
-      return { statusCode: 200, headers, body: JSON.stringify(data.Items) };
+      const types = ["GROCERY", "INVENTORY", "RECIPE"];
+      let allItems = [];
+
+      for (const t of types) {
+        const data = await dynamo.send(
+          new QueryCommand({
+            TableName: TABLE_NAME,
+            KeyConditionExpression: "pk = :pk",
+            ExpressionAttributeValues: {
+              ":pk": `USER#${userId}#${t}`,
+            },
+            ConsistentRead: true,
+          }),
+        );
+
+        const mapped = (data.Items || []).map((item) => ({
+          ...item,
+          pk: t,
+        }));
+        allItems = allItems.concat(mapped);
+      }
+
+      return { statusCode: 200, headers, body: JSON.stringify(allItems) };
     }
 
     // --- POST: Add/Update OR Smart Action ---
@@ -426,10 +450,17 @@ exports.handler = async (event) => {
             recipe.ingredientsText,
           );
           if (parsed.length > 0) {
+            const userRecipePk = `USER#${userId}#RECIPE`;
+            const recipeSk = recipe.sk || crypto.randomUUID();
             await dynamo.send(
               new PutCommand({
                 TableName: TABLE_NAME,
-                Item: { ...recipe, ingredients: parsed },
+                Item: {
+                  ...recipe,
+                  pk: userRecipePk,
+                  sk: recipeSk,
+                  ingredients: parsed,
+                },
               }),
             );
             const aiMath = checkPantry(parsed, inventory, multiplier);
@@ -445,7 +476,11 @@ exports.handler = async (event) => {
             inventory,
             multiplier,
           );
-          return { statusCode: 200, headers, body: JSON.stringify({ aiMath }) };
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({ aiMath }),
+          };
         } catch (err) {
           const isRateLimited =
             err.message &&
@@ -463,7 +498,10 @@ exports.handler = async (event) => {
       }
 
       // 2. New recipe save
-      if (body.pk === "RECIPE" && body.ingredientsText && !body.ingredients) {
+      const itemType = (body.pk || "GROCERY").replace(/^USER#[^#]+#/, "");
+      const userPartitionKey = `USER#${userId}#${itemType}`;
+
+      if (itemType === "RECIPE" && body.ingredientsText && !body.ingredients) {
         body.ingredients = await parseIngredientsWithGemini(
           body.ingredientsText,
         );
@@ -471,26 +509,31 @@ exports.handler = async (event) => {
 
       // 3. Standard Database Save (with auto-merge logic)
       let item = {
-        pk: body.pk,
-        sk: body.sk,
         ...body,
+        pk: userPartitionKey,
+        sk: body.sk || crypto.randomUUID(),
       };
 
-      // Auto-merge logic for new items being added to grocery or inventory
-      if (!body.sk && (body.pk === "GROCERY" || body.pk === "INVENTORY")) {
-        const data = await dynamo.send(
-          new ScanCommand({ TableName: TABLE_NAME }),
+      // Auto-merge logic scoped strictly to user partition
+      if (!body.sk && (itemType === "GROCERY" || itemType === "INVENTORY")) {
+        const existingData = await dynamo.send(
+          new QueryCommand({
+            TableName: TABLE_NAME,
+            KeyConditionExpression: "pk = :pk",
+            ExpressionAttributeValues: {
+              ":pk": userPartitionKey,
+            },
+          }),
         );
-        const sameTypeItems = data.Items.filter((i) => i.pk === body.pk);
+        const sameTypeItems = existingData.Items || [];
 
-        // Strict match only for adding items to avoid merging "Apple" into "Apple Juice"
         const targetName = normalizeName(body.name);
         const existingItem = sameTypeItems.find(
           (i) => normalizeName(i.name) === targetName,
         );
 
         if (existingItem) {
-          const isPantry = body.pk === "INVENTORY";
+          const isPantry = itemType === "INVENTORY";
           const addQty = isPantry
             ? Number(body.currentQuantity)
             : Number(body.quantity);
@@ -505,7 +548,10 @@ exports.handler = async (event) => {
           );
 
           if (convertedQty !== null) {
-            item = { ...existingItem }; // retain original sk, unit, and other properties
+            item = {
+              ...existingItem,
+              pk: userPartitionKey,
+            };
             if (isPantry) {
               item.currentQuantity = round2(existingQty + convertedQty);
             } else {
@@ -517,9 +563,6 @@ exports.handler = async (event) => {
         } else {
           item.sk = crypto.randomUUID();
         }
-      } else if (!body.sk) {
-        // Fallback for recipes or edits where we didn't explicitly pass an SK
-        item.sk = crypto.randomUUID();
       }
 
       await dynamo.send(
@@ -529,15 +572,24 @@ exports.handler = async (event) => {
         }),
       );
 
-      return { statusCode: 200, headers, body: JSON.stringify(item) };
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          ...item,
+          pk: itemType,
+        }),
+      };
     }
 
     // --- DELETE: Remove an item ---
     if (method === "DELETE" && path.startsWith("/kitchen/")) {
       const sk = event.pathParameters.id;
-      const pk = event.queryStringParameters?.pk;
+      const rawPk = event.queryStringParameters?.pk || "GROCERY";
+      const itemType = rawPk.replace(/^USER#[^#]+#/, "");
+      const userPartitionKey = `USER#${userId}#${itemType}`;
 
-      if (!pk || !sk) {
+      if (!itemType || !sk) {
         return {
           statusCode: 400,
           headers,
@@ -546,7 +598,13 @@ exports.handler = async (event) => {
       }
 
       await dynamo.send(
-        new DeleteCommand({ TableName: TABLE_NAME, Key: { pk, sk } }),
+        new DeleteCommand({
+          TableName: TABLE_NAME,
+          Key: {
+            pk: userPartitionKey,
+            sk: sk,
+          },
+        }),
       );
       return {
         statusCode: 200,

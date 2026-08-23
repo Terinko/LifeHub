@@ -2,9 +2,9 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import "./BillsTool.css"; // IMPORTANT: Scoped CSS import
+import { fetchAuthSession } from "aws-amplify/auth"; // <-- ADDED AUTH IMPORT
+import "./BillsTool.css";
 
-// NOTE: Replace this with your actual API Gateway URL
 const API_BASE = "https://9im6v06twk.execute-api.us-east-1.amazonaws.com";
 
 const BillsTool = () => {
@@ -12,11 +12,9 @@ const BillsTool = () => {
   const [bills, setBills] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedBill, setSelectedBill] = useState(null);
 
-  // Add Form State
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
   const [payeeName, setPayeeName] = useState("");
@@ -26,13 +24,22 @@ const BillsTool = () => {
   const [isShared, setIsShared] = useState(false);
   const [isVariable, setIsVariable] = useState(false);
 
-  // Calendar Navigation & Selection State
   const today = new Date();
   const [viewedYear, setViewedYear] = useState(today.getFullYear());
   const [viewedMonthIndex, setViewedMonthIndex] = useState(today.getMonth());
   const [selectedCalendarDay, setSelectedCalendarDay] = useState(null);
 
   const viewedMonthKey = `${viewedYear}-${String(viewedMonthIndex + 1).padStart(2, "0")}`;
+
+  // --- NEW AUTH HELPER ---
+  const getAuthHeaders = async () => {
+    const session = await fetchAuthSession();
+    const token = session.tokens.idToken.toString();
+    return {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    };
+  };
 
   const handlePrevMonth = () => {
     setSelectedCalendarDay(null);
@@ -57,7 +64,9 @@ const BillsTool = () => {
   const loadBills = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE}/bills`);
+      const response = await fetch(`${API_BASE}/bills`, {
+        headers: await getAuthHeaders(), // <-- SECURED
+      });
       const data = await response.json();
       setBills(data);
     } catch (e) {
@@ -80,7 +89,7 @@ const BillsTool = () => {
     try {
       await fetch(`${API_BASE}/bills`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await getAuthHeaders(), // <-- SECURED
         body: JSON.stringify({
           name,
           amount: isVariable ? 0 : Number(amount),
@@ -122,7 +131,10 @@ const BillsTool = () => {
   const handleDelete = async (billId) => {
     setBills(bills.filter((b) => b.billId !== billId));
     try {
-      await fetch(`${API_BASE}/bills?billId=${billId}`, { method: "DELETE" });
+      await fetch(`${API_BASE}/bills?billId=${billId}`, {
+        method: "DELETE",
+        headers: await getAuthHeaders(), // <-- SECURED
+      });
     } catch {
       loadBills();
     }
@@ -144,7 +156,7 @@ const BillsTool = () => {
     try {
       await fetch(`${API_BASE}/bills`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await getAuthHeaders(), // <-- SECURED
         body: JSON.stringify(updatedBill),
       });
     } catch (error) {
@@ -163,7 +175,7 @@ const BillsTool = () => {
     try {
       await fetch(`${API_BASE}/bills`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await getAuthHeaders(), // <-- SECURED
         body: JSON.stringify(selectedBill),
       });
       setSelectedBill(null);
@@ -218,7 +230,6 @@ const BillsTool = () => {
   activeBillsForView.forEach((bill) => {
     const day = bill.dueDayOfMonth;
     if (!calendarMap[day]) calendarMap[day] = [];
-
     const history = bill.statusHistory || {};
     const monthStatus = history[viewedMonthKey] || "UNPAID";
     calendarMap[day].push({ ...bill, currentMonthStatus: monthStatus });
@@ -362,7 +373,6 @@ const BillsTool = () => {
       </header>
 
       <div className="tool-content" style={{ padding: "0 0 20px 0" }}>
-        {/* --- MINI CALENDAR VIEW WITH MULTI-DOT SUPPORT --- */}
         <div className="calendar-container">
           <div
             className="calendar-header"
@@ -442,7 +452,6 @@ const BillsTool = () => {
                   }}
                 >
                   <span>{dayNum}</span>
-                  {/* MULTI-DOT RENDERER */}
                   <div className="dot-indicator-container">
                     {dayBills.slice(0, 3).map((bill, index) => {
                       const isSettled = bill.currentMonthStatus === "SETTLED";
@@ -538,7 +547,6 @@ const BillsTool = () => {
           )}
         </div>
 
-        {/* --- LISTS --- */}
         <h3 className="group-header">
           Action Needed ({monthNames[viewedMonthIndex]})
         </h3>
@@ -571,7 +579,6 @@ const BillsTool = () => {
         )}
       </div>
 
-      {/* --- ADD BILL MODAL --- */}
       {isAddModalOpen && (
         <div className="ios-modal-overlay">
           <div className="ios-modal">
@@ -711,7 +718,6 @@ const BillsTool = () => {
         </div>
       )}
 
-      {/* --- BILL DETAILS MODAL --- */}
       {selectedBill && (
         <div className="ios-modal-overlay">
           <div className="ios-modal">

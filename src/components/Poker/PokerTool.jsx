@@ -2,6 +2,7 @@
 /* eslint-disable react-hooks/immutability */
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { fetchAuthSession } from "aws-amplify/auth"; // <-- ADDED AUTH IMPORT
 import "./PokerTool.css";
 
 const API_BASE = "https://9im6v06twk.execute-api.us-east-1.amazonaws.com";
@@ -16,13 +17,25 @@ const PokerTool = () => {
   const [selectedPlayers, setSelectedPlayers] = useState([]);
   const [settlementModal, setSettlementModal] = useState(false);
 
+  // --- NEW AUTH HELPER ---
+  const getAuthHeaders = async () => {
+    const session = await fetchAuthSession();
+    const token = session.tokens.idToken.toString();
+    return {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    };
+  };
+
   useEffect(() => {
     loadData();
   }, []);
 
   const loadData = async () => {
     try {
-      const res = await fetch(`${API_BASE}/poker`);
+      const res = await fetch(`${API_BASE}/poker`, {
+        headers: await getAuthHeaders(), // <-- SECURED
+      });
       const items = await res.json();
       setData(Array.isArray(items) ? items : []);
     } catch (e) {
@@ -42,7 +55,7 @@ const PokerTool = () => {
     if (!newPlayerName) return;
     await fetch(`${API_BASE}/poker`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: await getAuthHeaders(), // <-- SECURED
       body: JSON.stringify({ pk: "PLAYER", name: newPlayerName }),
     });
     setNewPlayerName("");
@@ -63,7 +76,7 @@ const PokerTool = () => {
 
     await fetch(`${API_BASE}/poker`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: await getAuthHeaders(), // <-- SECURED
       body: JSON.stringify({
         pk: "GAME",
         status: "ACTIVE",
@@ -83,14 +96,13 @@ const PokerTool = () => {
       updatedGame.players[playerId].buyIns + delta,
     );
 
-    // Optimistic update
     setData((prev) =>
       prev.map((item) => (item.sk === updatedGame.sk ? updatedGame : item)),
     );
 
     await fetch(`${API_BASE}/poker`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: await getAuthHeaders(), // <-- SECURED
       body: JSON.stringify(updatedGame),
     });
   };
@@ -106,14 +118,13 @@ const PokerTool = () => {
   const endGame = async () => {
     await fetch(`${API_BASE}/poker`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: await getAuthHeaders(), // <-- SECURED
       body: JSON.stringify({ action: "END_GAME", game: activeGame }),
     });
     setSettlementModal(false);
     loadData();
   };
 
-  // --- FUN STATS CALCULATOR ---
   const getFunStats = () => {
     if (pastGames.length === 0) return null;
 
@@ -124,7 +135,6 @@ const PokerTool = () => {
 
     pastGames.forEach((g) => {
       Object.values(g.players).forEach((p) => {
-        // Initialize lifetime tracking for this player
         if (!stats[p.name]) {
           stats[p.name] = {
             name: p.name,
@@ -136,22 +146,18 @@ const PokerTool = () => {
           };
         }
 
-        // Aggregate lifetime stats
         stats[p.name].net += p.net;
         stats[p.name].buyIns += p.buyIns;
         stats[p.name].games += 1;
         if (p.net > stats[p.name].maxWin) stats[p.name].maxWin = p.net;
         if (p.net < stats[p.name].maxLoss) stats[p.name].maxLoss = p.net;
 
-        // 1. The Houdini (Max buy-ins while still profiting)
         if (p.net > 0 && p.buyIns > houdini.val) {
           houdini = { name: p.name, val: p.buyIns };
         }
-        // 2. The Tilt Master (Max buy-ins in any single night)
         if (p.buyIns > tiltMaster.val) {
           tiltMaster = { name: p.name, val: p.buyIns };
         }
-        // 4. The ROI King (Biggest profit on exactly 1 buy-in)
         if (p.buyIns === 1 && p.net > roiKing.val) {
           roiKing = { name: p.name, val: p.net };
         }
@@ -160,7 +166,6 @@ const PokerTool = () => {
 
     const playersList = Object.values(stats).map((p) => ({
       ...p,
-      // 5. The Rollercoaster (Gap between best and worst night)
       variance:
         p.maxWin !== -Infinity && p.maxLoss !== Infinity
           ? p.maxWin - p.maxLoss
@@ -173,9 +178,7 @@ const PokerTool = () => {
     const rollercoaster = [...playersList].sort(
       (a, b) => b.variance - a.variance,
     )[0];
-    // 6. The Swiss Bank (Lifetime net closest to 0)
     const swissBank = [...playersList].sort((a, b) => a.absNet - b.absNet)[0];
-    // 7. The Iron Man (Most games played)
     const ironMan = [...playersList].sort((a, b) => b.games - a.games)[0];
 
     return { houdini, tiltMaster, roiKing, rollercoaster, swissBank, ironMan };

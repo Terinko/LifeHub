@@ -3,7 +3,7 @@ const crypto = require("crypto");
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const {
   DynamoDBDocumentClient,
-  ScanCommand,
+  QueryCommand,
   PutCommand,
   DeleteCommand,
 } = require("@aws-sdk/lib-dynamodb");
@@ -23,23 +23,32 @@ const headers = {
 exports.handler = async (event) => {
   console.log("Received event:", JSON.stringify(event, null, 2));
 
+  const userId =
+    event.requestContext?.authorizer?.jwt?.claims?.sub || "PENDING_AUTH_USER";
+  const userPartitionKey = `USER#${userId}#BILL`;
   const method = event.requestContext?.http?.method || event.httpMethod;
 
   try {
     switch (method) {
       // ==========================================
-      // GET: Retrieve all bills (Attaches both 'id' and 'billId')
+      // GET: Retrieve strictly this user's bills
       // ==========================================
       case "GET": {
         const data = await docClient.send(
-          new ScanCommand({ TableName: TABLE_NAME }),
+          new QueryCommand({
+            TableName: TABLE_NAME,
+            KeyConditionExpression: "pk = :pk",
+            ExpressionAttributeValues: {
+              ":pk": userPartitionKey,
+            },
+          }),
         );
 
-        // Map items so both 'id' and 'billId' are always present
         const items = (data.Items || []).map((item) => {
-          const itemKey = item.id || item.billId || item._id;
+          const itemKey = item.sk || item.id || item.billId || item._id;
           return {
             ...item,
+            pk: "BILL",
             id: itemKey,
             billId: itemKey,
           };
@@ -53,15 +62,17 @@ exports.handler = async (event) => {
       }
 
       // ==========================================
-      // POST: Create / Save a new bill
+      // POST: Save a new bill strictly to user partition
       // ==========================================
       case "POST": {
         const body = event.body ? JSON.parse(event.body) : {};
         const itemKey =
-          body.id || body.billId || body._id || crypto.randomUUID();
+          body.sk || body.id || body.billId || body._id || crypto.randomUUID();
 
         const newBill = {
           ...body,
+          pk: userPartitionKey,
+          sk: itemKey,
           id: itemKey,
           billId: itemKey,
         };
@@ -76,12 +87,15 @@ exports.handler = async (event) => {
         return {
           statusCode: 201,
           headers,
-          body: JSON.stringify(newBill),
+          body: JSON.stringify({
+            ...newBill,
+            pk: "BILL",
+          }),
         };
       }
 
       // ==========================================
-      // DELETE: Delete a bill by ID
+      // DELETE: Delete bill by ID within user partition
       // ==========================================
       case "DELETE": {
         let id =
@@ -100,13 +114,12 @@ exports.handler = async (event) => {
         if (!id && event.body) {
           try {
             const body = JSON.parse(event.body);
-            id = body.id || body.billId || body._id;
+            id = body.id || body.billId || body._id || body.sk;
           } catch (err) {
             console.error("Could not parse JSON body during DELETE:", err);
           }
         }
 
-        // Guard against missing or string "undefined"/"null" IDs
         if (!id || id === "undefined" || id === "null") {
           console.error("DELETE failed: Invalid or undefined ID passed:", id);
           return {
@@ -121,7 +134,10 @@ exports.handler = async (event) => {
         await docClient.send(
           new DeleteCommand({
             TableName: TABLE_NAME,
-            Key: { id },
+            Key: {
+              pk: userPartitionKey,
+              sk: id,
+            },
           }),
         );
 

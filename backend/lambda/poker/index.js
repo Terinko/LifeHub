@@ -2,7 +2,7 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const {
   DynamoDBDocumentClient,
-  ScanCommand,
+  QueryCommand,
   PutCommand,
   DeleteCommand,
 } = require("@aws-sdk/lib-dynamodb");
@@ -68,19 +68,60 @@ exports.handler = async (event) => {
     "Content-Type": "application/json",
   };
 
+  const userId =
+    event.requestContext?.authorizer?.jwt?.claims?.sub || "PENDING_AUTH_USER";
+
+  const playerPartitionKey = `USER#${userId}#PLAYER`;
+  const gamePartitionKey = `USER#${userId}#GAME`;
+
   try {
     const method = event.requestContext.http.method;
     const path = event.requestContext.http.path;
 
     if (method === "GET" && path === "/poker") {
-      const data = await dynamo.send(
-        new ScanCommand({ TableName: TABLE_NAME, ConsistentRead: true }),
-      );
-      return { statusCode: 200, headers, body: JSON.stringify(data.Items) };
+      const [playerData, gameData] = await Promise.all([
+        dynamo.send(
+          new QueryCommand({
+            TableName: TABLE_NAME,
+            KeyConditionExpression: "pk = :pk",
+            ExpressionAttributeValues: { ":pk": playerPartitionKey },
+            ConsistentRead: true,
+          }),
+        ),
+        dynamo.send(
+          new QueryCommand({
+            TableName: TABLE_NAME,
+            KeyConditionExpression: "pk = :pk",
+            ExpressionAttributeValues: { ":pk": gamePartitionKey },
+            ConsistentRead: true,
+          }),
+        ),
+      ]);
+
+      const players = (playerData.Items || []).map((p) => ({
+        ...p,
+        pk: "PLAYER",
+      }));
+      const games = (gameData.Items || []).map((g) => ({
+        ...g,
+        pk: "GAME",
+      }));
+
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify([...players, ...games]),
+      };
     }
 
     if (method === "POST" && path === "/poker") {
       const body = JSON.parse(event.body);
+      const isGame =
+        body.pk === "GAME" ||
+        body.status === "ACTIVE" ||
+        body.action === "END_GAME";
+      const targetPk = isGame ? gamePartitionKey : playerPartitionKey;
+      const cleanPk = isGame ? "GAME" : "PLAYER";
 
       if (body.action === "END_GAME") {
         const { game } = body;
@@ -92,6 +133,8 @@ exports.handler = async (event) => {
 
         const completedGame = {
           ...game,
+          pk: gamePartitionKey,
+          sk: game.sk || crypto.randomUUID(),
           status: "COMPLETED",
           players: result.players,
           settlements: result.settlements,
@@ -104,20 +147,40 @@ exports.handler = async (event) => {
         return {
           statusCode: 200,
           headers,
-          body: JSON.stringify(completedGame),
+          body: JSON.stringify({
+            ...completedGame,
+            pk: "GAME",
+          }),
         };
       }
 
-      const item = { pk: body.pk, sk: body.sk || crypto.randomUUID(), ...body };
+      const item = {
+        ...body,
+        pk: targetPk,
+        sk: body.sk || crypto.randomUUID(),
+      };
       await dynamo.send(new PutCommand({ TableName: TABLE_NAME, Item: item }));
-      return { statusCode: 200, headers, body: JSON.stringify(item) };
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          ...item,
+          pk: cleanPk,
+        }),
+      };
     }
 
     if (method === "DELETE" && path.startsWith("/poker/")) {
       const sk = event.pathParameters.id;
-      const pk = event.queryStringParameters?.pk;
+      const rawPk = event.queryStringParameters?.pk || "PLAYER";
+      const isGame = rawPk.includes("GAME");
+      const targetPk = isGame ? gamePartitionKey : playerPartitionKey;
+
       await dynamo.send(
-        new DeleteCommand({ TableName: TABLE_NAME, Key: { pk, sk } }),
+        new DeleteCommand({
+          TableName: TABLE_NAME,
+          Key: { pk: targetPk, sk },
+        }),
       );
       return {
         statusCode: 200,

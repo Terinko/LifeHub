@@ -2,9 +2,9 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { fetchAuthSession } from "aws-amplify/auth"; // <-- ADDED AUTH IMPORT
 import "./KitchenTool.css";
 
-// NOTE: Ensure your actual API URL is here!
 const API_BASE = "https://9im6v06twk.execute-api.us-east-1.amazonaws.com";
 
 const KitchenTool = () => {
@@ -22,26 +22,34 @@ const KitchenTool = () => {
   const [recipeUrl, setRecipeUrl] = useState("");
   const [recipeIngredientsText, setRecipeIngredientsText] = useState("");
 
-  // Track which recipe is currently being edited
   const [editingRecipe, setEditingRecipe] = useState(null);
 
   const [editingItem, setEditingItem] = useState(null);
   const [editQty, setEditQty] = useState("");
   const [editUnit, setEditUnit] = useState("");
 
-  // --- NEW AI CHECK STATES ---
   const [checkingRecipeId, setCheckingRecipeId] = useState(null);
   const [recipePlan, setRecipePlan] = useState(null);
 
-  // Portion multiplier per recipe (defaults to 1x). Keyed by recipe.sk so
-  // each recipe card remembers its own selection.
   const [portionBySk, setPortionBySk] = useState({});
   const getPortion = (sk) => portionBySk[sk] || 1;
+
+  // --- NEW AUTH HELPER ---
+  const getAuthHeaders = async () => {
+    const session = await fetchAuthSession();
+    const token = session.tokens.idToken.toString();
+    return {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    };
+  };
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE}/kitchen`);
+      const response = await fetch(`${API_BASE}/kitchen`, {
+        headers: await getAuthHeaders(), // <-- SECURED
+      });
       const data = await response.json();
       if (!response.ok) {
         setKitchenData([]);
@@ -68,7 +76,7 @@ const KitchenTool = () => {
     try {
       await fetch(`${API_BASE}/kitchen`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await getAuthHeaders(), // <-- SECURED
         body: JSON.stringify({
           pk: "GROCERY",
           name: newItemName,
@@ -87,12 +95,14 @@ const KitchenTool = () => {
 
   const handleMarkBought = async (item) => {
     try {
+      const authHeaders = await getAuthHeaders(); // <-- Fetch securely once for both calls
       await fetch(`${API_BASE}/kitchen/${item.sk}?pk=GROCERY`, {
         method: "DELETE",
+        headers: authHeaders,
       });
       await fetch(`${API_BASE}/kitchen`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders,
         body: JSON.stringify({
           pk: "INVENTORY",
           name: item.name,
@@ -122,7 +132,7 @@ const KitchenTool = () => {
     try {
       await fetch(`${API_BASE}/kitchen`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await getAuthHeaders(), // <-- SECURED
         body: JSON.stringify(updatedItem),
       });
       setEditingItem(null);
@@ -136,6 +146,7 @@ const KitchenTool = () => {
     try {
       await fetch(`${API_BASE}/kitchen/${item.sk}?pk=${pkType}`, {
         method: "DELETE",
+        headers: await getAuthHeaders(), // <-- SECURED
       });
       loadData();
     } catch (e) {
@@ -150,8 +161,6 @@ const KitchenTool = () => {
       return alert("Please provide a name and paste the ingredients!");
     setSavingRecipe(true);
 
-    // Prepare the payload. If we are editing, attach the existing SK
-    // Do NOT send the old `ingredients` array, so the backend is forced to re-parse the new text.
     const payload = {
       pk: "RECIPE",
       name: recipeName,
@@ -166,11 +175,10 @@ const KitchenTool = () => {
     try {
       await fetch(`${API_BASE}/kitchen`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await getAuthHeaders(), // <-- SECURED
         body: JSON.stringify(payload),
       });
 
-      // Reset everything after save
       setRecipeName("");
       setRecipeUrl("");
       setRecipeIngredientsText("");
@@ -188,7 +196,7 @@ const KitchenTool = () => {
     try {
       const response = await fetch(`${API_BASE}/kitchen`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await getAuthHeaders(), // <-- SECURED
         body: JSON.stringify({
           action: "CHECK_RECIPE",
           recipe: recipe,
@@ -209,10 +217,11 @@ const KitchenTool = () => {
   const handleAddMissingToList = async () => {
     if (!recipePlan || !recipePlan.missingIngredients) return;
 
+    const authHeaders = await getAuthHeaders(); // <-- Grab token before loop
     for (const missing of recipePlan.missingIngredients) {
       await fetch(`${API_BASE}/kitchen`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders, // <-- SECURED
         body: JSON.stringify({
           pk: "GROCERY",
           name: missing.name,
@@ -229,15 +238,12 @@ const KitchenTool = () => {
   const handleExecuteCook = async () => {
     if (!recipePlan || !recipePlan.updatedInventory) return;
 
-    // OPTIMISTIC UI UPDATE: Update local state immediately so the next click uses fresh math
     setKitchenData((prevData) => {
       let nextData = [...prevData];
       for (const item of recipePlan.updatedInventory) {
         if (item.currentQuantity <= 0) {
-          // Remove it from the UI if depleted
           nextData = nextData.filter((i) => i.sk !== item.sk);
         } else {
-          // Update quantity in the UI if remaining
           const index = nextData.findIndex((i) => i.sk === item.sk);
           if (index !== -1) {
             nextData[index] = {
@@ -250,18 +256,19 @@ const KitchenTool = () => {
       return nextData;
     });
 
-    // Perform the actual backend updates
+    const authHeaders = await getAuthHeaders(); // <-- Grab token before loop
     for (const item of recipePlan.updatedInventory) {
       if (item.currentQuantity <= 0) {
         await fetch(`${API_BASE}/kitchen/${item.sk}?pk=INVENTORY`, {
           method: "DELETE",
+          headers: authHeaders, // <-- SECURED
         });
       } else {
         const originalItem = pantry.find((i) => i.sk === item.sk);
         if (originalItem) {
           await fetch(`${API_BASE}/kitchen`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: authHeaders, // <-- SECURED
             body: JSON.stringify({
               ...originalItem,
               currentQuantity: item.currentQuantity,
@@ -272,7 +279,7 @@ const KitchenTool = () => {
     }
 
     setRecipePlan(null);
-    loadData(); // This will now fetch strongly consistent data from DynamoDB
+    loadData();
     alert("Inventory updated! Hope it was delicious.");
   };
 
@@ -545,7 +552,6 @@ const KitchenTool = () => {
         </div>
       )}
 
-      {/* --- AI RECIPE PLAN POPUPS --- */}
       {recipePlan && (
         <div className="ios-modal-overlay">
           <div className="ios-modal">
@@ -637,7 +643,6 @@ const KitchenTool = () => {
         </div>
       )}
 
-      {/* --- RECIPE MODAL --- */}
       {isRecipeModalOpen && (
         <div className="ios-modal-overlay">
           <div className="ios-modal">
@@ -688,7 +693,6 @@ const KitchenTool = () => {
         </div>
       )}
 
-      {/* --- INVENTORY EDIT MODAL --- */}
       {editingItem && (
         <div className="ios-modal-overlay">
           <div className="ios-modal">
