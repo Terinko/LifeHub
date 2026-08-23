@@ -16,7 +16,7 @@ const TABLE_NAME = process.env.TABLE_NAME;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 // ==========================================
-// UNIT CONVERSION + PANTRY MATH
+// DETERMINISTIC DOMAIN ENGINE
 // ==========================================
 
 const PANTRY_STAPLES = [
@@ -68,6 +68,9 @@ const UNIT_ALIASES = {
   litres: "l",
   pinch: "pinch",
   pinches: "pinch",
+  item: "item",
+  pieces: "item",
+  clove: "item",
 };
 
 const VOLUME_TO_ML = {
@@ -109,7 +112,11 @@ function findInventoryMatch(name, inventory) {
     inventory.find((i) => normalizeName(i.name) === target) ||
     inventory.find((i) => {
       const invName = normalizeName(i.name);
-      return invName.includes(target) || target.includes(invName);
+      return (
+        invName &&
+        target &&
+        (invName.includes(target) || target.includes(invName))
+      );
     })
   );
 }
@@ -119,71 +126,67 @@ function round2(n) {
 }
 
 function checkPantry(requiredIngredients, inventory, multiplier) {
-  const scaledRequired = requiredIngredients.map((ing) => ({
-    name: ing.name,
-    unit: ing.unit,
-    quantity: round2(ing.quantity * multiplier),
-  }));
-
   const missingIngredients = [];
   const updatedInventoryMap = new Map();
   let canMake = true;
-  let canCookAnyway = true;
 
   const workingInventory = JSON.parse(JSON.stringify(inventory));
+  const scaledRequired = [];
 
-  for (const req of scaledRequired) {
-    if (PANTRY_STAPLES.includes(normalizeName(req.name))) {
-      continue;
+  for (const req of requiredIngredients) {
+    if (!req.name || PANTRY_STAPLES.includes(normalizeName(req.name))) continue;
+    const match = findInventoryMatch(req.name, workingInventory);
+
+    // 1. Is it unquantified? (e.g., "cheese")
+    const isUnquantified =
+      req.quantity === undefined ||
+      req.quantity === null ||
+      req.quantity === "" ||
+      isNaN(Number(req.quantity)) ||
+      Number(req.quantity) === 0;
+
+    if (isUnquantified) {
+      if (!match) {
+        canMake = false;
+        missingIngredients.push({ name: req.name, quantity: "Any", unit: "" });
+      }
+      scaledRequired.push({ ...req, quantity: "Any" });
+      continue; // Skip the math!
     }
 
-    const match = findInventoryMatch(req.name, workingInventory);
+    // 2. Perform quantified checks
+    const requiredQty = round2(Number(req.quantity) * multiplier);
+    scaledRequired.push({ ...req, quantity: requiredQty });
 
     if (!match) {
       canMake = false;
-      canCookAnyway = false;
-      missingIngredients.push(req);
+      missingIngredients.push({ ...req, quantity: requiredQty });
       continue;
     }
 
-    const have = convertUnit(match.currentQuantity, match.unit, req.unit);
+    const invQty = Number(match.currentQuantity) || 0;
+    let have = convertUnit(invQty, match.unit, req.unit);
 
-    if (have === null) {
+    // FORGIVING UNIT FALLBACK (fixes "panini bread")
+    if (have === null) have = invQty;
+
+    if (have < requiredQty) {
       canMake = false;
-      canCookAnyway = false;
-      missingIngredients.push({
-        ...req,
-        note: `check manually (have ${match.currentQuantity} ${match.unit})`,
-      });
-      continue;
-    }
-
-    if (have < req.quantity) {
-      canMake = false;
-      const missingQty = round2(req.quantity - have);
-      const isMinorShortage =
-        have > 0 && (missingQty <= req.quantity * 0.15 || missingQty <= 0.25);
-
-      if (!isMinorShortage) {
-        canCookAnyway = false;
-      }
-
       missingIngredients.push({
         name: req.name,
-        quantity: missingQty,
+        quantity: round2(requiredQty - have),
         unit: req.unit,
-        isMinorShortage: isMinorShortage,
       });
-
       match.currentQuantity = 0;
       updatedInventoryMap.set(match.sk, 0);
     } else {
-      const remaining = have - req.quantity;
-      const remainingInOriginalUnit = convertUnit(
+      const remaining = have - requiredQty;
+      let remainingInOriginalUnit = convertUnit(
         remaining,
         req.unit,
         match.unit,
       );
+      if (remainingInOriginalUnit === null) remainingInOriginalUnit = remaining; // fallback
 
       const newQty = round2(remainingInOriginalUnit);
       match.currentQuantity = newQty;
@@ -201,29 +204,24 @@ function checkPantry(requiredIngredients, inventory, multiplier) {
 
   return {
     canMake,
-    canCookAnyway,
     requiredIngredients: scaledRequired,
     updatedInventory,
     missingIngredients,
   };
 }
 
-// ==========================================
-// GEMINI CALLS
-// ==========================================
-
 async function parseIngredientsWithGemini(ingredientsText) {
   const promptText = `
-    Extract each ingredient from this recipe's ingredients list into structured data.
-    Use one of these units where possible: cup, tbsp, tsp, fl_oz, oz, lb, g, kg, ml, l.
-    For whole/countable items with no measurement (e.g. "2 eggs", "1 onion"), use unit "item".
-
+    Extract each ingredient from this recipe's ingredients list.
+    - If an ingredient lacks a quantity (e.g. "cheese"), omit the quantity and unit.
+    - Convert any fractions into decimals (e.g., 1/4 becomes 0.25).
+    Return exact structured JSON.
     Ingredients list:
     ${ingredientsText}
   `;
 
   const geminiRes = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent?key=${GEMINI_API_KEY}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -241,6 +239,7 @@ async function parseIngredientsWithGemini(ingredientsText) {
                 quantity: { type: "NUMBER" },
                 unit: { type: "STRING" },
               },
+              required: ["name"], // Relaxed!
             },
           },
         },
@@ -249,286 +248,151 @@ async function parseIngredientsWithGemini(ingredientsText) {
   );
 
   const geminiData = await geminiRes.json();
-
-  if (geminiData.error || !geminiData.candidates) {
-    console.error(
-      "🚨 GEMINI PARSE ERROR:",
-      JSON.stringify(geminiData.error || geminiData),
-    );
-    return [];
-  }
+  if (geminiData.error || !geminiData.candidates) return [];
 
   try {
     const text = geminiData.candidates[0].content.parts[0].text;
     return JSON.parse(text);
   } catch (err) {
-    console.error("🚨 PARSE RESPONSE WAS NOT JSON");
     return [];
   }
 }
-
-async function legacyCheckWithGemini(recipe, inventory, multiplier) {
-  const promptText = `
-    You are a strict, mathematical kitchen assistant. The user wants to know if they can cook "${recipe.name}" at ${multiplier}x the normal recipe quantities.
-
-    Here is the exact ingredients list for the recipe:
-    ${recipe.ingredientsText}
-
-    Here is the user's current inventory:
-    ${JSON.stringify(inventory)}
-
-    Task:
-    1. Extract the required ingredients STRICTLY from the recipe ingredients list, then multiply every quantity by ${multiplier}.
-    2. Match those to the inventory items. Handle standard unit conversions (e.g., cups to oz, lbs to oz, etc.).
-    3. Determine if the user has enough of EVERY ingredient. If they are missing even a fraction of an ingredient, canMake is false.
-    4. Deduct the required quantities from the inventory to calculate updatedInventory. If an inventory item reaches 0 or less, mark it to be removed.
-    5. Calculate exactly what is missing and list it in missingIngredients.
-
-    Return ONLY valid, raw JSON (no markdown formatting, no code blocks, no backticks). It must match this exact schema:
-    {
-      "canMake": boolean,
-      "requiredIngredients": [
-        { "name": "ingredient_name", "quantity": number, "unit": "unit_string" }
-      ],
-      "updatedInventory": [
-        { "sk": "inventory_item_sk", "currentQuantity": number_remaining }
-      ],
-      "missingIngredients": [
-        { "name": "ingredient_name", "quantity": number, "unit": "unit_string" }
-      ]
-    }
-  `;
-
-  const geminiRes = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: promptText }] }],
-        generationConfig: {
-          maxOutputTokens: 2048,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: "OBJECT",
-            properties: {
-              canMake: { type: "BOOLEAN" },
-              requiredIngredients: {
-                type: "ARRAY",
-                items: {
-                  type: "OBJECT",
-                  properties: {
-                    name: { type: "STRING" },
-                    quantity: { type: "NUMBER" },
-                    unit: { type: "STRING" },
-                  },
-                },
-              },
-              updatedInventory: {
-                type: "ARRAY",
-                items: {
-                  type: "OBJECT",
-                  properties: {
-                    sk: { type: "STRING" },
-                    currentQuantity: { type: "NUMBER" },
-                  },
-                },
-              },
-              missingIngredients: {
-                type: "ARRAY",
-                items: {
-                  type: "OBJECT",
-                  properties: {
-                    name: { type: "STRING" },
-                    quantity: { type: "NUMBER" },
-                    unit: { type: "STRING" },
-                  },
-                },
-              },
-            },
-          },
-        },
-      }),
-    },
-  );
-
-  const geminiData = await geminiRes.json();
-
-  if (geminiData.error || !geminiData.candidates) {
-    console.error(
-      "🚨 GEMINI API ERROR:",
-      JSON.stringify(geminiData.error || geminiData),
-    );
-    throw new Error(
-      geminiData.error?.message || "Gemini API rejected the request.",
-    );
-  }
-
-  let aiResultText = geminiData.candidates[0].content.parts[0].text;
-  aiResultText = aiResultText
-    .replace(/```json/gi, "")
-    .replace(/```/gi, "")
-    .trim();
-
-  try {
-    return JSON.parse(aiResultText);
-  } catch (err) {
-    console.error("🚨 AI RESPONSE WAS NOT JSON:", aiResultText);
-    throw new Error("AI failed to return JSON. It said: " + aiResultText);
-  }
-}
-
-// ==========================================
-// MAIN HANDLER
-// ==========================================
 
 exports.handler = async (event) => {
   const headers = {
     "Access-Control-Allow-Origin": "*",
     "Content-Type": "application/json",
   };
+  const userId = event.requestContext?.authorizer?.jwt?.claims?.sub;
 
-  const userId =
-    event.requestContext?.authorizer?.jwt?.claims?.sub || "PENDING_AUTH_USER";
+  if (!userId)
+    return {
+      statusCode: 401,
+      headers,
+      body: JSON.stringify({ error: "Unauthorized" }),
+    };
 
   try {
     const method = event.requestContext.http.method;
     const path = event.requestContext.http.path;
 
-    // --- GET: Fetch all user-scoped kitchen items ---
     if (method === "GET" && path === "/kitchen") {
       const types = ["GROCERY", "INVENTORY", "RECIPE"];
       let allItems = [];
-
       for (const t of types) {
         const data = await dynamo.send(
           new QueryCommand({
             TableName: TABLE_NAME,
             KeyConditionExpression: "pk = :pk",
-            ExpressionAttributeValues: {
-              ":pk": `USER#${userId}#${t}`,
-            },
+            ExpressionAttributeValues: { ":pk": `USER#${userId}#${t}` },
             ConsistentRead: true,
           }),
         );
-
-        const mapped = (data.Items || []).map((item) => ({
-          ...item,
-          pk: t,
-        }));
-        allItems = allItems.concat(mapped);
+        allItems = allItems.concat(
+          (data.Items || []).map((item) => ({ ...item, pk: t })),
+        );
       }
-
       return { statusCode: 200, headers, body: JSON.stringify(allItems) };
     }
 
-    // --- POST: Add/Update OR Smart Action ---
     if (method === "POST" && path === "/kitchen") {
       const body = JSON.parse(event.body);
 
-      // 1. CHECK_RECIPE
-      if (body.action === "CHECK_RECIPE") {
-        const { recipe, inventory } = body;
-        const multiplier =
-          Number(body.multiplier) > 0 ? Number(body.multiplier) : 1;
+      if (body.action === "PARSE_RECIPE") {
+        const parsed = await parseIngredientsWithGemini(body.ingredientsText);
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({ ingredients: parsed }),
+        };
+      }
 
-        try {
-          if (recipe.ingredients && recipe.ingredients.length > 0) {
-            const aiMath = checkPantry(
-              recipe.ingredients,
-              inventory,
-              multiplier,
+      if (body.action === "COOK_RECIPE") {
+        const { recipe, inventory, multiplier } = body;
+        const mult = Number(multiplier) > 0 ? Number(multiplier) : 1;
+
+        const result = checkPantry(recipe.ingredients, inventory, mult);
+        if (!result.canMake)
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: "Insufficient ingredients", result }),
+          };
+
+        for (const item of result.updatedInventory) {
+          if (item.currentQuantity <= 0) {
+            await dynamo.send(
+              new DeleteCommand({
+                TableName: TABLE_NAME,
+                Key: { pk: `USER#${userId}#INVENTORY`, sk: item.sk },
+              }),
             );
-            return {
-              statusCode: 200,
-              headers,
-              body: JSON.stringify({ aiMath }),
-            };
-          }
-
-          const parsed = await parseIngredientsWithGemini(
-            recipe.ingredientsText,
-          );
-          if (parsed.length > 0) {
-            const userRecipePk = `USER#${userId}#RECIPE`;
-            const recipeSk = recipe.sk || crypto.randomUUID();
+          } else {
+            const original = inventory.find((i) => i.sk === item.sk);
             await dynamo.send(
               new PutCommand({
                 TableName: TABLE_NAME,
                 Item: {
-                  ...recipe,
-                  pk: userRecipePk,
-                  sk: recipeSk,
-                  ingredients: parsed,
+                  ...original,
+                  pk: `USER#${userId}#INVENTORY`,
+                  currentQuantity: item.currentQuantity,
                 },
               }),
             );
-            const aiMath = checkPantry(parsed, inventory, multiplier);
-            return {
-              statusCode: 200,
-              headers,
-              body: JSON.stringify({ aiMath }),
-            };
           }
-
-          const aiMath = await legacyCheckWithGemini(
-            recipe,
-            inventory,
-            multiplier,
-          );
-          return {
-            statusCode: 200,
-            headers,
-            body: JSON.stringify({ aiMath }),
-          };
-        } catch (err) {
-          const isRateLimited =
-            err.message &&
-            /RESOURCE_EXHAUSTED|rate limit|quota/i.test(err.message);
-          return {
-            statusCode: 500,
-            headers,
-            body: JSON.stringify({
-              error: isRateLimited
-                ? "Gemini's free-tier limit was hit. Wait a bit and try again, or see the options for a more permanent fix."
-                : err.message,
-            }),
-          };
         }
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({ success: true, result }),
+        };
       }
 
-      // 2. New recipe save
-      const itemType = (body.pk || "GROCERY").replace(/^USER#[^#]+#/, "");
-      const userPartitionKey = `USER#${userId}#${itemType}`;
-
-      if (itemType === "RECIPE" && body.ingredientsText && !body.ingredients) {
-        body.ingredients = await parseIngredientsWithGemini(
-          body.ingredientsText,
+      if (body.action === "PURCHASE_GROCERY") {
+        const { item } = body;
+        await dynamo.send(
+          new DeleteCommand({
+            TableName: TABLE_NAME,
+            Key: { pk: `USER#${userId}#GROCERY`, sk: item.sk },
+          }),
         );
+        await dynamo.send(
+          new PutCommand({
+            TableName: TABLE_NAME,
+            Item: {
+              pk: `USER#${userId}#INVENTORY`,
+              sk: item.sk,
+              name: item.name,
+              currentQuantity: item.quantity,
+              unit: item.unit,
+            },
+          }),
+        );
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({ success: true }),
+        };
       }
 
-      // 3. Standard Database Save (with auto-merge logic)
+      const itemType = (body.pk || "GROCERY").replace(/^USER#[^#]+#/, "");
       let item = {
         ...body,
-        pk: userPartitionKey,
+        pk: `USER#${userId}#${itemType}`,
         sk: body.sk || crypto.randomUUID(),
       };
 
-      // Auto-merge logic scoped strictly to user partition
       if (!body.sk && (itemType === "GROCERY" || itemType === "INVENTORY")) {
         const existingData = await dynamo.send(
           new QueryCommand({
             TableName: TABLE_NAME,
             KeyConditionExpression: "pk = :pk",
-            ExpressionAttributeValues: {
-              ":pk": userPartitionKey,
-            },
+            ExpressionAttributeValues: { ":pk": `USER#${userId}#${itemType}` },
           }),
         );
-        const sameTypeItems = existingData.Items || [];
 
         const targetName = normalizeName(body.name);
-        const existingItem = sameTypeItems.find(
+        const existingItem = (existingData.Items || []).find(
           (i) => normalizeName(i.name) === targetName,
         );
 
@@ -540,7 +404,6 @@ exports.handler = async (event) => {
           const existingQty = isPantry
             ? Number(existingItem.currentQuantity)
             : Number(existingItem.quantity);
-
           const convertedQty = convertUnit(
             addQty,
             body.unit,
@@ -548,62 +411,31 @@ exports.handler = async (event) => {
           );
 
           if (convertedQty !== null) {
-            item = {
-              ...existingItem,
-              pk: userPartitionKey,
-            };
-            if (isPantry) {
+            item = { ...existingItem, pk: `USER#${userId}#${itemType}` };
+            if (isPantry)
               item.currentQuantity = round2(existingQty + convertedQty);
-            } else {
-              item.quantity = round2(existingQty + convertedQty);
-            }
-          } else {
-            item.sk = crypto.randomUUID();
+            else item.quantity = round2(existingQty + convertedQty);
           }
-        } else {
-          item.sk = crypto.randomUUID();
         }
       }
 
-      await dynamo.send(
-        new PutCommand({
-          TableName: TABLE_NAME,
-          Item: item,
-        }),
-      );
-
+      await dynamo.send(new PutCommand({ TableName: TABLE_NAME, Item: item }));
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify({
-          ...item,
-          pk: itemType,
-        }),
+        body: JSON.stringify({ ...item, pk: itemType }),
       };
     }
 
-    // --- DELETE: Remove an item ---
     if (method === "DELETE" && path.startsWith("/kitchen/")) {
       const sk = event.pathParameters.id;
       const rawPk = event.queryStringParameters?.pk || "GROCERY";
       const itemType = rawPk.replace(/^USER#[^#]+#/, "");
-      const userPartitionKey = `USER#${userId}#${itemType}`;
-
-      if (!itemType || !sk) {
-        return {
-          statusCode: 400,
-          headers,
-          body: JSON.stringify({ error: "Missing pk or sk" }),
-        };
-      }
 
       await dynamo.send(
         new DeleteCommand({
           TableName: TABLE_NAME,
-          Key: {
-            pk: userPartitionKey,
-            sk: sk,
-          },
+          Key: { pk: `USER#${userId}#${itemType}`, sk: sk },
         }),
       );
       return {
@@ -616,10 +448,9 @@ exports.handler = async (event) => {
     return {
       statusCode: 404,
       headers,
-      body: JSON.stringify({ error: "Route not found" }),
+      body: JSON.stringify({ error: "Not found" }),
     };
   } catch (error) {
-    console.error("Backend Error:", error);
     return {
       statusCode: 500,
       headers,

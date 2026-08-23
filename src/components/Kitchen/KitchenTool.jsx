@@ -1,11 +1,176 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { fetchAuthSession } from "aws-amplify/auth"; // <-- ADDED AUTH IMPORT
+import { fetchAuthSession } from "aws-amplify/auth";
 import "./KitchenTool.css";
 
 const API_BASE = "https://9im6v06twk.execute-api.us-east-1.amazonaws.com";
+
+// --- LOCAL DETERMINISTIC ENGINE ---
+const PANTRY_STAPLES = [
+  "salt",
+  "pepper",
+  "black pepper",
+  "oil",
+  "olive oil",
+  "vegetable oil",
+  "butter",
+  "water",
+  "sugar",
+];
+const VOLUME_TO_ML = {
+  cup: 236.588,
+  tbsp: 14.7868,
+  tsp: 4.92892,
+  fl_oz: 29.5735,
+  ml: 1,
+  l: 1000,
+};
+const WEIGHT_TO_G = { oz: 28.3495, lb: 453.592, g: 1, kg: 1000 };
+const UNIT_ALIASES = {
+  cup: "cup",
+  cups: "cup",
+  tbsp: "tbsp",
+  tablespoon: "tbsp",
+  tablespoons: "tbsp",
+  tsp: "tsp",
+  teaspoon: "tsp",
+  teaspoons: "tsp",
+  "fl oz": "fl_oz",
+  fl_oz: "fl_oz",
+  "fluid ounce": "fl_oz",
+  "fluid ounces": "fl_oz",
+  oz: "oz",
+  ounce: "oz",
+  ounces: "oz",
+  lb: "lb",
+  lbs: "lb",
+  pound: "lb",
+  pounds: "lb",
+  g: "g",
+  gram: "g",
+  grams: "g",
+  kg: "kg",
+  kilogram: "kg",
+  kilograms: "kg",
+  ml: "ml",
+  milliliter: "ml",
+  milliliters: "ml",
+  l: "l",
+  liter: "l",
+  liters: "l",
+  litre: "l",
+  litres: "l",
+  pinch: "pinch",
+  pinches: "pinch",
+  item: "item",
+  pieces: "item",
+  clove: "item",
+};
+
+function normalizeName(name) {
+  return (name || "").toString().trim().toLowerCase().replace(/s$/, "");
+}
+function normalizeUnit(unit) {
+  const key = (unit || "item").toString().trim().toLowerCase();
+  return UNIT_ALIASES[key] || key;
+}
+function convertUnit(quantity, fromUnit, toUnit) {
+  const from = normalizeUnit(fromUnit);
+  const to = normalizeUnit(toUnit);
+  if (from === to) return quantity;
+  if (VOLUME_TO_ML[from] && VOLUME_TO_ML[to])
+    return (quantity * VOLUME_TO_ML[from]) / VOLUME_TO_ML[to];
+  if (WEIGHT_TO_G[from] && WEIGHT_TO_G[to])
+    return (quantity * WEIGHT_TO_G[from]) / WEIGHT_TO_G[to];
+  return null;
+}
+
+function calculateAvailability(recipeIngredients, inventory, multiplier) {
+  if (
+    !recipeIngredients ||
+    !Array.isArray(recipeIngredients) ||
+    recipeIngredients.length === 0
+  ) {
+    return {
+      canMake: false,
+      missingIngredients: [
+        {
+          name: "⚠️ Legacy format. Click edit and save.",
+          quantity: "Any",
+          unit: "",
+        },
+      ],
+    };
+  }
+
+  const missingIngredients = [];
+  let canMake = true;
+
+  for (const req of recipeIngredients) {
+    if (!req || !req.name) {
+      canMake = false;
+      continue;
+    }
+    if (PANTRY_STAPLES.includes(normalizeName(req.name))) continue;
+
+    const target = normalizeName(req.name);
+    let match = inventory.find((i) => normalizeName(i.name) === target);
+    if (!match) {
+      match = inventory.find((i) => {
+        const invName = normalizeName(i.name);
+        return (
+          invName &&
+          target &&
+          (invName.includes(target) || target.includes(invName))
+        );
+      });
+    }
+
+    // 1. IS IT UNQUANTIFIED? (Fixes the "cheese" issue)
+    const isUnquantified =
+      req.quantity === undefined ||
+      req.quantity === null ||
+      req.quantity === "" ||
+      isNaN(Number(req.quantity)) ||
+      Number(req.quantity) === 0;
+
+    if (isUnquantified) {
+      if (!match) {
+        canMake = false;
+        missingIngredients.push({ name: req.name, quantity: "Any", unit: "" });
+      }
+      continue; // Skip the math completely!
+    }
+
+    const requiredQty = Number(req.quantity) * multiplier;
+
+    if (!match) {
+      canMake = false;
+      missingIngredients.push({ ...req, quantity: requiredQty });
+      continue;
+    }
+
+    const invQty = Number(match.currentQuantity) || 0;
+    let have = convertUnit(invQty, match.unit, req.unit);
+
+    // 2. FORGIVING UNIT FALLBACK (Fixes the "panini bread" issue)
+    if (have === null) {
+      have = invQty;
+    }
+
+    if (isNaN(have) || have < requiredQty) {
+      canMake = false;
+      missingIngredients.push({
+        name: req.name,
+        quantity: Math.round((requiredQty - (have || 0)) * 100) / 100,
+        unit: req.unit || match.unit,
+      });
+    }
+  }
+  return { canMake, missingIngredients };
+}
 
 const KitchenTool = () => {
   const navigate = useNavigate();
@@ -21,40 +186,31 @@ const KitchenTool = () => {
   const [recipeName, setRecipeName] = useState("");
   const [recipeUrl, setRecipeUrl] = useState("");
   const [recipeIngredientsText, setRecipeIngredientsText] = useState("");
-
   const [editingRecipe, setEditingRecipe] = useState(null);
 
   const [editingItem, setEditingItem] = useState(null);
   const [editQty, setEditQty] = useState("");
   const [editUnit, setEditUnit] = useState("");
 
-  const [checkingRecipeId, setCheckingRecipeId] = useState(null);
-  const [recipePlan, setRecipePlan] = useState(null);
-
+  const [checkingRecipe, setCheckingRecipe] = useState(null);
   const [portionBySk, setPortionBySk] = useState({});
   const getPortion = (sk) => portionBySk[sk] || 1;
 
-  // --- NEW AUTH HELPER ---
   const getAuthHeaders = async () => {
     const session = await fetchAuthSession();
-    const token = session.tokens.idToken.toString();
     return {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${session.tokens.idToken.toString()}`,
     };
   };
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE}/kitchen`, {
-        headers: await getAuthHeaders(), // <-- SECURED
+      const res = await fetch(`${API_BASE}/kitchen`, {
+        headers: await getAuthHeaders(),
       });
-      const data = await response.json();
-      if (!response.ok) {
-        setKitchenData([]);
-        return;
-      }
+      const data = await res.json();
       setKitchenData(Array.isArray(data) ? data : []);
     } catch (error) {
       setKitchenData([]);
@@ -70,13 +226,25 @@ const KitchenTool = () => {
   const pantry = kitchenData.filter((item) => item.pk === "INVENTORY");
   const recipes = kitchenData.filter((item) => item.pk === "RECIPE");
 
+  const recipeAvailabilities = useMemo(() => {
+    const acc = {};
+    recipes.forEach((r) => {
+      acc[r.sk] = calculateAvailability(
+        r.ingredients,
+        pantry,
+        getPortion(r.sk),
+      );
+    });
+    return acc;
+  }, [recipes, pantry, portionBySk]);
+
   const handleAddGrocery = async (e) => {
     e.preventDefault();
     if (!newItemName) return;
     try {
       await fetch(`${API_BASE}/kitchen`, {
         method: "POST",
-        headers: await getAuthHeaders(), // <-- SECURED
+        headers: await getAuthHeaders(),
         body: JSON.stringify({
           pk: "GROCERY",
           name: newItemName,
@@ -95,31 +263,15 @@ const KitchenTool = () => {
 
   const handleMarkBought = async (item) => {
     try {
-      const authHeaders = await getAuthHeaders(); // <-- Fetch securely once for both calls
-      await fetch(`${API_BASE}/kitchen/${item.sk}?pk=GROCERY`, {
-        method: "DELETE",
-        headers: authHeaders,
-      });
       await fetch(`${API_BASE}/kitchen`, {
         method: "POST",
-        headers: authHeaders,
-        body: JSON.stringify({
-          pk: "INVENTORY",
-          name: item.name,
-          currentQuantity: item.quantity,
-          unit: item.unit,
-        }),
+        headers: await getAuthHeaders(),
+        body: JSON.stringify({ action: "PURCHASE_GROCERY", item }),
       });
       loadData();
     } catch (e) {
       console.error(e);
     }
-  };
-
-  const openEditModal = (item) => {
-    setEditingItem(item);
-    setEditQty(item.pk === "GROCERY" ? item.quantity : item.currentQuantity);
-    setEditUnit(item.unit || "");
   };
 
   const handleSaveEdit = async () => {
@@ -132,7 +284,7 @@ const KitchenTool = () => {
     try {
       await fetch(`${API_BASE}/kitchen`, {
         method: "POST",
-        headers: await getAuthHeaders(), // <-- SECURED
+        headers: await getAuthHeaders(),
         body: JSON.stringify(updatedItem),
       });
       setEditingItem(null);
@@ -146,7 +298,7 @@ const KitchenTool = () => {
     try {
       await fetch(`${API_BASE}/kitchen/${item.sk}?pk=${pkType}`, {
         method: "DELETE",
-        headers: await getAuthHeaders(), // <-- SECURED
+        headers: await getAuthHeaders(),
       });
       loadData();
     } catch (e) {
@@ -155,27 +307,42 @@ const KitchenTool = () => {
   };
 
   const [savingRecipe, setSavingRecipe] = useState(false);
-
   const handleSaveRecipe = async () => {
     if (!recipeName || !recipeIngredientsText)
-      return alert("Please provide a name and paste the ingredients!");
+      return alert("Please provide a name and paste ingredients!");
     setSavingRecipe(true);
 
-    const payload = {
-      pk: "RECIPE",
-      name: recipeName,
-      url: recipeUrl,
-      ingredientsText: recipeIngredientsText,
-    };
-
-    if (editingRecipe) {
-      payload.sk = editingRecipe.sk;
-    }
-
     try {
+      const headers = await getAuthHeaders();
+      const parseRes = await fetch(`${API_BASE}/kitchen`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          action: "PARSE_RECIPE",
+          ingredientsText: recipeIngredientsText,
+        }),
+      });
+      const parsedData = await parseRes.json();
+
+      if (!parsedData.ingredients || parsedData.ingredients.length === 0) {
+        setSavingRecipe(false);
+        return alert(
+          "The AI failed to read these ingredients. Try simplifying the text.",
+        );
+      }
+
+      const payload = {
+        pk: "RECIPE",
+        name: recipeName,
+        url: recipeUrl,
+        ingredientsText: recipeIngredientsText,
+        ingredients: parsedData.ingredients,
+      };
+      if (editingRecipe) payload.sk = editingRecipe.sk;
+
       await fetch(`${API_BASE}/kitchen`, {
         method: "POST",
-        headers: await getAuthHeaders(), // <-- SECURED
+        headers,
         body: JSON.stringify(payload),
       });
 
@@ -191,119 +358,46 @@ const KitchenTool = () => {
     setSavingRecipe(false);
   };
 
-  const handleCheckRecipe = async (recipe) => {
-    setCheckingRecipeId(recipe.sk);
+  const handleExecuteCook = async (recipe) => {
     try {
-      const response = await fetch(`${API_BASE}/kitchen`, {
+      const res = await fetch(`${API_BASE}/kitchen`, {
         method: "POST",
-        headers: await getAuthHeaders(), // <-- SECURED
+        headers: await getAuthHeaders(),
         body: JSON.stringify({
-          action: "CHECK_RECIPE",
-          recipe: recipe,
+          action: "COOK_RECIPE",
+          recipe,
           inventory: pantry,
           multiplier: getPortion(recipe.sk),
         }),
       });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error);
-
-      setRecipePlan(result.aiMath);
+      if (!res.ok)
+        throw new Error("Failed to cook. Make sure you have the ingredients.");
+      setCheckingRecipe(null);
+      loadData();
+      alert("Inventory updated! Hope it was delicious.");
     } catch (e) {
       alert(e.message);
     }
-    setCheckingRecipeId(null);
   };
 
-  const handleAddMissingToList = async () => {
-    if (!recipePlan || !recipePlan.missingIngredients) return;
-
-    const authHeaders = await getAuthHeaders(); // <-- Grab token before loop
-    for (const missing of recipePlan.missingIngredients) {
+  const handleAddMissingToList = async (missingIngredients) => {
+    const authHeaders = await getAuthHeaders();
+    for (const missing of missingIngredients) {
       await fetch(`${API_BASE}/kitchen`, {
         method: "POST",
-        headers: authHeaders, // <-- SECURED
+        headers: authHeaders,
+        // Fallback to 1 if the quantity was "Any" so it doesn't break your shopping list
         body: JSON.stringify({
           pk: "GROCERY",
           name: missing.name,
-          quantity: missing.quantity,
+          quantity: missing.quantity === "Any" ? 1 : missing.quantity,
           unit: missing.unit,
         }),
       });
     }
-    setRecipePlan(null);
+    setCheckingRecipe(null);
     loadData();
     alert("Missing items added to your grocery list!");
-  };
-
-  const handleExecuteCook = async () => {
-    if (!recipePlan || !recipePlan.updatedInventory) return;
-
-    setKitchenData((prevData) => {
-      let nextData = [...prevData];
-      for (const item of recipePlan.updatedInventory) {
-        if (item.currentQuantity <= 0) {
-          nextData = nextData.filter((i) => i.sk !== item.sk);
-        } else {
-          const index = nextData.findIndex((i) => i.sk === item.sk);
-          if (index !== -1) {
-            nextData[index] = {
-              ...nextData[index],
-              currentQuantity: item.currentQuantity,
-            };
-          }
-        }
-      }
-      return nextData;
-    });
-
-    const authHeaders = await getAuthHeaders(); // <-- Grab token before loop
-    for (const item of recipePlan.updatedInventory) {
-      if (item.currentQuantity <= 0) {
-        await fetch(`${API_BASE}/kitchen/${item.sk}?pk=INVENTORY`, {
-          method: "DELETE",
-          headers: authHeaders, // <-- SECURED
-        });
-      } else {
-        const originalItem = pantry.find((i) => i.sk === item.sk);
-        if (originalItem) {
-          await fetch(`${API_BASE}/kitchen`, {
-            method: "POST",
-            headers: authHeaders, // <-- SECURED
-            body: JSON.stringify({
-              ...originalItem,
-              currentQuantity: item.currentQuantity,
-            }),
-          });
-        }
-      }
-    }
-
-    setRecipePlan(null);
-    loadData();
-    alert("Inventory updated! Hope it was delicious.");
-  };
-
-  const getTabSummary = () => {
-    if (activeTab === "list") return `${groceries.length} items to buy`;
-    if (activeTab === "pantry") return `${pantry.length} items in stock`;
-    if (activeTab === "meals") return `${recipes.length} saved recipes`;
-    return "";
-  };
-
-  const closeRecipeModal = () => {
-    setIsRecipeModalOpen(false);
-    setEditingRecipe(null);
-    setRecipeName("");
-    setRecipeUrl("");
-    setRecipeIngredientsText("");
-  };
-
-  const openRecipeEdit = (recipe) => {
-    setEditingRecipe(recipe);
-    setRecipeName(recipe.name);
-    setRecipeUrl(recipe.url || "");
-    setRecipeIngredientsText(recipe.ingredientsText || "");
-    setIsRecipeModalOpen(true);
   };
 
   return (
@@ -352,16 +446,12 @@ const KitchenTool = () => {
         </button>
       </div>
 
-      <div className="tab-summary">{getTabSummary()}</div>
-
       <div className="tool-content">
         {activeTab === "list" && (
           <div className="list-container">
             {groceries.length === 0 ? (
               <div className="empty-state">
-                <span className="empty-icon">🛒</span>
                 <p>Your list is empty.</p>
-                <small>Add items below for your next run.</small>
               </div>
             ) : (
               groceries.map((item) => (
@@ -379,7 +469,11 @@ const KitchenTool = () => {
                     </span>
                     <button
                       className="icon-btn"
-                      onClick={() => openEditModal(item)}
+                      onClick={() => {
+                        setEditingItem(item);
+                        setEditQty(item.quantity);
+                        setEditUnit(item.unit || "");
+                      }}
                     >
                       ✎
                     </button>
@@ -400,9 +494,7 @@ const KitchenTool = () => {
           <div className="list-container">
             {pantry.length === 0 ? (
               <div className="empty-state">
-                <span className="empty-icon">🥫</span>
                 <p>Your pantry is bare.</p>
-                <small>Check off groceries to stock up.</small>
               </div>
             ) : (
               pantry.map((item) => (
@@ -416,7 +508,11 @@ const KitchenTool = () => {
                     </span>
                     <button
                       className="icon-btn"
-                      onClick={() => openEditModal(item)}
+                      onClick={() => {
+                        setEditingItem(item);
+                        setEditQty(item.currentQuantity);
+                        setEditUnit(item.unit || "");
+                      }}
                     >
                       ✎
                     </button>
@@ -437,87 +533,109 @@ const KitchenTool = () => {
           <div className="list-container">
             {recipes.length === 0 ? (
               <div className="empty-state">
-                <span className="empty-icon">👨‍🍳</span>
                 <p>No recipes saved.</p>
-                <small>Click '+' to start building your menu.</small>
               </div>
             ) : (
-              recipes.map((recipe) => (
-                <div key={recipe.sk} className="recipe-card">
-                  <div className="recipe-header">
-                    <h3 className="recipe-title">{recipe.name}</h3>
-                    <div>
-                      <button
-                        className="icon-btn"
-                        onClick={() => openRecipeEdit(recipe)}
-                      >
-                        ✎
-                      </button>
-                      <button
-                        className="icon-btn delete"
-                        onClick={() => handleDeleteItem(recipe, "RECIPE")}
-                      >
-                        ✕
-                      </button>
+              recipes.map((recipe) => {
+                const avail = recipeAvailabilities[recipe.sk] || {
+                  canMake: false,
+                };
+                return (
+                  <div key={recipe.sk} className="recipe-card">
+                    <div className="recipe-header">
+                      <h3 className="recipe-title">{recipe.name}</h3>
+                      <div>
+                        <button
+                          className="icon-btn"
+                          onClick={() => {
+                            setEditingRecipe(recipe);
+                            setRecipeName(recipe.name);
+                            setRecipeUrl(recipe.url || "");
+                            setRecipeIngredientsText(
+                              recipe.ingredientsText || "",
+                            );
+                            setIsRecipeModalOpen(true);
+                          }}
+                        >
+                          ✎
+                        </button>
+                        <button
+                          className="icon-btn delete"
+                          onClick={() => handleDeleteItem(recipe, "RECIPE")}
+                        >
+                          ✕
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  {recipe.url && (
-                    <a
-                      href={recipe.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="recipe-link"
+
+                    <p
+                      style={{
+                        fontSize: "13px",
+                        color: "#8c9288",
+                        margin: "0 0 12px 0",
+                        lineHeight: "1.4",
+                      }}
                     >
-                      🔗 View Recipe
-                    </a>
-                  )}
+                      {recipe.ingredients
+                        ? recipe.ingredients
+                            .map((i) => {
+                              const qty = i.quantity ? i.quantity : "";
+                              const unit = i.quantity && i.unit ? i.unit : "";
+                              return `${qty} ${unit} ${i.name}`.trim();
+                            })
+                            .join(", ")
+                        : "No parsed ingredients"}
+                    </p>
 
-                  <div
-                    className="portion-selector"
-                    style={{ display: "flex", gap: "6px", margin: "8px 0" }}
-                  >
-                    {[0.5, 1, 2, 3].map((p) => (
-                      <button
-                        key={p}
-                        type="button"
-                        onClick={() =>
-                          setPortionBySk((prev) => ({
-                            ...prev,
-                            [recipe.sk]: p,
-                          }))
-                        }
-                        style={{
-                          flex: 1,
-                          padding: "6px 0",
-                          borderRadius: "8px",
-                          border: "1px solid #D8D8D2",
-                          background:
-                            getPortion(recipe.sk) === p ? "#3A3D36" : "#F4F4F0",
-                          color:
-                            getPortion(recipe.sk) === p ? "#fff" : "#3A3D36",
-                          fontSize: "13px",
-                          fontWeight: 600,
-                        }}
-                      >
-                        {p}x
-                      </button>
-                    ))}
+                    <div
+                      className="portion-selector"
+                      style={{ display: "flex", gap: "6px", margin: "8px 0" }}
+                    >
+                      {[0.5, 1, 2, 3].map((p) => (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() =>
+                            setPortionBySk((prev) => ({
+                              ...prev,
+                              [recipe.sk]: p,
+                            }))
+                          }
+                          style={{
+                            flex: 1,
+                            padding: "6px 0",
+                            borderRadius: "8px",
+                            border: "1px solid #D8D8D2",
+                            background:
+                              getPortion(recipe.sk) === p
+                                ? "#3A3D36"
+                                : "#F4F4F0",
+                            color:
+                              getPortion(recipe.sk) === p ? "#fff" : "#3A3D36",
+                            fontSize: "13px",
+                            fontWeight: 600,
+                          }}
+                        >
+                          {p}x
+                        </button>
+                      ))}
+                    </div>
+
+                    <button
+                      className="cooked-btn"
+                      onClick={() => setCheckingRecipe(recipe)}
+                      style={{
+                        backgroundColor: avail.canMake ? "#4C664D" : "#D8D8D2",
+                        color: avail.canMake ? "#FFF" : "#3A3D36",
+                      }}
+                    >
+                      {avail.canMake
+                        ? "✓ Ready to Cook!"
+                        : "Missing Ingredients"}
+                    </button>
                   </div>
-
-                  <button
-                    className="cooked-btn"
-                    onClick={() => handleCheckRecipe(recipe)}
-                    disabled={checkingRecipeId === recipe.sk}
-                    style={{
-                      opacity: checkingRecipeId === recipe.sk ? 0.7 : 1,
-                    }}
-                  >
-                    {checkingRecipeId === recipe.sk
-                      ? "Checking Pantry..."
-                      : `Can I make ${getPortion(recipe.sk)}x this?`}
-                  </button>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         )}
@@ -528,7 +646,7 @@ const KitchenTool = () => {
           <form onSubmit={handleAddGrocery} className="add-grocery-form">
             <input
               className="ios-input-modal item-input"
-              placeholder="Item (e.g. Milk)"
+              placeholder="Item"
               value={newItemName}
               onChange={(e) => setNewItemName(e.target.value)}
             />
@@ -552,90 +670,51 @@ const KitchenTool = () => {
         </div>
       )}
 
-      {recipePlan && (
+      {checkingRecipe && (
         <div className="ios-modal-overlay">
           <div className="ios-modal">
             <div className="ios-modal-header">
-              {recipePlan.canMake ? "Yes, you can!" : "Not quite..."}
+              {recipeAvailabilities[checkingRecipe.sk].canMake
+                ? "Ready to Cook!"
+                : "Missing Ingredients"}
               <button
                 className="ios-modal-close"
-                onClick={() => setRecipePlan(null)}
+                onClick={() => setCheckingRecipe(null)}
               >
                 ✕
               </button>
             </div>
-
             <div className="ios-modal-content">
-              {recipePlan.canMake ? (
+              {recipeAvailabilities[checkingRecipe.sk].canMake ? (
+                <button
+                  onClick={() => handleExecuteCook(checkingRecipe)}
+                  className="ios-submit-btn full-width"
+                >
+                  Cook & Deduct Pantry
+                </button>
+              ) : (
                 <>
-                  <p
-                    style={{
-                      margin: "0 0 16px 0",
-                      color: "#4C664D",
-                      fontWeight: "600",
-                    }}
-                  >
-                    You have everything you need:
-                  </p>
-                  <ul
-                    style={{
-                      paddingLeft: "20px",
-                      marginBottom: "24px",
-                      color: "#3A3D36",
-                    }}
-                  >
-                    {recipePlan.requiredIngredients.map((ing, idx) => (
-                      <li key={idx} style={{ marginBottom: "6px" }}>
-                        {ing.quantity} {ing.unit} {ing.name}
+                  <ul style={{ paddingLeft: "20px", marginBottom: "24px" }}>
+                    {recipeAvailabilities[
+                      checkingRecipe.sk
+                    ].missingIngredients.map((ing, idx) => (
+                      <li key={idx}>
+                        {ing.quantity === "Any" ? "" : ing.quantity} {ing.unit}{" "}
+                        {ing.name}
                       </li>
                     ))}
                   </ul>
                   <button
-                    onClick={handleExecuteCook}
+                    onClick={() =>
+                      handleAddMissingToList(
+                        recipeAvailabilities[checkingRecipe.sk]
+                          .missingIngredients,
+                      )
+                    }
                     className="ios-submit-btn full-width"
                   >
-                    Cooked This (Update Pantry)
+                    Add Missing to List
                   </button>
-                </>
-              ) : (
-                <>
-                  <p
-                    style={{
-                      margin: "0 0 16px 0",
-                      color: "#E64848",
-                      fontWeight: "600",
-                    }}
-                  >
-                    You are missing:
-                  </p>
-                  <ul
-                    style={{
-                      paddingLeft: "20px",
-                      marginBottom: "24px",
-                      color: "#3A3D36",
-                    }}
-                  >
-                    {recipePlan.missingIngredients.map((ing, idx) => (
-                      <li key={idx} style={{ marginBottom: "6px" }}>
-                        {ing.quantity} {ing.unit} {ing.name}
-                      </li>
-                    ))}
-                  </ul>
-                  <div style={{ display: "flex", gap: "12px" }}>
-                    <button
-                      onClick={() => setRecipePlan(null)}
-                      className="ios-submit-btn full-width"
-                      style={{ background: "#F4F4F0", color: "#3A3D36" }}
-                    >
-                      No Thanks
-                    </button>
-                    <button
-                      onClick={handleAddMissingToList}
-                      className="ios-submit-btn full-width"
-                    >
-                      Add to List
-                    </button>
-                  </div>
                 </>
               )}
             </div>
@@ -648,7 +727,10 @@ const KitchenTool = () => {
           <div className="ios-modal">
             <div className="ios-modal-header">
               {editingRecipe ? "Edit Recipe" : "New Recipe"}
-              <button className="ios-modal-close" onClick={closeRecipeModal}>
+              <button
+                className="ios-modal-close"
+                onClick={() => setIsRecipeModalOpen(false)}
+              >
                 ✕
               </button>
             </div>
@@ -658,35 +740,32 @@ const KitchenTool = () => {
                 placeholder="Recipe Name"
                 value={recipeName}
                 onChange={(e) => setRecipeName(e.target.value)}
-                style={{ marginBottom: "12px" }}
+                style={{ marginBottom: "12px", width: "100%" }}
               />
               <input
                 className="ios-input-modal"
-                placeholder="Link to recipe (optional)"
-                type="url"
+                placeholder="Link"
                 value={recipeUrl}
                 onChange={(e) => setRecipeUrl(e.target.value)}
-                style={{ marginBottom: "12px" }}
+                style={{ marginBottom: "12px", width: "100%" }}
               />
               <textarea
                 className="ios-input-modal"
-                placeholder="Paste the exact ingredients list here..."
+                placeholder="Paste ingredients..."
                 value={recipeIngredientsText}
                 onChange={(e) => setRecipeIngredientsText(e.target.value)}
                 style={{
                   marginBottom: "24px",
                   minHeight: "100px",
-                  resize: "vertical",
-                  fontFamily: "inherit",
+                  width: "100%",
                 }}
               />
               <button
                 onClick={handleSaveRecipe}
                 className="ios-submit-btn full-width"
                 disabled={savingRecipe}
-                style={{ opacity: savingRecipe ? 0.7 : 1 }}
               >
-                {savingRecipe ? "Parsing ingredients..." : "Save Recipe"}
+                {savingRecipe ? "Parsing with AI..." : "Save Recipe"}
               </button>
             </div>
           </div>
@@ -711,16 +790,14 @@ const KitchenTool = () => {
               >
                 <input
                   className="ios-input-modal"
-                  style={{ flex: 1, margin: 0 }}
-                  placeholder="Qty"
+                  style={{ flex: 1 }}
                   type="number"
                   value={editQty}
                   onChange={(e) => setEditQty(e.target.value)}
                 />
                 <input
                   className="ios-input-modal"
-                  style={{ flex: 2, margin: 0 }}
-                  placeholder="Unit"
+                  style={{ flex: 2 }}
                   value={editUnit}
                   onChange={(e) => setEditUnit(e.target.value)}
                 />
@@ -729,7 +806,7 @@ const KitchenTool = () => {
                 onClick={handleSaveEdit}
                 className="ios-submit-btn full-width"
               >
-                Save Changes
+                Save
               </button>
             </div>
           </div>
