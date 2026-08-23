@@ -11,24 +11,18 @@ import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 import * as s3deploy from "aws-cdk-lib/aws-s3-deployment";
 import * as dotenv from "dotenv";
 import * as iam from "aws-cdk-lib/aws-iam";
-
-// 1. IMPORT COGNITO & AUTHORIZER
 import * as cognito from "aws-cdk-lib/aws-cognito";
 import { HttpUserPoolAuthorizer } from "aws-cdk-lib/aws-apigatewayv2-authorizers";
 
-// Load environment variables from .env file
 dotenv.config();
 
 export class BackendStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // ==========================================
-    // 1. DATABASE (DynamoDB)
-    // ==========================================
     const billsTable = new dynamodb.Table(this, "BillsTable", {
       partitionKey: { name: "pk", type: dynamodb.AttributeType.STRING },
-      sortKey: { name: "sk", type: dynamodb.AttributeType.STRING }, // <-- Added Sort Key
+      sortKey: { name: "sk", type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
@@ -48,14 +42,11 @@ export class BackendStack extends cdk.Stack {
     });
 
     const usersTable = new dynamodb.Table(this, "UsersTable", {
-      partitionKey: { name: "pk", type: dynamodb.AttributeType.STRING }, // Will hold "USER#<sub_id>"
+      partitionKey: { name: "pk", type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
-    // ==========================================
-    // 2. BACKEND LOGIC (Lambda)
-    // ==========================================
     const billsLambda = new lambda.Function(this, "LifeHubBillsHandler", {
       runtime: lambda.Runtime.NODEJS_20_X,
       code: lambda.Code.fromAsset("lambda/bills"),
@@ -66,7 +57,7 @@ export class BackendStack extends cdk.Stack {
     });
 
     const kitchenLambda = new lambda.Function(this, "KitchenHandler", {
-      runtime: lambda.Runtime.NODEJS_20_X, // Note: Updated to 20_X as 24_X is not yet standard in CDK
+      runtime: lambda.Runtime.NODEJS_20_X,
       code: lambda.Code.fromAsset("lambda/kitchen"),
       handler: "kitchen.handler",
       environment: {
@@ -79,24 +70,23 @@ export class BackendStack extends cdk.Stack {
     });
 
     const pokerLambda = new lambda.Function(this, "PokerHandler", {
-      runtime: lambda.Runtime.NODEJS_20_X, // Standardized runtime
+      runtime: lambda.Runtime.NODEJS_20_X,
       code: lambda.Code.fromAsset("lambda/poker"),
       handler: "index.handler",
       environment: {
         TABLE_NAME: pokerTable.tableName,
+        USERS_TABLE: usersTable.tableName,
       },
     });
 
     billsTable.grantReadWriteData(billsLambda);
     kitchenTable.grantReadWriteData(kitchenLambda);
     pokerTable.grantReadWriteData(pokerLambda);
+    usersTable.grantReadData(pokerLambda);
 
-    // ==========================================
-    // 3. COGNITO AUTHENTICATION (The Vault)
-    // ==========================================
     const userPool = new cognito.UserPool(this, "LifeHubUserPool", {
       userPoolName: "LifeHubUsers",
-      selfSignUpEnabled: false, // Security: Only you can invite users
+      selfSignUpEnabled: false,
       signInAliases: { email: true },
       passwordPolicy: {
         minLength: 12,
@@ -120,7 +110,7 @@ export class BackendStack extends cdk.Stack {
 
     const userPoolClient = new cognito.UserPoolClient(this, "LifeHubClient", {
       userPool,
-      preventUserExistenceErrors: true, // Security: Hides if an email is registered or not
+      preventUserExistenceErrors: true,
     });
 
     const authorizer = new HttpUserPoolAuthorizer(
@@ -137,13 +127,12 @@ export class BackendStack extends cdk.Stack {
       handler: "index.handler",
       environment: {
         TABLE_NAME: usersTable.tableName,
-        USER_POOL_ID: userPool.userPoolId, // Tells the Lambda which pool to invite users to
+        USER_POOL_ID: userPool.userPoolId,
       },
     });
 
     usersTable.grantReadWriteData(adminLambda);
 
-    // CRITICAL: Give the Lambda permission to create users in Cognito
     adminLambda.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ["cognito-idp:AdminCreateUser", "cognito-idp:AdminDeleteUser"],
@@ -151,9 +140,6 @@ export class BackendStack extends cdk.Stack {
       }),
     );
 
-    // ==========================================
-    // 4. API ROUTING (API Gateway v2 HTTP API)
-    // ==========================================
     const httpApi = new apigw.HttpApi(this, "LifeHubHttpApi", {
       corsPreflight: {
         allowHeaders: ["*"],
@@ -180,13 +166,11 @@ export class BackendStack extends cdk.Stack {
       "PokerIntegration",
       pokerLambda,
     );
-
     const adminIntegration = new HttpLambdaIntegration(
       "AdminIntegration",
       adminLambda,
     );
 
-    // Route: /admin/users (GET list of users, POST new invites, PUT permission updates)
     httpApi.addRoutes({
       path: "/admin/users",
       methods: [
@@ -199,7 +183,6 @@ export class BackendStack extends cdk.Stack {
       authorizer,
     });
 
-    // Route 1: /bills
     httpApi.addRoutes({
       path: "/bills",
       methods: [
@@ -209,10 +192,9 @@ export class BackendStack extends cdk.Stack {
         apigw.HttpMethod.DELETE,
       ],
       integration: billsIntegration,
-      authorizer, // <-- ATTACHED
+      authorizer,
     });
 
-    // Route 2: /bills/{id}
     httpApi.addRoutes({
       path: "/bills/{id}",
       methods: [
@@ -221,10 +203,9 @@ export class BackendStack extends cdk.Stack {
         apigw.HttpMethod.DELETE,
       ],
       integration: billsIntegration,
-      authorizer, // <-- ATTACHED
+      authorizer,
     });
 
-    // Route 3: /kitchen
     httpApi.addRoutes({
       path: "/kitchen",
       methods: [
@@ -234,10 +215,9 @@ export class BackendStack extends cdk.Stack {
         apigw.HttpMethod.DELETE,
       ],
       integration: kitchenIntegration,
-      authorizer, // <-- ATTACHED
+      authorizer,
     });
 
-    // Route 4: /kitchen/{id}
     httpApi.addRoutes({
       path: "/kitchen/{id}",
       methods: [
@@ -246,10 +226,9 @@ export class BackendStack extends cdk.Stack {
         apigw.HttpMethod.DELETE,
       ],
       integration: kitchenIntegration,
-      authorizer, // <-- ATTACHED
+      authorizer,
     });
 
-    // Route 5: /poker
     httpApi.addRoutes({
       path: "/poker",
       methods: [
@@ -259,10 +238,9 @@ export class BackendStack extends cdk.Stack {
         apigw.HttpMethod.DELETE,
       ],
       integration: pokerIntegration,
-      authorizer, // <-- ATTACHED
+      authorizer,
     });
 
-    // Route 6: /poker/{id}
     httpApi.addRoutes({
       path: "/poker/{id}",
       methods: [
@@ -271,12 +249,16 @@ export class BackendStack extends cdk.Stack {
         apigw.HttpMethod.DELETE,
       ],
       integration: pokerIntegration,
-      authorizer, // <-- ATTACHED
+      authorizer,
     });
 
-    // ==========================================
-    // 5. FRONTEND HOSTING (S3 & CloudFront)
-    // ==========================================
+    httpApi.addRoutes({
+      path: "/poker/stats",
+      methods: [apigw.HttpMethod.GET],
+      integration: pokerIntegration,
+      authorizer,
+    });
+
     const websiteBucket = new s3.Bucket(this, "LifeHubFrontendBucket", {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
@@ -315,9 +297,6 @@ export class BackendStack extends cdk.Stack {
       distributionPaths: ["/*"],
     });
 
-    // ==========================================
-    // 6. TERMINAL OUTPUTS
-    // ==========================================
     new cdk.CfnOutput(this, "ApiEndpointUrl", {
       value: httpApi.url!,
       description: "The base URL for your API Gateway",
@@ -333,7 +312,6 @@ export class BackendStack extends cdk.Stack {
       description: "Upload your React dist folder to this S3 bucket",
     });
 
-    // NEW: Outputs required for React Amplify configuration
     new cdk.CfnOutput(this, "CognitoUserPoolId", {
       value: userPool.userPoolId,
       description: "The ID of the Cognito User Pool (For Amplify config)",

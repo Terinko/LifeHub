@@ -5,19 +5,20 @@ const {
   QueryCommand,
   PutCommand,
   DeleteCommand,
+  GetCommand,
 } = require("@aws-sdk/lib-dynamodb");
 const crypto = require("crypto");
 
 const client = new DynamoDBClient({});
 const dynamo = DynamoDBDocumentClient.from(client);
 const TABLE_NAME = process.env.TABLE_NAME;
+const USERS_TABLE = process.env.USERS_TABLE;
 
 function calculateSettlements(players, buyInAmount, chipsPerBuyIn) {
   let debtors = [];
   let creditors = [];
   let processedPlayers = {};
 
-  // Calculate Net
   for (const [id, p] of Object.entries(players)) {
     const chipValue = (p.finalChips / chipsPerBuyIn) * buyInAmount;
     const totalSpent = p.buyIns * buyInAmount;
@@ -36,7 +37,6 @@ function calculateSettlements(players, buyInAmount, chipsPerBuyIn) {
   let d = 0,
     c = 0;
 
-  // Greedy match
   while (d < debtors.length && c < creditors.length) {
     const debt = debtors[d].amount;
     const credit = creditors[c].amount;
@@ -68,44 +68,66 @@ exports.handler = async (event) => {
     "Content-Type": "application/json",
   };
 
-  const userId =
-    event.requestContext?.authorizer?.jwt?.claims?.sub || "PENDING_AUTH_USER";
-
-  const playerPartitionKey = `USER#${userId}#PLAYER`;
-  const gamePartitionKey = `USER#${userId}#GAME`;
+  const userId = event.requestContext?.authorizer?.jwt?.claims?.sub;
+  const method = event.requestContext.http.method;
+  const path = event.requestContext.http.path;
 
   try {
-    const method = event.requestContext.http.method;
-    const path = event.requestContext.http.path;
+    if (!USERS_TABLE) {
+      console.error("USERS_TABLE environment variable is missing!");
+      return {
+        statusCode: 500,
+        headers,
+        body: JSON.stringify({
+          error: "Server misconfiguration: USERS_TABLE missing.",
+        }),
+      };
+    }
 
-    if (method === "GET" && path === "/poker") {
-      const [playerData, gameData] = await Promise.all([
-        dynamo.send(
-          new QueryCommand({
-            TableName: TABLE_NAME,
-            KeyConditionExpression: "pk = :pk",
-            ExpressionAttributeValues: { ":pk": playerPartitionKey },
-            ConsistentRead: true,
-          }),
-        ),
-        dynamo.send(
-          new QueryCommand({
-            TableName: TABLE_NAME,
-            KeyConditionExpression: "pk = :pk",
-            ExpressionAttributeValues: { ":pk": gamePartitionKey },
-            ConsistentRead: true,
-          }),
-        ),
-      ]);
+    const profileRes = await dynamo.send(
+      new GetCommand({ TableName: USERS_TABLE, Key: { pk: `USER#${userId}` } }),
+    );
+    const profile = profileRes.Item || {};
+    const isAdmin = profile.role === "ADMIN";
+    const hasPoker = isAdmin || profile.permissions?.poker === true;
+    const hasPokerStats = isAdmin || profile.permissions?.pokerStats === true;
 
-      const players = (playerData.Items || []).map((p) => ({
-        ...p,
-        pk: "PLAYER",
-      }));
-      const games = (gameData.Items || []).map((g) => ({
-        ...g,
-        pk: "GAME",
-      }));
+    if (!hasPoker) {
+      return {
+        statusCode: 403,
+        headers,
+        body: JSON.stringify({ error: "Poker access required" }),
+      };
+    }
+
+    const GROUP_PK = `POKER#GROUP`;
+
+    if (method === "GET") {
+      const data = await dynamo.send(
+        new QueryCommand({
+          TableName: TABLE_NAME,
+          KeyConditionExpression: "pk = :pk",
+          ExpressionAttributeValues: { ":pk": GROUP_PK },
+        }),
+      );
+
+      const items = data.Items || [];
+      const players = items.filter((i) => i.sk.startsWith("PLAYER#"));
+      const games = items.filter((i) => i.sk.startsWith("GAME#"));
+
+      if (path === "/poker/stats") {
+        if (!hasPokerStats) {
+          return {
+            statusCode: 403,
+            headers,
+            body: JSON.stringify({ error: "Stats access required" }),
+          };
+        }
+        const statGames = games.filter(
+          (g) => g.countsForStats === true && g.status === "COMPLETED",
+        );
+        return { statusCode: 200, headers, body: JSON.stringify(statGames) };
+      }
 
       return {
         statusCode: 200,
@@ -114,30 +136,41 @@ exports.handler = async (event) => {
       };
     }
 
-    if (method === "POST" && path === "/poker") {
+    if (method === "POST") {
       const body = JSON.parse(event.body);
-      const isGame =
-        body.pk === "GAME" ||
-        body.status === "ACTIVE" ||
-        body.action === "END_GAME";
-      const targetPk = isGame ? gamePartitionKey : playerPartitionKey;
-      const cleanPk = isGame ? "GAME" : "PLAYER";
 
       if (body.action === "END_GAME") {
-        const { game } = body;
+        const { game, saveToHistory = true, includeInStats = true } = body;
         const result = calculateSettlements(
           game.players,
           game.buyInAmount,
           game.chipsPerBuyIn,
         );
 
+        if (!saveToHistory) {
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({
+              settlements: result.settlements,
+              saved: false,
+            }),
+          };
+        }
+
+        const countsForStats = hasPokerStats ? includeInStats : false;
+
         const completedGame = {
           ...game,
-          pk: gamePartitionKey,
-          sk: game.sk || crypto.randomUUID(),
+          pk: GROUP_PK,
+          sk:
+            game.sk ||
+            `GAME#${new Date().toISOString()}#${crypto.randomUUID()}`,
           status: "COMPLETED",
           players: result.players,
           settlements: result.settlements,
+          countsForStats,
+          recordedBy: userId,
           completedAt: new Date().toISOString(),
         };
 
@@ -149,37 +182,32 @@ exports.handler = async (event) => {
           headers,
           body: JSON.stringify({
             ...completedGame,
-            pk: "GAME",
+            saved: true,
           }),
         };
       }
 
+      const prefix = body.pk === "GAME" ? "GAME#" : "PLAYER#";
       const item = {
         ...body,
-        pk: targetPk,
-        sk: body.sk || crypto.randomUUID(),
+        pk: GROUP_PK,
+        sk: body.sk || `${prefix}${crypto.randomUUID()}`,
       };
+
       await dynamo.send(new PutCommand({ TableName: TABLE_NAME, Item: item }));
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify({
-          ...item,
-          pk: cleanPk,
-        }),
+        body: JSON.stringify(item),
       };
     }
 
     if (method === "DELETE" && path.startsWith("/poker/")) {
       const sk = event.pathParameters.id;
-      const rawPk = event.queryStringParameters?.pk || "PLAYER";
-      const isGame = rawPk.includes("GAME");
-      const targetPk = isGame ? gamePartitionKey : playerPartitionKey;
-
       await dynamo.send(
         new DeleteCommand({
           TableName: TABLE_NAME,
-          Key: { pk: targetPk, sk },
+          Key: { pk: GROUP_PK, sk },
         }),
       );
       return {
@@ -195,6 +223,7 @@ exports.handler = async (event) => {
       body: JSON.stringify({ error: "Not found" }),
     };
   } catch (error) {
+    console.error("Lambda Error:", error);
     return {
       statusCode: 500,
       headers,

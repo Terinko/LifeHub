@@ -41,6 +41,7 @@ const Admin = () => {
     bills: false,
     kitchen: false,
     poker: false,
+    pokerStats: false,
   });
   const [loading, setLoading] = useState(false);
 
@@ -84,7 +85,12 @@ const Admin = () => {
         }),
       });
       setInviteEmail("");
-      setInvitePerms({ bills: false, kitchen: false, poker: false });
+      setInvitePerms({
+        bills: false,
+        kitchen: false,
+        poker: false,
+        pokerStats: false,
+      });
       loadUsers();
       alert("Invite sent! They will receive a temporary password via email.");
     } catch (err) {
@@ -225,6 +231,18 @@ const Admin = () => {
                   setInvitePerms({ ...invitePerms, poker: !invitePerms.poker });
                 }}
               />
+              <TogglePill
+                label="Poker Stats"
+                icon="📊"
+                isActive={invitePerms.pokerStats}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setInvitePerms({
+                    ...invitePerms,
+                    pokerStats: !invitePerms.pokerStats,
+                  });
+                }}
+              />
             </div>
 
             <button
@@ -349,6 +367,12 @@ const Admin = () => {
                     icon="🃏"
                     isActive={user.permissions?.poker}
                     onClick={() => togglePermission(user, "poker")}
+                  />
+                  <TogglePill
+                    label="Poker Stats"
+                    icon="📊"
+                    isActive={user.permissions?.pokerStats}
+                    onClick={() => togglePermission(user, "pokerStats")}
                   />
                 </div>
               ) : (

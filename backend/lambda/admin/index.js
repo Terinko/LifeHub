@@ -5,12 +5,12 @@ const {
   PutCommand,
   ScanCommand,
   GetCommand,
-  DeleteCommand, // <-- Added Delete for DynamoDB
+  DeleteCommand,
 } = require("@aws-sdk/lib-dynamodb");
 const {
   CognitoIdentityProviderClient,
   AdminCreateUserCommand,
-  AdminDeleteUserCommand, // <-- Added Delete for Cognito
+  AdminDeleteUserCommand,
 } = require("@aws-sdk/client-cognito-identity-provider");
 
 const ddbClient = new DynamoDBClient({});
@@ -28,13 +28,34 @@ const headers = {
 exports.handler = async (event) => {
   const method = event.requestContext.http.method;
   const callerSub = event.requestContext.authorizer?.jwt?.claims?.sub;
+  const isSelfLookup =
+    method === "GET" && event.queryStringParameters?.me === "true";
 
   try {
+    // 1. INLINE AUTHORIZATION CHECK
+    if (!isSelfLookup) {
+      const callerRes = await docClient.send(
+        new GetCommand({
+          TableName: TABLE_NAME,
+          Key: { pk: `USER#${callerSub}` },
+        }),
+      );
+      const callerProfile = callerRes.Item;
+
+      if (callerProfile?.role !== "ADMIN") {
+        return {
+          statusCode: 403,
+          headers,
+          body: JSON.stringify({ error: "Admin only" }),
+        };
+      }
+    }
+
     // ==========================================
     // GET: Fetch users (or current user's profile)
     // ==========================================
     if (method === "GET") {
-      if (event.queryStringParameters?.me === "true") {
+      if (isSelfLookup) {
         const callerPk = `USER#${callerSub}`;
         let profile = await docClient.send(
           new GetCommand({ TableName: TABLE_NAME, Key: { pk: callerPk } }),
@@ -46,7 +67,12 @@ exports.handler = async (event) => {
             email:
               event.requestContext.authorizer?.jwt?.claims?.email || "admin",
             role: "ADMIN",
-            permissions: { bills: true, kitchen: true, poker: true },
+            permissions: {
+              bills: true,
+              kitchen: true,
+              poker: true,
+              pokerStats: true,
+            },
             createdAt: new Date().toISOString(),
           };
           await docClient.send(
@@ -100,6 +126,7 @@ exports.handler = async (event) => {
       const newSub = cognitoRes.User.Attributes.find(
         (a) => a.Name === "sub",
       ).Value;
+
       const newUserProfile = {
         pk: `USER#${newSub}`,
         email: email,
@@ -108,6 +135,7 @@ exports.handler = async (event) => {
           bills: false,
           kitchen: false,
           poker: false,
+          pokerStats: false,
         },
         createdAt: new Date().toISOString(),
       };
@@ -123,10 +151,27 @@ exports.handler = async (event) => {
     // PUT: Update an existing user's permissions
     // ==========================================
     if (method === "PUT") {
-      const body = JSON.parse(event.body);
-      await docClient.send(
-        new PutCommand({ TableName: TABLE_NAME, Item: body }),
+      const { pk, permissions } = JSON.parse(event.body);
+
+      // FIX: Fetch existing user and only update permissions to prevent role overriding
+      const targetUser = await docClient.send(
+        new GetCommand({ TableName: TABLE_NAME, Key: { pk } }),
       );
+
+      if (!targetUser.Item) {
+        return {
+          statusCode: 404,
+          headers,
+          body: JSON.stringify({ error: "User not found" }),
+        };
+      }
+
+      targetUser.Item.permissions = permissions;
+
+      await docClient.send(
+        new PutCommand({ TableName: TABLE_NAME, Item: targetUser.Item }),
+      );
+
       return {
         statusCode: 200,
         headers,
@@ -140,7 +185,6 @@ exports.handler = async (event) => {
     if (method === "DELETE") {
       const { pk, email } = JSON.parse(event.body);
 
-      // Safety check: Don't let the admin delete themselves
       if (pk === `USER#${callerSub}`) {
         return {
           statusCode: 400,
@@ -149,7 +193,6 @@ exports.handler = async (event) => {
         };
       }
 
-      // 1. Delete from Cognito (Revokes their login access immediately)
       await cognitoClient.send(
         new AdminDeleteUserCommand({
           UserPoolId: USER_POOL_ID,
@@ -157,7 +200,6 @@ exports.handler = async (event) => {
         }),
       );
 
-      // 2. Delete their profile from DynamoDB
       await docClient.send(
         new DeleteCommand({ TableName: TABLE_NAME, Key: { pk } }),
       );

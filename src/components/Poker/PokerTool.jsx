@@ -2,7 +2,7 @@
 /* eslint-disable react-hooks/immutability */
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { fetchAuthSession } from "aws-amplify/auth"; // <-- ADDED AUTH IMPORT
+import { fetchAuthSession } from "aws-amplify/auth";
 import "./PokerTool.css";
 
 const API_BASE = "https://9im6v06twk.execute-api.us-east-1.amazonaws.com";
@@ -11,13 +11,17 @@ const PokerTool = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("game");
   const [data, setData] = useState([]);
+  const [statsData, setStatsData] = useState([]);
   const [newPlayerName, setNewPlayerName] = useState("");
+  const [userProfile, setUserProfile] = useState(null);
 
   const [gameSetup, setGameSetup] = useState({ buyIn: 10, chips: 10000 });
   const [selectedPlayers, setSelectedPlayers] = useState([]);
   const [settlementModal, setSettlementModal] = useState(false);
 
-  // --- NEW AUTH HELPER ---
+  const [saveToHistory, setSaveToHistory] = useState(true);
+  const [includeInStats, setIncludeInStats] = useState(true);
+
   const getAuthHeaders = async () => {
     const session = await fetchAuthSession();
     const token = session.tokens.idToken.toString();
@@ -28,38 +32,68 @@ const PokerTool = () => {
   };
 
   useEffect(() => {
-    loadData();
+    loadProfileAndData();
   }, []);
 
-  const loadData = async () => {
+  const loadProfileAndData = async () => {
     try {
-      const res = await fetch(`${API_BASE}/poker`, {
-        headers: await getAuthHeaders(), // <-- SECURED
+      const headers = await getAuthHeaders();
+
+      const profileRes = await fetch(`${API_BASE}/admin/users?me=true`, {
+        headers,
       });
-      const items = await res.json();
+      const profile = await profileRes.json();
+      setUserProfile(profile);
+
+      const dataRes = await fetch(`${API_BASE}/poker`, { headers });
+      const items = await dataRes.json();
       setData(Array.isArray(items) ? items : []);
+
+      const hasStatsAccess =
+        profile.role === "ADMIN" || profile.permissions?.pokerStats;
+      if (hasStatsAccess) {
+        const statsRes = await fetch(`${API_BASE}/poker/stats`, { headers });
+        const sItems = await statsRes.json();
+        setStatsData(Array.isArray(sItems) ? sItems : []);
+      }
     } catch (e) {
       console.error(e);
     }
   };
 
-  const players = data.filter((d) => d.pk === "PLAYER");
-  const games = data.filter((d) => d.pk === "GAME");
+  const players = data.filter((d) => d.sk?.startsWith("PLAYER#"));
+  const games = data.filter((d) => d.sk?.startsWith("GAME#"));
   const activeGame = games.find((g) => g.status === "ACTIVE");
   const pastGames = games
     .filter((g) => g.status === "COMPLETED")
     .sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt));
 
+  const hasStats =
+    userProfile?.role === "ADMIN" ||
+    userProfile?.permissions?.pokerStats === true;
+
   const addPlayer = async (e) => {
     e.preventDefault();
     if (!newPlayerName) return;
-    await fetch(`${API_BASE}/poker`, {
-      method: "POST",
-      headers: await getAuthHeaders(), // <-- SECURED
-      body: JSON.stringify({ pk: "PLAYER", name: newPlayerName }),
-    });
-    setNewPlayerName("");
-    loadData();
+
+    try {
+      const res = await fetch(`${API_BASE}/poker`, {
+        method: "POST",
+        headers: await getAuthHeaders(),
+        body: JSON.stringify({ pk: "PLAYER", name: newPlayerName }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        alert(`Backend Error: ${err.error || res.statusText}`);
+        return; // Stop here, don't clear the box
+      }
+
+      setNewPlayerName("");
+      loadProfileAndData();
+    } catch (err) {
+      alert(`Network Error: ${err.message}`);
+    }
   };
 
   const startGame = async () => {
@@ -76,7 +110,7 @@ const PokerTool = () => {
 
     await fetch(`${API_BASE}/poker`, {
       method: "POST",
-      headers: await getAuthHeaders(), // <-- SECURED
+      headers: await getAuthHeaders(),
       body: JSON.stringify({
         pk: "GAME",
         status: "ACTIVE",
@@ -86,7 +120,7 @@ const PokerTool = () => {
         date: new Date().toISOString(),
       }),
     });
-    loadData();
+    loadProfileAndData();
   };
 
   const updateBuyIn = async (playerId, delta) => {
@@ -102,7 +136,7 @@ const PokerTool = () => {
 
     await fetch(`${API_BASE}/poker`, {
       method: "POST",
-      headers: await getAuthHeaders(), // <-- SECURED
+      headers: await getAuthHeaders(),
       body: JSON.stringify(updatedGame),
     });
   };
@@ -116,24 +150,38 @@ const PokerTool = () => {
   };
 
   const endGame = async () => {
-    await fetch(`${API_BASE}/poker`, {
+    const res = await fetch(`${API_BASE}/poker`, {
       method: "POST",
-      headers: await getAuthHeaders(), // <-- SECURED
-      body: JSON.stringify({ action: "END_GAME", game: activeGame }),
+      headers: await getAuthHeaders(),
+      body: JSON.stringify({
+        action: "END_GAME",
+        game: activeGame,
+        saveToHistory,
+        includeInStats,
+      }),
     });
+    const result = await res.json();
+
+    if (!saveToHistory) {
+      alert(
+        "Venmo amounts calculated (not saved to history). See console for raw output if needed.",
+      );
+      console.log("Settlements:", result.settlements);
+    }
+
     setSettlementModal(false);
-    loadData();
+    loadProfileAndData();
   };
 
   const getFunStats = () => {
-    if (pastGames.length === 0) return null;
+    if (statsData.length === 0) return null;
 
     const stats = {};
     let houdini = { name: "-", val: 0 };
     let tiltMaster = { name: "-", val: 0 };
     let roiKing = { name: "-", val: -Infinity };
 
-    pastGames.forEach((g) => {
+    statsData.forEach((g) => {
       Object.values(g.players).forEach((p) => {
         if (!stats[p.name]) {
           stats[p.name] = {
@@ -152,15 +200,12 @@ const PokerTool = () => {
         if (p.net > stats[p.name].maxWin) stats[p.name].maxWin = p.net;
         if (p.net < stats[p.name].maxLoss) stats[p.name].maxLoss = p.net;
 
-        if (p.net > 0 && p.buyIns > houdini.val) {
+        if (p.net > 0 && p.buyIns > houdini.val)
           houdini = { name: p.name, val: p.buyIns };
-        }
-        if (p.buyIns > tiltMaster.val) {
+        if (p.buyIns > tiltMaster.val)
           tiltMaster = { name: p.name, val: p.buyIns };
-        }
-        if (p.buyIns === 1 && p.net > roiKing.val) {
+        if (p.buyIns === 1 && p.net > roiKing.val)
           roiKing = { name: p.name, val: p.net };
-        }
       });
     });
 
@@ -215,6 +260,14 @@ const PokerTool = () => {
         >
           History
         </button>
+        {hasStats && (
+          <button
+            className={`segmented-btn ${activeTab === "stats" ? "active" : ""}`}
+            onClick={() => setActiveTab("stats")}
+          >
+            Stats
+          </button>
+        )}
       </div>
 
       <div className="tool-content">
@@ -364,14 +417,45 @@ const PokerTool = () => {
 
         {activeTab === "history" && (
           <div className="list-container">
-            {funStats && (
+            <h3 style={{ margin: "10px 0" }}>Past Games</h3>
+            {pastGames.length === 0 && (
+              <p style={{ color: "#888", textAlign: "center" }}>
+                No games played yet!
+              </p>
+            )}
+            {pastGames.map((g) => (
+              <div key={g.sk} className="recipe-card">
+                <h4 style={{ margin: "0 0 10px 0" }}>
+                  {new Date(g.date).toLocaleDateString()} - ${g.buyInAmount}{" "}
+                  Buy-in
+                </h4>
+                {g.settlements &&
+                  g.settlements.map((s, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        padding: "6px",
+                        background: "#f4f4f0",
+                        borderRadius: "4px",
+                        marginBottom: "4px",
+                        fontSize: "14px",
+                      }}
+                    >
+                      <strong>{s.from}</strong> pays <strong>{s.to}</strong> $
+                      {s.amount.toFixed(2)}
+                    </div>
+                  ))}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {activeTab === "stats" && hasStats && (
+          <div className="list-container">
+            {funStats ? (
               <div
                 className="recipe-card"
-                style={{
-                  background: "#f8f9fa",
-                  border: "2px solid #e1e4e8",
-                  marginBottom: "16px",
-                }}
+                style={{ background: "#f8f9fa", border: "2px solid #e1e4e8" }}
               >
                 <h3
                   style={{
@@ -524,38 +608,11 @@ const PokerTool = () => {
                   </div>
                 </div>
               </div>
-            )}
-
-            <h3 style={{ margin: "10px 0" }}>Past Games</h3>
-            {pastGames.length === 0 && (
+            ) : (
               <p style={{ color: "#888", textAlign: "center" }}>
-                No games played yet!
+                No qualifying stats yet!
               </p>
             )}
-            {pastGames.map((g) => (
-              <div key={g.sk} className="recipe-card">
-                <h4 style={{ margin: "0 0 10px 0" }}>
-                  {new Date(g.date).toLocaleDateString()} - ${g.buyInAmount}{" "}
-                  Buy-in
-                </h4>
-                {g.settlements &&
-                  g.settlements.map((s, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        padding: "6px",
-                        background: "#f4f4f0",
-                        borderRadius: "4px",
-                        marginBottom: "4px",
-                        fontSize: "14px",
-                      }}
-                    >
-                      <strong>{s.from}</strong> pays <strong>{s.to}</strong> $
-                      {s.amount.toFixed(2)}
-                    </div>
-                  ))}
-              </div>
-            ))}
           </div>
         )}
       </div>
@@ -594,6 +651,65 @@ const PokerTool = () => {
                   />
                 </div>
               ))}
+
+              <div
+                style={{
+                  marginTop: "20px",
+                  padding: "12px",
+                  background: "#f4f4f0",
+                  borderRadius: "8px",
+                }}
+              >
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    fontWeight: "600",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={saveToHistory}
+                    onChange={(e) => setSaveToHistory(e.target.checked)}
+                  />
+                  Save game to history
+                </label>
+
+                {hasStats && saveToHistory && (
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      fontWeight: "600",
+                      marginTop: "12px",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={includeInStats}
+                      onChange={(e) => setIncludeInStats(e.target.checked)}
+                    />
+                    Include in Stats Leaderboard
+                  </label>
+                )}
+
+                {!saveToHistory && (
+                  <div
+                    style={{
+                      fontSize: "12px",
+                      color: "#888",
+                      marginTop: "8px",
+                      marginLeft: "24px",
+                    }}
+                  >
+                    Uncheck to just work out the Venmo payouts without recording
+                    anything.
+                  </div>
+                )}
+              </div>
+
               <button
                 onClick={endGame}
                 className="ios-submit-btn full-width"
