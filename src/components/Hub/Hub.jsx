@@ -59,6 +59,7 @@ const Hub = () => {
     bills: false,
     kitchen: false,
     poker: false,
+    fantasy: false,
   };
   const isAdmin = profile?.role === "ADMIN";
 
@@ -85,7 +86,7 @@ const Hub = () => {
             gap: "16px",
           }}
         >
-          {perms.bills && (
+          {(isAdmin || perms.bills) && (
             <div
               onClick={() => navigate("/bills")}
               className="hub-card"
@@ -96,7 +97,7 @@ const Hub = () => {
             </div>
           )}
 
-          {perms.kitchen && (
+          {(isAdmin || perms.kitchen) && (
             <div
               onClick={() => navigate("/kitchen")}
               className="hub-card"
@@ -107,7 +108,7 @@ const Hub = () => {
             </div>
           )}
 
-          {perms.poker && (
+          {(isAdmin || perms.poker) && (
             <div
               onClick={() => navigate("/poker")}
               className="hub-card"
@@ -115,6 +116,17 @@ const Hub = () => {
             >
               <span style={{ fontSize: "40px" }}>🃏</span>
               <span style={textStyle}>Poker</span>
+            </div>
+          )}
+
+          {(isAdmin || perms.fantasy) && (
+            <div
+              onClick={() => navigate("/fantasy")}
+              className="hub-card"
+              style={cardStyle}
+            >
+              <span style={{ fontSize: "40px" }}>🏈</span>
+              <span style={textStyle}>Fantasy</span>
             </div>
           )}
 
@@ -131,7 +143,11 @@ const Hub = () => {
           )}
         </div>
 
-        {!perms.bills && !perms.kitchen && !perms.poker && !isAdmin && (
+        {!perms.bills &&
+          !perms.kitchen &&
+          !perms.poker &&
+          !perms.fantasy &&
+          !isAdmin && (
           <div
             style={{ textAlign: "center", marginTop: "40px", color: "#888" }}
           >

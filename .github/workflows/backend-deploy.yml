@@ -46,3 +46,4 @@ jobs:
         run: npx cdk deploy --require-approval never
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          FANTASY_ENC_KEY: ${{ secrets.FANTASY_ENC_KEY }}

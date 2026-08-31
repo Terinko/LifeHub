@@ -6,6 +6,7 @@ const {
   PutCommand,
   DeleteCommand,
   GetCommand,
+  UpdateCommand,
 } = require("@aws-sdk/lib-dynamodb");
 const crypto = require("crypto");
 
@@ -129,6 +130,24 @@ exports.handler = async (event) => {
         return { statusCode: 200, headers, body: JSON.stringify(statGames) };
       }
 
+      if (path === "/poker/mystats") {
+        const myPlayerIds = players
+          .filter((p) => p.userId === userId)
+          .map((p) => p.sk);
+        const myGames = games.filter(
+          (g) =>
+            g.status === "COMPLETED" &&
+            Object.keys(g.players || {}).some((id) =>
+              myPlayerIds.includes(id),
+            ),
+        );
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({ playerIds: myPlayerIds, games: myGames }),
+        };
+      }
+
       return {
         statusCode: 200,
         headers,
@@ -138,6 +157,80 @@ exports.handler = async (event) => {
 
     if (method === "POST") {
       const body = JSON.parse(event.body);
+
+      if (body.action === "CLAIM_PLAYER" || body.action === "UNCLAIM_PLAYER") {
+        const data = await dynamo.send(
+          new QueryCommand({
+            TableName: TABLE_NAME,
+            KeyConditionExpression: "pk = :pk",
+            ExpressionAttributeValues: { ":pk": GROUP_PK },
+          }),
+        );
+        const allPlayers = (data.Items || []).filter((i) =>
+          i.sk.startsWith("PLAYER#"),
+        );
+
+        if (body.action === "CLAIM_PLAYER") {
+          const { playerId } = body;
+          const target = allPlayers.find((p) => p.sk === playerId);
+          if (!target) {
+            return {
+              statusCode: 404,
+              headers,
+              body: JSON.stringify({ error: "Player not found" }),
+            };
+          }
+
+          await Promise.all(
+            allPlayers
+              .filter((p) => p.userId === userId && p.sk !== playerId)
+              .map((p) =>
+                dynamo.send(
+                  new UpdateCommand({
+                    TableName: TABLE_NAME,
+                    Key: { pk: GROUP_PK, sk: p.sk },
+                    UpdateExpression: "REMOVE userId",
+                  }),
+                ),
+              ),
+          );
+
+          await dynamo.send(
+            new UpdateCommand({
+              TableName: TABLE_NAME,
+              Key: { pk: GROUP_PK, sk: playerId },
+              UpdateExpression: "SET userId = :uid",
+              ExpressionAttributeValues: { ":uid": userId },
+            }),
+          );
+
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({ claimed: playerId }),
+          };
+        }
+
+        await Promise.all(
+          allPlayers
+            .filter((p) => p.userId === userId)
+            .map((p) =>
+              dynamo.send(
+                new UpdateCommand({
+                  TableName: TABLE_NAME,
+                  Key: { pk: GROUP_PK, sk: p.sk },
+                  UpdateExpression: "REMOVE userId",
+                }),
+              ),
+            ),
+        );
+
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({ claimed: null }),
+        };
+      }
 
       if (body.action === "END_GAME") {
         const { game, saveToHistory = true, includeInStats = true } = body;

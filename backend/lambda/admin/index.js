@@ -72,6 +72,7 @@ exports.handler = async (event) => {
               kitchen: true,
               poker: true,
               pokerStats: true,
+              fantasy: true,
             },
             createdAt: new Date().toISOString(),
           };
@@ -136,6 +137,7 @@ exports.handler = async (event) => {
           kitchen: false,
           poker: false,
           pokerStats: false,
+          fantasy: false,
         },
         createdAt: new Date().toISOString(),
       };

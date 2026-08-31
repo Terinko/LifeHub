@@ -42,6 +42,7 @@ const Admin = () => {
     kitchen: false,
     poker: false,
     pokerStats: false,
+    fantasy: false,
   });
   const [loading, setLoading] = useState(false);
 
@@ -90,6 +91,7 @@ const Admin = () => {
         kitchen: false,
         poker: false,
         pokerStats: false,
+        fantasy: false,
       });
       loadUsers();
       alert("Invite sent! They will receive a temporary password via email.");
@@ -243,6 +245,18 @@ const Admin = () => {
                   });
                 }}
               />
+              <TogglePill
+                label="Fantasy"
+                icon="🏈"
+                isActive={invitePerms.fantasy}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setInvitePerms({
+                    ...invitePerms,
+                    fantasy: !invitePerms.fantasy,
+                  });
+                }}
+              />
             </div>
 
             <button
@@ -373,6 +387,12 @@ const Admin = () => {
                     icon="📊"
                     isActive={user.permissions?.pokerStats}
                     onClick={() => togglePermission(user, "pokerStats")}
+                  />
+                  <TogglePill
+                    label="Fantasy"
+                    icon="🏈"
+                    isActive={user.permissions?.fantasy}
+                    onClick={() => togglePermission(user, "fantasy")}
                   />
                 </div>
               ) : (

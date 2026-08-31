@@ -1,0 +1,355 @@
+/* --- Follows the Kitchen tool's organic-minimalist theme for visual consistency --- */
+.tool-view {
+  background-color: #f9f9f6;
+  color: #3a3d36;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  font-family:
+    "Inter",
+    -apple-system,
+    sans-serif;
+}
+
+.ios-nav-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 20px 16px;
+  background-color: #f9f9f6;
+  flex-shrink: 0;
+}
+
+.ios-nav-bar h2 {
+  font-weight: 700;
+  font-size: 24px;
+  margin: 0;
+  color: #2c3029;
+}
+
+.ios-back-btn {
+  background: none;
+  border: none;
+  font-size: 16px;
+  font-weight: 600;
+  color: #798f7a;
+  cursor: pointer;
+  padding: 0;
+}
+
+.ios-segmented-control {
+  display: flex;
+  background: #eaeae4;
+  border-radius: 30px;
+  margin: 0 20px 16px;
+  padding: 4px;
+  flex-shrink: 0;
+}
+
+.segmented-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 10px 0;
+  font-weight: 600;
+  color: #8c9288;
+  border-radius: 26px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.segmented-btn.active {
+  background: white;
+  color: #3a3d36;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.tool-content {
+  flex: 1;
+  padding: 0 20px 40px;
+}
+
+.list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  color: #8c9288;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.8;
+}
+
+.empty-state p {
+  font-weight: 600;
+  font-size: 18px;
+  margin: 0 0 8px 0;
+  color: #3a3d36;
+}
+
+.empty-state small {
+  font-size: 14px;
+}
+
+.game-card {
+  background: white;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  border: 1px solid #f0f0eb;
+}
+
+.game-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.game-matchup {
+  font-weight: 700;
+  font-size: 16px;
+  color: #2c3029;
+}
+
+.game-meta {
+  font-size: 13px;
+  color: #8c9288;
+  margin-top: 2px;
+}
+
+.status-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.status-scheduled {
+  background: #eaeae4;
+  color: #8c9288;
+}
+
+.status-live {
+  background: #ffe8e0;
+  color: #d9531e;
+}
+
+.status-final {
+  background: #e8f0e9;
+  color: #4c664d;
+}
+
+.stake-section {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0eb;
+}
+
+.stake-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 6px;
+}
+
+.stake-label.root-for {
+  color: #4c664d;
+}
+
+.stake-label.root-against {
+  color: #d9531e;
+}
+
+.stake-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  padding: 4px 0;
+}
+
+.stake-player {
+  font-weight: 600;
+}
+
+.stake-league {
+  font-size: 12px;
+  color: #8c9288;
+}
+
+.no-stake {
+  margin-top: 10px;
+  font-size: 13px;
+  color: #b8beb6;
+  font-style: italic;
+}
+
+.league-card {
+  background: white;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  border: 1px solid #f0f0eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.league-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.league-name {
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.league-detail {
+  font-size: 13px;
+  color: #8c9288;
+}
+
+.unlink-btn {
+  background: none;
+  border: none;
+  color: #d9531e;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 10px;
+}
+
+.add-league-card {
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  border: 1px solid #f0f0eb;
+  margin-top: 8px;
+}
+
+.add-league-card h4 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+}
+
+.platform-toggle {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.platform-btn {
+  flex: 1;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1.5px solid #eaeae4;
+  background: white;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  color: #8c9288;
+}
+
+.platform-btn.active {
+  border-color: #798f7a;
+  background: #eef2ee;
+  color: #3a3d36;
+}
+
+.field-group {
+  margin-bottom: 12px;
+}
+
+.field-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #798f7a;
+  margin-bottom: 6px;
+}
+
+.field-help {
+  font-size: 12px;
+  color: #8c9288;
+  margin-top: 6px;
+  line-height: 1.4;
+}
+
+.ios-input-modal {
+  width: 100%;
+  background: #f9f9f6;
+  border: 1px solid #eaeae4;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 15px;
+  box-sizing: border-box;
+  color: #3a3d36;
+  transition: border 0.2s;
+}
+
+.ios-input-modal:focus {
+  outline: none;
+  border-color: #798f7a;
+}
+
+.ios-submit-btn {
+  background: #798f7a;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.ios-submit-btn:active {
+  opacity: 0.7;
+}
+
+.ios-submit-btn.full-width {
+  width: 100%;
+  padding: 14px;
+}
+
+.ios-submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.form-error {
+  background: #ffebeb;
+  color: #d9531e;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.league-warning {
+  background: #fff6e0;
+  color: #8a6d1f;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  margin-bottom: 12px;
+}

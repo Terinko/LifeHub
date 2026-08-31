@@ -12,6 +12,7 @@ const PokerTool = () => {
   const [activeTab, setActiveTab] = useState("game");
   const [data, setData] = useState([]);
   const [statsData, setStatsData] = useState([]);
+  const [myStatsData, setMyStatsData] = useState({ playerIds: [], games: [] });
   const [newPlayerName, setNewPlayerName] = useState("");
   const [userProfile, setUserProfile] = useState(null);
 
@@ -48,6 +49,16 @@ const PokerTool = () => {
       const dataRes = await fetch(`${API_BASE}/poker`, { headers });
       const items = await dataRes.json();
       setData(Array.isArray(items) ? items : []);
+
+      const myStatsRes = await fetch(`${API_BASE}/poker/mystats`, {
+        headers,
+      });
+      const myStatsJson = await myStatsRes.json();
+      setMyStatsData(
+        myStatsJson && Array.isArray(myStatsJson.games)
+          ? myStatsJson
+          : { playerIds: [], games: [] },
+      );
 
       const hasStatsAccess =
         profile.role === "ADMIN" || profile.permissions?.pokerStats;
@@ -94,6 +105,24 @@ const PokerTool = () => {
     } catch (err) {
       alert(`Network Error: ${err.message}`);
     }
+  };
+
+  const claimPlayer = async (playerId) => {
+    await fetch(`${API_BASE}/poker`, {
+      method: "POST",
+      headers: await getAuthHeaders(),
+      body: JSON.stringify({ action: "CLAIM_PLAYER", playerId }),
+    });
+    loadProfileAndData();
+  };
+
+  const unclaimPlayer = async () => {
+    await fetch(`${API_BASE}/poker`, {
+      method: "POST",
+      headers: await getAuthHeaders(),
+      body: JSON.stringify({ action: "UNCLAIM_PLAYER" }),
+    });
+    loadProfileAndData();
   };
 
   const startGame = async () => {
@@ -231,6 +260,67 @@ const PokerTool = () => {
 
   const funStats = getFunStats();
 
+  const getMyStats = () => {
+    const { playerIds = [], games: myGames = [] } = myStatsData;
+    if (playerIds.length === 0) return { linked: false };
+    if (myGames.length === 0) return { linked: true, gamesPlayed: 0 };
+
+    const sorted = [...myGames].sort(
+      (a, b) => new Date(a.completedAt) - new Date(b.completedAt),
+    );
+
+    let netTotal = 0;
+    let buyInsTotal = 0;
+    let gamesPlayed = 0;
+    let wins = 0;
+    let biggestWin = -Infinity;
+    let biggestLoss = Infinity;
+    let bestStreak = 0;
+    let worstStreak = 0;
+    let curStreak = 0;
+
+    sorted.forEach((g) => {
+      const entry = Object.entries(g.players || {}).find(([id]) =>
+        playerIds.includes(id),
+      );
+      if (!entry) return;
+      const p = entry[1];
+
+      gamesPlayed += 1;
+      netTotal += p.net;
+      buyInsTotal += p.buyIns;
+      if (p.net > biggestWin) biggestWin = p.net;
+      if (p.net < biggestLoss) biggestLoss = p.net;
+
+      if (p.net > 0) {
+        wins += 1;
+        curStreak = curStreak > 0 ? curStreak + 1 : 1;
+      } else if (p.net < 0) {
+        curStreak = curStreak < 0 ? curStreak - 1 : -1;
+      } else {
+        curStreak = 0;
+      }
+      if (curStreak > bestStreak) bestStreak = curStreak;
+      if (curStreak < worstStreak) worstStreak = curStreak;
+    });
+
+    return {
+      linked: true,
+      gamesPlayed,
+      netTotal,
+      buyInsTotal,
+      winRate: gamesPlayed ? (wins / gamesPlayed) * 100 : 0,
+      biggestWin: biggestWin === -Infinity ? 0 : biggestWin,
+      biggestLoss: biggestLoss === Infinity ? 0 : biggestLoss,
+      avgNet: gamesPlayed ? netTotal / gamesPlayed : 0,
+      bestStreak,
+      worstStreak: Math.abs(worstStreak),
+      currentStreak: curStreak,
+    };
+  };
+
+  const myStats = getMyStats();
+
   return (
     <div className="view tool-view">
       <header className="ios-nav-bar">
@@ -260,24 +350,49 @@ const PokerTool = () => {
         >
           History
         </button>
-        {hasStats && (
-          <button
-            className={`segmented-btn ${activeTab === "stats" ? "active" : ""}`}
-            onClick={() => setActiveTab("stats")}
-          >
-            Stats
-          </button>
-        )}
+        <button
+          className={`segmented-btn ${activeTab === "stats" ? "active" : ""}`}
+          onClick={() => setActiveTab("stats")}
+        >
+          Stats
+        </button>
       </div>
 
       <div className="tool-content">
         {activeTab === "roster" && (
           <div className="list-container">
-            {players.map((p) => (
-              <div key={p.sk} className="kitchen-list-item">
-                <span className="kitchen-item-name">{p.name}</span>
-              </div>
-            ))}
+            {players.map((p) => {
+              const isMine = myStatsData.playerIds?.includes(p.sk);
+              const hasClaim = (myStatsData.playerIds?.length || 0) > 0;
+              return (
+                <div
+                  key={p.sk}
+                  className="kitchen-list-item"
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <span className="kitchen-item-name">{p.name}</span>
+                  {(isMine || !hasClaim) && (
+                    <button
+                      className="ios-submit-btn"
+                      style={{
+                        padding: "3px 8px",
+                        fontSize: "11px",
+                        background: isMine ? "#2e7d32" : "#888",
+                      }}
+                      onClick={() =>
+                        isMine ? unclaimPlayer() : claimPlayer(p.sk)
+                      }
+                    >
+                      {isMine ? "✓ Me" : "This is me"}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
             <form
               onSubmit={addPlayer}
               className="add-grocery-form"
@@ -450,9 +565,207 @@ const PokerTool = () => {
           </div>
         )}
 
-        {activeTab === "stats" && hasStats && (
+        {activeTab === "stats" && (
           <div className="list-container">
-            {funStats ? (
+            {!myStats.linked && (
+              <p style={{ color: "#888", textAlign: "center" }}>
+                No player linked to your account yet. Go to the Roster tab
+                and tap &quot;This is Me&quot; next to your name to start
+                tracking your personal stats.
+              </p>
+            )}
+            {myStats.linked && myStats.gamesPlayed === 0 && (
+              <p style={{ color: "#888", textAlign: "center" }}>
+                No completed games yet. Play a game to see your stats here!
+              </p>
+            )}
+            {myStats.linked && myStats.gamesPlayed > 0 && (
+              <div
+                className="recipe-card"
+                style={{ background: "#f8f9fa", border: "2px solid #e1e4e8" }}
+              >
+                <h3
+                  style={{
+                    marginTop: 0,
+                    textAlign: "center",
+                    borderBottom: "1px solid #ddd",
+                    paddingBottom: "10px",
+                  }}
+                >
+                  📊 My Poker Career
+                </h3>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: "12px",
+                    marginTop: "16px",
+                  }}
+                >
+                  <div
+                    style={{
+                      padding: "12px",
+                      background: "#fff",
+                      borderRadius: "8px",
+                      textAlign: "center",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: "20px",
+                        fontWeight: "bold",
+                        color: myStats.netTotal >= 0 ? "green" : "#e64848",
+                      }}
+                    >
+                      {myStats.netTotal >= 0 ? "+" : "-"}$
+                      {Math.abs(myStats.netTotal).toFixed(2)}
+                    </div>
+                    <small style={{ color: "#888" }}>Lifetime Winnings</small>
+                  </div>
+
+                  <div
+                    style={{
+                      padding: "12px",
+                      background: "#fff",
+                      borderRadius: "8px",
+                      textAlign: "center",
+                    }}
+                  >
+                    <div style={{ fontSize: "20px", fontWeight: "bold" }}>
+                      {myStats.gamesPlayed}
+                    </div>
+                    <small style={{ color: "#888" }}>Games Played</small>
+                  </div>
+
+                  <div
+                    style={{
+                      padding: "12px",
+                      background: "#fff",
+                      borderRadius: "8px",
+                      textAlign: "center",
+                    }}
+                  >
+                    <div style={{ fontSize: "20px", fontWeight: "bold" }}>
+                      {myStats.winRate.toFixed(0)}%
+                    </div>
+                    <small style={{ color: "#888" }}>Win Rate</small>
+                  </div>
+
+                  <div
+                    style={{
+                      padding: "12px",
+                      background: "#fff",
+                      borderRadius: "8px",
+                      textAlign: "center",
+                    }}
+                  >
+                    <div style={{ fontSize: "20px", fontWeight: "bold" }}>
+                      {myStats.buyInsTotal}
+                    </div>
+                    <small style={{ color: "#888" }}>Total Buy-ins</small>
+                  </div>
+
+                  <div
+                    style={{
+                      padding: "12px",
+                      background: "#fff",
+                      borderRadius: "8px",
+                      textAlign: "center",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: "20px",
+                        fontWeight: "bold",
+                        color: "green",
+                      }}
+                    >
+                      +${myStats.biggestWin.toFixed(2)}
+                    </div>
+                    <small style={{ color: "#888" }}>Best Night</small>
+                  </div>
+
+                  <div
+                    style={{
+                      padding: "12px",
+                      background: "#fff",
+                      borderRadius: "8px",
+                      textAlign: "center",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: "20px",
+                        fontWeight: "bold",
+                        color: "#e64848",
+                      }}
+                    >
+                      -${Math.abs(myStats.biggestLoss).toFixed(2)}
+                    </div>
+                    <small style={{ color: "#888" }}>Worst Night</small>
+                  </div>
+
+                  <div
+                    style={{
+                      padding: "12px",
+                      background: "#fff",
+                      borderRadius: "8px",
+                      textAlign: "center",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: "20px",
+                        fontWeight: "bold",
+                        color: myStats.avgNet >= 0 ? "green" : "#e64848",
+                      }}
+                    >
+                      {myStats.avgNet >= 0 ? "+" : "-"}$
+                      {Math.abs(myStats.avgNet).toFixed(2)}
+                    </div>
+                    <small style={{ color: "#888" }}>Avg Net / Game</small>
+                  </div>
+
+                  <div
+                    style={{
+                      padding: "12px",
+                      background: "#fff",
+                      borderRadius: "8px",
+                      textAlign: "center",
+                    }}
+                  >
+                    <div style={{ fontSize: "20px", fontWeight: "bold" }}>
+                      🔥 {myStats.bestStreak}
+                    </div>
+                    <small style={{ color: "#888" }}>
+                      Best Winning Streak
+                    </small>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    marginTop: "16px",
+                    padding: "12px",
+                    background: "#fff",
+                    borderRadius: "8px",
+                    textAlign: "center",
+                  }}
+                >
+                  <div style={{ fontSize: "16px", fontWeight: "bold" }}>
+                    {myStats.currentStreak > 0 &&
+                      `🔥 On a ${myStats.currentStreak}-game winning streak!`}
+                    {myStats.currentStreak < 0 &&
+                      `❄️ On a ${Math.abs(myStats.currentStreak)}-game losing streak`}
+                    {myStats.currentStreak === 0 && "No active streak"}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {hasStats &&
+              (funStats ? (
               <div
                 className="recipe-card"
                 style={{ background: "#f8f9fa", border: "2px solid #e1e4e8" }}
@@ -612,7 +925,7 @@ const PokerTool = () => {
               <p style={{ color: "#888", textAlign: "center" }}>
                 No qualifying stats yet!
               </p>
-            )}
+            ))}
           </div>
         )}
       </div>

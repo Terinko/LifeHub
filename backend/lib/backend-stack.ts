@@ -47,6 +47,13 @@ export class BackendStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
+    const fantasyTable = new dynamodb.Table(this, "FantasyTable", {
+      partitionKey: { name: "pk", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "sk", type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
     const billsLambda = new lambda.Function(this, "LifeHubBillsHandler", {
       runtime: lambda.Runtime.NODEJS_20_X,
       code: lambda.Code.fromAsset("lambda/bills"),
@@ -79,10 +86,25 @@ export class BackendStack extends cdk.Stack {
       },
     });
 
+    const fantasyLambda = new lambda.Function(this, "FantasyHandler", {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      code: lambda.Code.fromAsset("lambda/fantasy"),
+      handler: "index.handler",
+      environment: {
+        TABLE_NAME: fantasyTable.tableName,
+        USERS_TABLE: usersTable.tableName,
+        FANTASY_ENC_KEY: process.env.FANTASY_ENC_KEY || "",
+      },
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 512,
+    });
+
     billsTable.grantReadWriteData(billsLambda);
     kitchenTable.grantReadWriteData(kitchenLambda);
     pokerTable.grantReadWriteData(pokerLambda);
     usersTable.grantReadData(pokerLambda);
+    fantasyTable.grantReadWriteData(fantasyLambda);
+    usersTable.grantReadData(fantasyLambda);
 
     const userPool = new cognito.UserPool(this, "LifeHubUserPool", {
       userPoolName: "LifeHubUsers",
@@ -170,6 +192,10 @@ export class BackendStack extends cdk.Stack {
       "AdminIntegration",
       adminLambda,
     );
+    const fantasyIntegration = new HttpLambdaIntegration(
+      "FantasyIntegration",
+      fantasyLambda,
+    );
 
     httpApi.addRoutes({
       path: "/admin/users",
@@ -256,6 +282,34 @@ export class BackendStack extends cdk.Stack {
       path: "/poker/stats",
       methods: [apigw.HttpMethod.GET],
       integration: pokerIntegration,
+      authorizer,
+    });
+
+    httpApi.addRoutes({
+      path: "/poker/mystats",
+      methods: [apigw.HttpMethod.GET],
+      integration: pokerIntegration,
+      authorizer,
+    });
+
+    httpApi.addRoutes({
+      path: "/fantasy/leagues",
+      methods: [apigw.HttpMethod.GET, apigw.HttpMethod.POST],
+      integration: fantasyIntegration,
+      authorizer,
+    });
+
+    httpApi.addRoutes({
+      path: "/fantasy/leagues/{id}",
+      methods: [apigw.HttpMethod.DELETE],
+      integration: fantasyIntegration,
+      authorizer,
+    });
+
+    httpApi.addRoutes({
+      path: "/fantasy/guide",
+      methods: [apigw.HttpMethod.GET],
+      integration: fantasyIntegration,
       authorizer,
     });
 
