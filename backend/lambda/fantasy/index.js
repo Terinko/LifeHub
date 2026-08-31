@@ -127,17 +127,23 @@ function encryptCookies(cookieObj) {
 
 function decryptCookies(ciphertext, iv, tag) {
   const key = getEncKey();
-  const decipher = crypto.createDecipheriv(
-    "aes-256-gcm",
-    key,
-    Buffer.from(iv, "base64"),
-  );
-  decipher.setAuthTag(Buffer.from(tag, "base64"));
-  const dec = Buffer.concat([
-    decipher.update(Buffer.from(ciphertext, "base64")),
-    decipher.final(),
-  ]);
-  return JSON.parse(dec.toString("utf8"));
+  try {
+    const decipher = crypto.createDecipheriv(
+      "aes-256-gcm",
+      key,
+      Buffer.from(iv, "base64"),
+    );
+    decipher.setAuthTag(Buffer.from(tag, "base64"));
+    const dec = Buffer.concat([
+      decipher.update(Buffer.from(ciphertext, "base64")),
+      decipher.final(),
+    ]);
+    return JSON.parse(dec.toString("utf8"));
+  } catch {
+    throw new Error(
+      "Saved ESPN cookies could not be decrypted — FANTASY_ENC_KEY likely changed since this league was linked. Unlink and re-link it.",
+    );
+  }
 }
 
 function maskLeague(item) {
