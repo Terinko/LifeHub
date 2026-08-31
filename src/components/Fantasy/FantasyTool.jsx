@@ -214,13 +214,12 @@ const FantasyTool = () => {
                   </div>
                 )}
 
-                {guide.leagueErrors?.length > 0 && (
-                  <div className="league-warning">
-                    Couldn't load: {guide.leagueErrors.join(", ")}. Check that
-                    the league is still valid (and, for ESPN, that its
-                    cookies haven't expired).
-                  </div>
-                )}
+                {guide.leagueErrors?.length > 0 &&
+                  guide.leagueErrors.map((e, i) => (
+                    <div key={i} className="league-warning">
+                      <strong>{e.league}</strong> failed to load: {e.message}
+                    </div>
+                  ))}
 
                 {guide.games.length === 0 && (
                   <p style={{ textAlign: "center", color: "#8c9288" }}>

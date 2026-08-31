@@ -100,8 +100,18 @@ const normTeam = (abbr) => TEAM_ALIASES[abbr] || abbr;
 // ESPN cookie encryption (espn_s2 / SWID are effectively a login session for
 // a private league — never stored in plaintext, never echoed back to the UI)
 // ---------------------------------------------------------------------------
+function getEncKey() {
+  const key = Buffer.from(ENC_KEY || "", "hex");
+  if (key.length !== 32) {
+    throw new Error(
+      `FANTASY_ENC_KEY must be a 64-character hex string (32 bytes); got ${key.length} bytes. Regenerate with 'openssl rand -hex 32'.`,
+    );
+  }
+  return key;
+}
+
 function encryptCookies(cookieObj) {
-  const key = Buffer.from(ENC_KEY, "hex");
+  const key = getEncKey();
   const iv = crypto.randomBytes(12);
   const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
   const enc = Buffer.concat([
@@ -116,7 +126,7 @@ function encryptCookies(cookieObj) {
 }
 
 function decryptCookies(ciphertext, iv, tag) {
-  const key = Buffer.from(ENC_KEY, "hex");
+  const key = getEncKey();
   const decipher = crypto.createDecipheriv(
     "aes-256-gcm",
     key,
@@ -138,7 +148,9 @@ function maskLeague(item) {
 async function fetchJson(url, opts) {
   const res = await fetch(url, opts);
   if (!res.ok) {
-    throw new Error(`Request to ${url} failed with status ${res.status}`);
+    const bodyText = await res.text().catch(() => "");
+    const snippet = bodyText ? `: ${bodyText.slice(0, 200)}` : "";
+    throw new Error(`${url} → HTTP ${res.status}${snippet}`);
   }
   return res.json();
 }
@@ -533,7 +545,7 @@ exports.handler = async (event) => {
             }
           } catch (leagueErr) {
             console.error(`Failed to load league ${league.sk}:`, leagueErr);
-            leagueErrors.push(label);
+            leagueErrors.push({ league: label, message: leagueErr.message });
           }
         }),
       );
