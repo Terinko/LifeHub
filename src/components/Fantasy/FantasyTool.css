@@ -102,12 +102,182 @@
   font-size: 14px;
 }
 
+.section-heading {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #8c9288;
+  margin: 4px 0 2px;
+}
+
+.matchup-card {
+  background: white;
+  border-radius: 16px;
+  padding: 14px 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  border: 1px solid #f0f0eb;
+}
+
+.matchup-league-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #798f7a;
+  margin-bottom: 8px;
+}
+
+.matchup-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.matchup-team {
+  flex: 1;
+  min-width: 0;
+}
+
+.matchup-team.opp {
+  text-align: right;
+}
+
+.matchup-team-name {
+  font-weight: 700;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.matchup-team-record {
+  font-size: 12px;
+  color: #8c9288;
+}
+
+.matchup-score {
+  font-size: 20px;
+  font-weight: 700;
+  color: #2c3029;
+}
+
+.matchup-vs {
+  font-size: 12px;
+  color: #b8beb6;
+  font-weight: 700;
+  padding: 0 10px;
+  flex-shrink: 0;
+}
+
+.matchup-margin {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #f0f0eb;
+  font-size: 12px;
+  font-weight: 600;
+  color: #798f7a;
+  text-align: center;
+}
+
+.bye-banner {
+  background: #fff6e0;
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: #8a6d1f;
+}
+
+.bye-banner strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 13px;
+}
+
+.recap-card {
+  background: white;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  border: 1px solid #f0f0eb;
+}
+
+.recap-card h4 {
+  margin: 0 0 10px 0;
+  font-size: 15px;
+}
+
+.recap-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  padding: 5px 0;
+}
+
+.recap-row .stake-player {
+  font-weight: 600;
+}
+
+.recap-icon {
+  margin-right: 6px;
+}
+
+.toggle-games-btn {
+  background: none;
+  border: none;
+  color: #798f7a;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 8px 0;
+  text-align: left;
+}
+
+.game-row-compact {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 4px;
+  border-bottom: 1px solid #f0f0eb;
+  font-size: 13px;
+}
+
+.game-row-compact:last-child {
+  border-bottom: none;
+}
+
+.game-row-compact .game-matchup {
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .game-card {
   background: white;
   border-radius: 16px;
   padding: 16px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
   border: 1px solid #f0f0eb;
+}
+
+.clickable-card {
+  cursor: pointer;
+  transition:
+    box-shadow 0.15s,
+    transform 0.15s;
+}
+
+.clickable-card:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.07);
+}
+
+.clickable-card:active {
+  transform: scale(0.99);
+}
+
+.external-hint {
+  color: #b8beb6;
+  font-size: 12px;
+  margin-left: 4px;
 }
 
 .game-card-header {
@@ -191,6 +361,17 @@
 .stake-league {
   font-size: 12px;
   color: #8c9288;
+}
+
+.stakes-tally {
+  margin-top: 10px;
+  padding: 8px 10px;
+  background: #f4f4f0;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #3a3d36;
+  text-align: center;
 }
 
 .no-stake {

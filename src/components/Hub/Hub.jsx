@@ -2,8 +2,49 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { signOut, fetchAuthSession } from "aws-amplify/auth";
+import { Receipt, ChefHat, Spade, Tv, ShieldCheck, Lock } from "lucide-react";
+import "./Hub.css";
 
 const API_BASE = "https://9im6v06twk.execute-api.us-east-1.amazonaws.com";
+
+const TOOLS = [
+  {
+    key: "bills",
+    label: "Bills",
+    subtitle: "Split & settle up",
+    icon: Receipt,
+    path: "/bills",
+    accent: "#fdeeee",
+    iconColor: "#b3554a",
+  },
+  {
+    key: "kitchen",
+    label: "Kitchen",
+    subtitle: "Recipes & grocery list",
+    icon: ChefHat,
+    path: "/kitchen",
+    accent: "#eaf1ea",
+    iconColor: "#4c664d",
+  },
+  {
+    key: "poker",
+    label: "Poker",
+    subtitle: "Game night ledger",
+    icon: Spade,
+    path: "/poker",
+    accent: "#f3efe3",
+    iconColor: "#8a6d1f",
+  },
+  {
+    key: "fantasy",
+    label: "Fantasy",
+    subtitle: "Weekly watch-along",
+    icon: Tv,
+    path: "/fantasy",
+    accent: "#e8eef4",
+    iconColor: "#2f5f8a",
+  },
+];
 
 const Hub = () => {
   const navigate = useNavigate();
@@ -46,10 +87,10 @@ const Hub = () => {
 
   if (loading) {
     return (
-      <div className="view">
-        <header className="ios-nav-bar">
-          <h2>Loading...</h2>
-        </header>
+      <div className="view hub-view">
+        <div className="hub-header">
+          <h1 className="hub-title">Loading...</h1>
+        </div>
       </div>
     );
   }
@@ -62,120 +103,64 @@ const Hub = () => {
     fantasy: false,
   };
   const isAdmin = profile?.role === "ADMIN";
+  const visibleTools = TOOLS.filter((t) => isAdmin || perms[t.key]);
 
   return (
-    <div className="view">
-      <header className="ios-nav-bar">
-        <button
-          onClick={handleSignOut}
-          className="ios-back-btn"
-          style={{ fontSize: "15px", fontWeight: "400" }}
-        >
+    <div className="view hub-view">
+      <div className="hub-header">
+        <h1 className="hub-title">LifeHub</h1>
+        <button onClick={handleSignOut} className="hub-signout-btn">
           Sign Out
         </button>
-        <h2>LifeHub</h2>
-        <div style={{ width: "65px" }}></div>
-      </header>
+      </div>
 
-      <div className="tool-content" style={{ padding: "20px 16px" }}>
-        {/* Only show tools the user has permission for */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: "16px",
-          }}
-        >
-          {(isAdmin || perms.bills) && (
-            <div
-              onClick={() => navigate("/bills")}
-              className="hub-card"
-              style={cardStyle}
-            >
-              <span style={{ fontSize: "40px" }}>💸</span>
-              <span style={textStyle}>Bills</span>
+      <div className="hub-content">
+        {(visibleTools.length > 0 || isAdmin) && (
+          <div className="hub-grid">
+            {visibleTools.map((tool) => {
+              const Icon = tool.icon;
+              return (
+                <div
+                  key={tool.key}
+                  onClick={() => navigate(tool.path)}
+                  className="hub-card"
+                >
+                  <div className="hub-card-icon" style={{ background: tool.accent }}>
+                    <Icon size={24} color={tool.iconColor} strokeWidth={1.75} />
+                  </div>
+                  <div className="hub-card-label">{tool.label}</div>
+                  <div className="hub-card-subtitle">{tool.subtitle}</div>
+                </div>
+              );
+            })}
+
+            {isAdmin && (
+              <div
+                onClick={() => navigate("/admin")}
+                className="hub-card admin-card"
+              >
+                <div className="hub-card-icon">
+                  <ShieldCheck size={24} color="#e8ece7" strokeWidth={1.75} />
+                </div>
+                <div className="hub-card-label">Admin</div>
+                <div className="hub-card-subtitle">Manage access</div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {visibleTools.length === 0 && !isAdmin && (
+          <div className="hub-empty-state">
+            <div className="hub-empty-icon">
+              <Lock size={32} strokeWidth={1.5} />
             </div>
-          )}
-
-          {(isAdmin || perms.kitchen) && (
-            <div
-              onClick={() => navigate("/kitchen")}
-              className="hub-card"
-              style={cardStyle}
-            >
-              <span style={{ fontSize: "40px" }}>🍳</span>
-              <span style={textStyle}>Kitchen</span>
-            </div>
-          )}
-
-          {(isAdmin || perms.poker) && (
-            <div
-              onClick={() => navigate("/poker")}
-              className="hub-card"
-              style={cardStyle}
-            >
-              <span style={{ fontSize: "40px" }}>🃏</span>
-              <span style={textStyle}>Poker</span>
-            </div>
-          )}
-
-          {(isAdmin || perms.fantasy) && (
-            <div
-              onClick={() => navigate("/fantasy")}
-              className="hub-card"
-              style={cardStyle}
-            >
-              <span style={{ fontSize: "40px" }}>🏈</span>
-              <span style={textStyle}>Fantasy</span>
-            </div>
-          )}
-
-          {/* Admin Tools - Only visible to ADMIN role */}
-          {isAdmin && (
-            <div
-              onClick={() => navigate("/admin")}
-              className="hub-card"
-              style={{ ...cardStyle, background: "#3A3D36" }}
-            >
-              <span style={{ fontSize: "40px" }}>🛡️</span>
-              <span style={{ ...textStyle, color: "white" }}>Admin</span>
-            </div>
-          )}
-        </div>
-
-        {!perms.bills &&
-          !perms.kitchen &&
-          !perms.poker &&
-          !perms.fantasy &&
-          !isAdmin && (
-          <div
-            style={{ textAlign: "center", marginTop: "40px", color: "#888" }}
-          >
-            <p>You don't have access to any tools yet.</p>
-            <p>Ask the admin to grant you permissions!</p>
+            <p>You don't have access to any tools yet</p>
+            <small>Ask the admin to grant you permissions.</small>
           </div>
         )}
       </div>
     </div>
   );
-};
-
-const cardStyle = {
-  background: "var(--ios-card)",
-  padding: "24px 16px",
-  borderRadius: "16px",
-  boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  gap: "12px",
-  cursor: "pointer",
-};
-
-const textStyle = {
-  fontSize: "16px",
-  fontWeight: "600",
-  color: "var(--ios-text)",
 };
 
 export default Hub;

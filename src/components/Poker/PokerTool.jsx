@@ -22,6 +22,7 @@ const PokerTool = () => {
 
   const [saveToHistory, setSaveToHistory] = useState(true);
   const [includeInStats, setIncludeInStats] = useState(true);
+  const [settlementResults, setSettlementResults] = useState(null);
 
   const getAuthHeaders = async () => {
     const session = await fetchAuthSession();
@@ -192,14 +193,18 @@ const PokerTool = () => {
     const result = await res.json();
 
     if (!saveToHistory) {
-      alert(
-        "Venmo amounts calculated (not saved to history). See console for raw output if needed.",
-      );
-      console.log("Settlements:", result.settlements);
+      // Nothing gets saved anywhere else, so this modal is the only place
+      // these numbers will ever be shown — keep it open with the results.
+      setSettlementResults(result.settlements || []);
+    } else {
+      setSettlementModal(false);
     }
-
-    setSettlementModal(false);
     loadProfileAndData();
+  };
+
+  const closeSettlementModal = () => {
+    setSettlementModal(false);
+    setSettlementResults(null);
   };
 
   const getFunStats = () => {
@@ -934,14 +939,55 @@ const PokerTool = () => {
         <div className="ios-modal-overlay">
           <div className="ios-modal">
             <div className="ios-modal-header">
-              Enter Final Chips{" "}
-              <button
-                className="ios-modal-close"
-                onClick={() => setSettlementModal(false)}
-              >
+              {settlementResults ? "Settle Up" : "Enter Final Chips"}{" "}
+              <button className="ios-modal-close" onClick={closeSettlementModal}>
                 ✕
               </button>
             </div>
+            {settlementResults ? (
+              <div className="ios-modal-content">
+                <div
+                  style={{
+                    fontSize: "13px",
+                    color: "#888",
+                    marginBottom: "16px",
+                  }}
+                >
+                  Not saved to history — this is the only place you'll see
+                  these numbers, so settle up now.
+                </div>
+
+                {settlementResults.length === 0 && (
+                  <p style={{ color: "#888", textAlign: "center" }}>
+                    Everyone broke even — nobody owes anything.
+                  </p>
+                )}
+
+                {settlementResults.map((s, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      padding: "10px",
+                      background: "#f4f4f0",
+                      borderRadius: "8px",
+                      marginBottom: "8px",
+                      fontSize: "15px",
+                    }}
+                  >
+                    <strong>{s.from}</strong> pays <strong>{s.to}</strong> $
+                    {s.amount.toFixed(2)}
+                  </div>
+                ))}
+
+                <button
+                  onClick={closeSettlementModal}
+                  className="ios-submit-btn full-width"
+                  style={{ marginTop: "16px" }}
+                >
+                  Done
+                </button>
+              </div>
+            ) : (
             <div className="ios-modal-content">
               {Object.entries(activeGame.players).map(([id, p]) => (
                 <div
@@ -1031,6 +1077,7 @@ const PokerTool = () => {
                 Calculate Settlements
               </button>
             </div>
+            )}
           </div>
         </div>
       )}

@@ -212,14 +212,30 @@ function resolveSleeperPlayer(playerId, playerCache) {
   return null;
 }
 
-function resolveEspnPlayer(entry) {
+function espnTeamName(team) {
+  if (team?.name && team.name !== "Unknown") return team.name;
+  return `${team?.location || "Unknown"} ${team?.nickname || "Unknown"}`.trim();
+}
+
+function recordStr(wins, losses, ties) {
+  const w = wins || 0;
+  const l = losses || 0;
+  const t = ties || 0;
+  return t > 0 ? `${w}-${l}-${t}` : `${w}-${l}`;
+}
+
+function resolveEspnPlayer(entry, week) {
   if (ESPN_BENCH_SLOTS.includes(entry.lineupSlotId)) return null;
   const player = entry.playerPoolEntry?.player || entry.player;
   if (!player) return null;
+  const weekStats = (player.stats || []).find(
+    (s) => s.scoringPeriodId === week && s.statSourceId === 0,
+  );
   return {
     name: player.fullName,
     team: ESPN_PRO_TEAM_MAP[player.proTeamId] || "FA",
     pos: ESPN_POSITION_MAP[entry.lineupSlotId] || "",
+    points: weekStats ? Math.round(weekStats.appliedTotal * 10) / 10 : null,
   };
 }
 
@@ -456,108 +472,214 @@ exports.handler = async (event) => {
       const rootForByTeam = {};
       const rootAgainstByTeam = {};
       const leagueErrors = [];
+      const matchups = [];
 
       const pushEntry = (map, team, entry) => {
         const t = normTeam(team);
         if (!t || t === "FA") return;
         if (!map[t]) map[t] = [];
-        if (!map[t].some((e) => e.name === entry.name && e.league === entry.league)) {
-          map[t].push(entry);
+        const full = { ...entry, team: t };
+        if (!map[t].some((e) => e.name === full.name && e.league === full.league)) {
+          map[t].push(full);
         }
       };
 
-      await Promise.all(
-        leagues.map(async (league) => {
-          const label =
-            league.nickname ||
-            `${league.platform === "SLEEPER" ? "Sleeper" : "ESPN"} League ${String(league.leagueId).slice(-4)}`;
+      const scoreboardUrl = `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?week=${week}&seasontype=2${season ? `&dates=${season}` : ""}`;
 
-          try {
-            if (league.platform === "SLEEPER") {
-              const [rosters, matchups] = await Promise.all([
-                fetchJson(`https://api.sleeper.app/v1/league/${league.leagueId}/rosters`),
-                fetchJson(`https://api.sleeper.app/v1/league/${league.leagueId}/matchups/${week}`),
-              ]);
-              const myRoster = rosters.find((r) => r.owner_id === league.sleeperUserId);
-              if (!myRoster) return;
-              const myMatchup = matchups.find((m) => m.roster_id === myRoster.roster_id);
-              if (!myMatchup) return;
-              const oppMatchup = matchups.find(
-                (m) => m.matchup_id === myMatchup.matchup_id && m.roster_id !== myRoster.roster_id,
-              );
+      const [scoreboard] = await Promise.all([
+        fetchJson(scoreboardUrl),
+        Promise.all(
+          leagues.map(async (league) => {
+            const label =
+              league.nickname ||
+              `${league.platform === "SLEEPER" ? "Sleeper" : "ESPN"} League ${String(league.leagueId).slice(-4)}`;
 
-              (myMatchup.starters || [])
-                .filter((id) => id && id !== "0")
-                .forEach((pid) => {
-                  const p = resolveSleeperPlayer(pid, sleeperPlayers);
-                  if (p) pushEntry(rootForByTeam, p.team, { name: p.name, pos: p.pos, league: label });
-                });
-
-              (oppMatchup?.starters || [])
-                .filter((id) => id && id !== "0")
-                .forEach((pid) => {
-                  const p = resolveSleeperPlayer(pid, sleeperPlayers);
-                  if (p) pushEntry(rootAgainstByTeam, p.team, { name: p.name, pos: p.pos, league: label });
-                });
-            }
-
-            if (league.platform === "ESPN") {
-              let cookieHeader;
-              if (league.espnCookieCipher) {
-                const { espn_s2, swid } = decryptCookies(
-                  league.espnCookieCipher,
-                  league.espnCookieIv,
-                  league.espnCookieTag,
+            try {
+              if (league.platform === "SLEEPER") {
+                const [rosters, matchupsData, users] = await Promise.all([
+                  fetchJson(`https://api.sleeper.app/v1/league/${league.leagueId}/rosters`),
+                  fetchJson(`https://api.sleeper.app/v1/league/${league.leagueId}/matchups/${week}`),
+                  fetchJson(`https://api.sleeper.app/v1/league/${league.leagueId}/users`),
+                ]);
+                const myRoster = rosters.find((r) => r.owner_id === league.sleeperUserId);
+                if (!myRoster) return;
+                const myMatchup = matchupsData.find((m) => m.roster_id === myRoster.roster_id);
+                if (!myMatchup) return;
+                const oppMatchup = matchupsData.find(
+                  (m) => m.matchup_id === myMatchup.matchup_id && m.roster_id !== myRoster.roster_id,
                 );
-                cookieHeader = `espn_s2=${espn_s2}; SWID=${swid}`;
-              }
-
-              const url = `https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/${league.season}/segments/0/leagues/${league.leagueId}?view=mTeam&view=mRoster&view=mMatchup&view=mSettings`;
-              const leagueData = await fetchJson(
-                url,
-                cookieHeader ? { headers: { Cookie: cookieHeader } } : undefined,
-              );
-
-              const espnWeek = week || leagueData.status?.currentMatchupPeriod || 1;
-              const myTeam = (leagueData.teams || []).find(
-                (t) => String(t.id) === String(league.espnTeamId),
-              );
-              if (!myTeam) return;
-
-              const matchup = (leagueData.schedule || []).find(
-                (m) =>
-                  m.matchupPeriodId === espnWeek &&
-                  (m.home?.teamId === myTeam.id || m.away?.teamId === myTeam.id),
-              );
-              const oppTeamId = matchup
-                ? matchup.home?.teamId === myTeam.id
-                  ? matchup.away?.teamId
-                  : matchup.home?.teamId
-                : null;
-              const oppTeam =
-                oppTeamId != null
-                  ? (leagueData.teams || []).find((t) => t.id === oppTeamId)
+                const oppRoster = oppMatchup
+                  ? rosters.find((r) => r.roster_id === oppMatchup.roster_id)
                   : null;
 
-              (myTeam.roster?.entries || []).forEach((entry) => {
-                const p = resolveEspnPlayer(entry);
-                if (p) pushEntry(rootForByTeam, p.team, { name: p.name, pos: p.pos, league: label });
-              });
+                const teamName = (ownerId) => {
+                  const u = users.find((x) => x.user_id === ownerId);
+                  return u?.metadata?.team_name || u?.display_name || "Unknown Team";
+                };
 
-              (oppTeam?.roster?.entries || []).forEach((entry) => {
-                const p = resolveEspnPlayer(entry);
-                if (p) pushEntry(rootAgainstByTeam, p.team, { name: p.name, pos: p.pos, league: label });
-              });
+                matchups.push({
+                  league: label,
+                  platform: "SLEEPER",
+                  leagueId: league.leagueId,
+                  myTeamName: teamName(league.sleeperUserId),
+                  myScore: myMatchup.points ?? 0,
+                  myRecord: recordStr(
+                    myRoster.settings?.wins,
+                    myRoster.settings?.losses,
+                    myRoster.settings?.ties,
+                  ),
+                  oppTeamName: oppRoster ? teamName(oppRoster.owner_id) : null,
+                  oppScore: oppMatchup ? (oppMatchup.points ?? 0) : null,
+                  oppRecord: oppRoster
+                    ? recordStr(
+                        oppRoster.settings?.wins,
+                        oppRoster.settings?.losses,
+                        oppRoster.settings?.ties,
+                      )
+                    : null,
+                  bye: !oppMatchup,
+                });
+
+                (myMatchup.starters || [])
+                  .filter((id) => id && id !== "0")
+                  .forEach((pid) => {
+                    const p = resolveSleeperPlayer(pid, sleeperPlayers);
+                    if (p)
+                      pushEntry(rootForByTeam, p.team, {
+                        name: p.name,
+                        pos: p.pos,
+                        league: label,
+                        points: myMatchup.players_points?.[pid] ?? null,
+                      });
+                  });
+
+                (oppMatchup?.starters || [])
+                  .filter((id) => id && id !== "0")
+                  .forEach((pid) => {
+                    const p = resolveSleeperPlayer(pid, sleeperPlayers);
+                    if (p)
+                      pushEntry(rootAgainstByTeam, p.team, {
+                        name: p.name,
+                        pos: p.pos,
+                        league: label,
+                        points: oppMatchup.players_points?.[pid] ?? null,
+                      });
+                  });
+              }
+
+              if (league.platform === "ESPN") {
+                let cookieHeader;
+                if (league.espnCookieCipher) {
+                  const { espn_s2, swid } = decryptCookies(
+                    league.espnCookieCipher,
+                    league.espnCookieIv,
+                    league.espnCookieTag,
+                  );
+                  cookieHeader = `espn_s2=${espn_s2}; SWID=${swid}`;
+                }
+
+                const url = `https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/${league.season}/segments/0/leagues/${league.leagueId}?view=mTeam&view=mRoster&view=mMatchup&view=mSettings`;
+                const leagueData = await fetchJson(
+                  url,
+                  cookieHeader ? { headers: { Cookie: cookieHeader } } : undefined,
+                );
+
+                const espnWeek = week || leagueData.status?.currentMatchupPeriod || 1;
+                const myTeam = (leagueData.teams || []).find(
+                  (t) => String(t.id) === String(league.espnTeamId),
+                );
+                if (!myTeam) return;
+
+                const matchup = (leagueData.schedule || []).find(
+                  (m) =>
+                    m.matchupPeriodId === espnWeek &&
+                    (m.home?.teamId === myTeam.id || m.away?.teamId === myTeam.id),
+                );
+                const oppTeamId = matchup
+                  ? matchup.home?.teamId === myTeam.id
+                    ? matchup.away?.teamId
+                    : matchup.home?.teamId
+                  : null;
+                const oppTeam =
+                  oppTeamId != null
+                    ? (leagueData.teams || []).find((t) => t.id === oppTeamId)
+                    : null;
+                const mySide = matchup
+                  ? matchup.home?.teamId === myTeam.id
+                    ? matchup.home
+                    : matchup.away
+                  : null;
+                const oppSide = matchup
+                  ? matchup.home?.teamId === myTeam.id
+                    ? matchup.away
+                    : matchup.home
+                  : null;
+
+                matchups.push({
+                  league: label,
+                  platform: "ESPN",
+                  leagueId: league.leagueId,
+                  espnTeamId: league.espnTeamId,
+                  season: league.season,
+                  myTeamName: espnTeamName(myTeam),
+                  myScore: mySide?.totalPoints ?? 0,
+                  myRecord: recordStr(
+                    myTeam.record?.overall?.wins,
+                    myTeam.record?.overall?.losses,
+                    myTeam.record?.overall?.ties,
+                  ),
+                  oppTeamName: oppTeam ? espnTeamName(oppTeam) : null,
+                  oppScore: oppTeam ? (oppSide?.totalPoints ?? 0) : null,
+                  oppRecord: oppTeam
+                    ? recordStr(
+                        oppTeam.record?.overall?.wins,
+                        oppTeam.record?.overall?.losses,
+                        oppTeam.record?.overall?.ties,
+                      )
+                    : null,
+                  bye: !oppTeam,
+                });
+
+                (myTeam.roster?.entries || []).forEach((entry) => {
+                  const p = resolveEspnPlayer(entry, espnWeek);
+                  if (p)
+                    pushEntry(rootForByTeam, p.team, {
+                      name: p.name,
+                      pos: p.pos,
+                      league: label,
+                      points: p.points,
+                    });
+                });
+
+                (oppTeam?.roster?.entries || []).forEach((entry) => {
+                  const p = resolveEspnPlayer(entry, espnWeek);
+                  if (p)
+                    pushEntry(rootAgainstByTeam, p.team, {
+                      name: p.name,
+                      pos: p.pos,
+                      league: label,
+                      points: p.points,
+                    });
+                });
+              }
+            } catch (leagueErr) {
+              console.error(`Failed to load league ${league.sk}:`, leagueErr);
+              leagueErrors.push({ league: label, message: leagueErr.message });
             }
-          } catch (leagueErr) {
-            console.error(`Failed to load league ${league.sk}:`, leagueErr);
-            leagueErrors.push({ league: label, message: leagueErr.message });
-          }
-        }),
-      );
+          }),
+        ),
+      ]);
 
-      const scoreboardUrl = `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?week=${week}&seasontype=2${season ? `&dates=${season}` : ""}`;
-      const scoreboard = await fetchJson(scoreboardUrl);
+      const teamsPlayingThisWeek = new Set(
+        (scoreboard.events || []).flatMap((ev) =>
+          (ev.competitions?.[0]?.competitors || []).map((c) =>
+            normTeam(c.team.abbreviation),
+          ),
+        ),
+      );
+      const byePlayers = Object.entries(rootForByTeam)
+        .filter(([team]) => !teamsPlayingThisWeek.has(team))
+        .flatMap(([, entries]) => entries);
 
       const games = (scoreboard.events || [])
         .map((ev) => {
@@ -567,6 +689,18 @@ exports.handler = async (event) => {
           );
           const rootFor = teamAbbrevs.flatMap((t) => rootForByTeam[t] || []);
           const rootAgainst = teamAbbrevs.flatMap((t) => rootAgainstByTeam[t] || []);
+          const completed = !!comp?.status?.type?.completed;
+
+          let winningTeam = null;
+          if (completed) {
+            const scored = (comp?.competitors || []).map((c) => ({
+              team: normTeam(c.team.abbreviation),
+              score: Number(c.score) || 0,
+            }));
+            if (scored.length === 2 && scored[0].score !== scored[1].score) {
+              winningTeam = scored.reduce((a, b) => (a.score > b.score ? a : b)).team;
+            }
+          }
 
           return {
             id: ev.id,
@@ -574,7 +708,9 @@ exports.handler = async (event) => {
             shortName: ev.shortName,
             date: ev.date,
             status: comp?.status?.type?.description || "Scheduled",
-            completed: !!comp?.status?.type?.completed,
+            liveDetail: comp?.status?.type?.shortDetail || null,
+            completed,
+            winningTeam,
             broadcast: comp?.broadcasts?.[0]?.names?.[0] || null,
             teams: (comp?.competitors || []).map((c) => ({
               abbreviation: c.team.abbreviation,
@@ -588,13 +724,45 @@ exports.handler = async (event) => {
         })
         .sort((a, b) => new Date(a.date) - new Date(b.date));
 
+      const recap = {
+        rootForWins: [],
+        rootForLosses: [],
+        rootAgainstWins: [],
+        rootAgainstLosses: [],
+      };
+      games
+        .filter((g) => g.completed && g.winningTeam)
+        .forEach((g) => {
+          g.rootFor.forEach((p) => {
+            (p.team === g.winningTeam ? recap.rootForWins : recap.rootForLosses).push({
+              ...p,
+              game: g.shortName,
+            });
+          });
+          g.rootAgainst.forEach((p) => {
+            (p.team === g.winningTeam ? recap.rootAgainstWins : recap.rootAgainstLosses).push({
+              ...p,
+              game: g.shortName,
+            });
+          });
+        });
+      const hasRecap =
+        recap.rootForWins.length +
+          recap.rootForLosses.length +
+          recap.rootAgainstWins.length +
+          recap.rootAgainstLosses.length >
+        0;
+
       return {
         statusCode: 200,
         headers,
         body: JSON.stringify({
           week,
           season,
+          matchups,
+          byePlayers,
           games,
+          recap: hasRecap ? recap : null,
           leaguesLinked: leagues.length,
           leagueErrors,
         }),

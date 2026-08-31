@@ -241,6 +241,16 @@ exports.handler = async (event) => {
         );
 
         if (!saveToHistory) {
+          // Not saving to history — still clear the active game so the
+          // group isn't stuck unable to start a new one.
+          if (game.sk) {
+            await dynamo.send(
+              new DeleteCommand({
+                TableName: TABLE_NAME,
+                Key: { pk: GROUP_PK, sk: game.sk },
+              }),
+            );
+          }
           return {
             statusCode: 200,
             headers,

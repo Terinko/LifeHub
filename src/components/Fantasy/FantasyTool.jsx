@@ -26,6 +26,8 @@ const FantasyTool = () => {
   const [leagues, setLeagues] = useState([]);
   const [guide, setGuide] = useState(null);
   const [loadingGuide, setLoadingGuide] = useState(true);
+  const [showAllGames, setShowAllGames] = useState(false);
+  const [expandedGameId, setExpandedGameId] = useState(null);
 
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
@@ -154,6 +156,27 @@ const FantasyTool = () => {
     return "status-scheduled";
   };
 
+  const gameUrl = (game) => `https://www.espn.com/nfl/game/_/gameId/${game.id}`;
+
+  const matchupUrl = (m) =>
+    m.platform === "SLEEPER"
+      ? `https://sleeper.com/leagues/${m.leagueId}`
+      : `https://fantasy.espn.com/football/team?leagueId=${m.leagueId}&teamId=${m.espnTeamId}&seasonId=${m.season}`;
+
+  const openInNewTab = (url) => window.open(url, "_blank", "noopener,noreferrer");
+
+  const sumPoints = (players) =>
+    players.reduce((sum, p) => sum + (p.points || 0), 0);
+
+  const matchupMarginText = (m) => {
+    const my = Number(m.myScore) || 0;
+    const opp = Number(m.oppScore) || 0;
+    if (my === 0 && opp === 0) return null; // nothing on the board yet
+    const diff = Math.abs(my - opp).toFixed(1);
+    if (my === opp) return "Tied up right now.";
+    return my > opp ? `Leading by ${diff} pts.` : `Need ${diff}+ more pts to take the lead.`;
+  };
+
   return (
     <div className="view tool-view">
       <header className="ios-nav-bar">
@@ -221,74 +244,267 @@ const FantasyTool = () => {
                     </div>
                   ))}
 
+                {guide.matchups?.length > 0 && (
+                  <>
+                    <div className="section-heading">Your Matchups</div>
+                    {guide.matchups.map((m, i) => (
+                      <div
+                        key={i}
+                        className="matchup-card clickable-card"
+                        onClick={() => openInNewTab(matchupUrl(m))}
+                      >
+                        <div className="matchup-league-label">
+                          {m.league} <span className="external-hint">↗</span>
+                        </div>
+                        {m.bye ? (
+                          <div style={{ fontSize: "14px", color: "#8c9288" }}>
+                            {m.myTeamName} — bye week, no matchup
+                          </div>
+                        ) : (
+                          <div className="matchup-row">
+                            <div className="matchup-team">
+                              <div className="matchup-team-name">{m.myTeamName}</div>
+                              <div className="matchup-team-record">{m.myRecord}</div>
+                              <div className="matchup-score">
+                                {Number(m.myScore).toFixed(1)}
+                              </div>
+                            </div>
+                            <div className="matchup-vs">VS</div>
+                            <div className="matchup-team opp">
+                              <div className="matchup-team-name">{m.oppTeamName}</div>
+                              <div className="matchup-team-record">{m.oppRecord}</div>
+                              <div className="matchup-score">
+                                {Number(m.oppScore).toFixed(1)}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {!m.bye && matchupMarginText(m) && (
+                          <div className="matchup-margin">{matchupMarginText(m)}</div>
+                        )}
+                      </div>
+                    ))}
+                  </>
+                )}
+
+                {guide.byePlayers?.length > 0 && (
+                  <div className="bye-banner">
+                    <strong>🛌 On Bye This Week</strong>
+                    {guide.byePlayers
+                      .map((p) => `${p.name} (${p.league})`)
+                      .join(" • ")}
+                  </div>
+                )}
+
+                {guide.recap && (
+                  <div className="recap-card">
+                    <h4>📋 How It Went</h4>
+                    {guide.recap.rootForWins.map((p, i) => (
+                      <div key={`ffw-${i}`} className="recap-row">
+                        <span>
+                          <span className="recap-icon">✅</span>
+                          <span className="stake-player">{p.name}</span>'s team won
+                          ({p.game})
+                        </span>
+                        <span className="stake-league">{p.league}</span>
+                      </div>
+                    ))}
+                    {guide.recap.rootAgainstLosses.map((p, i) => (
+                      <div key={`fal-${i}`} className="recap-row">
+                        <span>
+                          <span className="recap-icon">😈</span>
+                          <span className="stake-player">{p.name}</span>'s team lost
+                          ({p.game})
+                        </span>
+                        <span className="stake-league">{p.league}</span>
+                      </div>
+                    ))}
+                    {guide.recap.rootForLosses.map((p, i) => (
+                      <div key={`ffl-${i}`} className="recap-row">
+                        <span>
+                          <span className="recap-icon">❌</span>
+                          <span className="stake-player">{p.name}</span>'s team lost
+                          ({p.game})
+                        </span>
+                        <span className="stake-league">{p.league}</span>
+                      </div>
+                    ))}
+                    {guide.recap.rootAgainstWins.map((p, i) => (
+                      <div key={`faw-${i}`} className="recap-row">
+                        <span>
+                          <span className="recap-icon">😬</span>
+                          <span className="stake-player">{p.name}</span>'s team won
+                          ({p.game})
+                        </span>
+                        <span className="stake-league">{p.league}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {guide.games.length === 0 && (
                   <p style={{ textAlign: "center", color: "#8c9288" }}>
                     No games scheduled this week.
                   </p>
                 )}
 
-                {guide.games.map((game) => (
-                  <div key={game.id} className="game-card">
-                    <div className="game-card-header">
-                      <div>
-                        <div className="game-matchup">{game.shortName}</div>
-                        <div className="game-meta">
-                          {formatKickoff(game.date)}
-                          {game.broadcast ? ` • ${game.broadcast}` : ""}
-                          {game.completed &&
-                            ` • Final ${game.teams
-                              .map((t) => `${t.abbreviation} ${t.score}`)
-                              .join(" - ")}`}
-                        </div>
-                      </div>
-                      <span className={`status-badge ${statusClass(game)}`}>
-                        {game.completed ? "Final" : game.status}
-                      </span>
-                    </div>
+                {(() => {
+                  const stakesGames = guide.games.filter(
+                    (g) => g.rootFor.length > 0 || g.rootAgainst.length > 0,
+                  );
+                  const otherGames = guide.games.filter(
+                    (g) => g.rootFor.length === 0 && g.rootAgainst.length === 0,
+                  );
 
-                    {game.rootFor.length > 0 && (
-                      <div className="stake-section">
-                        <div className="stake-label root-for">
-                          🟢 Rooting For
-                        </div>
-                        {game.rootFor.map((p, i) => (
-                          <div key={i} className="stake-row">
-                            <span className="stake-player">
-                              {p.name}{" "}
-                              <span style={{ fontWeight: 400, color: "#8c9288" }}>
-                                {p.pos}
+                  return (
+                    <>
+                      {stakesGames.length > 0 && (
+                        <div className="section-heading">Games With Stakes</div>
+                      )}
+                      {stakesGames.map((game) => {
+                        const isExpanded = expandedGameId === game.id;
+                        const forPts = sumPoints(game.rootFor);
+                        const againstPts = sumPoints(game.rootAgainst);
+                        return (
+                          <div
+                            key={game.id}
+                            className="game-card clickable-card"
+                            onClick={() =>
+                              setExpandedGameId(isExpanded ? null : game.id)
+                            }
+                          >
+                            <div className="game-card-header">
+                              <div>
+                                <div className="game-matchup">
+                                  {game.shortName}{" "}
+                                  <span className="external-hint">
+                                    {isExpanded ? "▾" : "▸"}
+                                  </span>
+                                </div>
+                                <div className="game-meta">
+                                  {game.completed
+                                    ? `Final ${game.teams
+                                        .map((t) => `${t.abbreviation} ${t.score}`)
+                                        .join(" - ")}`
+                                    : game.liveDetail || formatKickoff(game.date)}
+                                  {game.broadcast ? ` • ${game.broadcast}` : ""}
+                                </div>
+                              </div>
+                              <span className={`status-badge ${statusClass(game)}`}>
+                                {game.completed ? "Final" : game.status}
                               </span>
-                            </span>
-                            <span className="stake-league">{p.league}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                            </div>
 
-                    {game.rootAgainst.length > 0 && (
-                      <div className="stake-section">
-                        <div className="stake-label root-against">
-                          🔴 Rooting Against
-                        </div>
-                        {game.rootAgainst.map((p, i) => (
-                          <div key={i} className="stake-row">
-                            <span className="stake-player">
-                              {p.name}{" "}
-                              <span style={{ fontWeight: 400, color: "#8c9288" }}>
-                                {p.pos}
+                            {game.rootFor.length > 0 && (
+                              <div className="stake-section">
+                                <div className="stake-label root-for">
+                                  🟢 Rooting For
+                                </div>
+                                {game.rootFor.map((p, i) => (
+                                  <div key={i} className="stake-row">
+                                    <span className="stake-player">
+                                      {p.name}{" "}
+                                      <span style={{ fontWeight: 400, color: "#8c9288" }}>
+                                        {p.pos}
+                                      </span>
+                                    </span>
+                                    <span className="stake-league">
+                                      {isExpanded && p.points != null
+                                        ? `${p.points} pts`
+                                        : p.league}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {game.rootAgainst.length > 0 && (
+                              <div className="stake-section">
+                                <div className="stake-label root-against">
+                                  🔴 Rooting Against
+                                </div>
+                                {game.rootAgainst.map((p, i) => (
+                                  <div key={i} className="stake-row">
+                                    <span className="stake-player">
+                                      {p.name}{" "}
+                                      <span style={{ fontWeight: 400, color: "#8c9288" }}>
+                                        {p.pos}
+                                      </span>
+                                    </span>
+                                    <span className="stake-league">
+                                      {isExpanded && p.points != null
+                                        ? `${p.points} pts`
+                                        : p.league}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {isExpanded &&
+                              game.rootFor.length > 0 &&
+                              game.rootAgainst.length > 0 && (
+                                <div className="stakes-tally">
+                                  {forPts === againstPts
+                                    ? "Your players are dead even right now."
+                                    : forPts > againstPts
+                                      ? `Your side is ahead, ${forPts.toFixed(1)} to ${againstPts.toFixed(1)} fantasy pts.`
+                                      : `You're getting outscored, ${againstPts.toFixed(1)} to ${forPts.toFixed(1)} fantasy pts.`}
+                                </div>
+                              )}
+
+                            {isExpanded && (
+                              <button
+                                className="toggle-games-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openInNewTab(gameUrl(game));
+                                }}
+                              >
+                                Open live Gamecast on ESPN ↗
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      {otherGames.length > 0 && (
+                        <button
+                          className="toggle-games-btn"
+                          onClick={() => setShowAllGames(!showAllGames)}
+                        >
+                          {showAllGames ? "▲ Hide" : "▼ Show"} {otherGames.length} other
+                          game{otherGames.length === 1 ? "" : "s"} with no stake
+                        </button>
+                      )}
+
+                      {showAllGames && otherGames.length > 0 && (
+                        <div className="game-card">
+                          {otherGames.map((game) => (
+                            <div
+                              key={game.id}
+                              className="game-row-compact clickable-card"
+                              onClick={() => openInNewTab(gameUrl(game))}
+                            >
+                              <div>
+                                <div className="game-matchup">
+                                  {game.shortName} <span className="external-hint">↗</span>
+                                </div>
+                                <div className="game-meta">
+                                  {formatKickoff(game.date)}
+                                  {game.broadcast ? ` • ${game.broadcast}` : ""}
+                                </div>
+                              </div>
+                              <span className={`status-badge ${statusClass(game)}`}>
+                                {game.completed ? "Final" : game.status}
                               </span>
-                            </span>
-                            <span className="stake-league">{p.league}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {game.rootFor.length === 0 && game.rootAgainst.length === 0 && (
-                      <div className="no-stake">No stake in this one.</div>
-                    )}
-                  </div>
-                ))}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </>
             )}
           </div>
