@@ -101,6 +101,17 @@ exports.handler = async (event) => {
       };
     }
 
+    await dynamo
+      .send(
+        new UpdateCommand({
+          TableName: USERS_TABLE,
+          Key: { pk: `USER#${userId}` },
+          UpdateExpression: "SET lastUsedPoker = :now",
+          ExpressionAttributeValues: { ":now": new Date().toISOString() },
+        }),
+      )
+      .catch((err) => console.error("Failed to record poker usage:", err));
+
     const GROUP_PK = `POKER#GROUP`;
 
     if (method === "GET") {
@@ -157,6 +168,87 @@ exports.handler = async (event) => {
 
     if (method === "POST") {
       const body = JSON.parse(event.body);
+
+      if (body.action === "RENAME_PLAYER") {
+        const { playerId, name } = body;
+        const trimmedName = (name || "").trim();
+        if (!playerId || !trimmedName) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: "playerId and name required" }),
+          };
+        }
+
+        // A targeted field update rather than a full-item PutCommand — a
+        // naive upsert here would silently drop the player's claimed
+        // userId (and anything else on the item) since Put replaces the
+        // whole item.
+        await dynamo.send(
+          new UpdateCommand({
+            TableName: TABLE_NAME,
+            Key: { pk: GROUP_PK, sk: playerId },
+            UpdateExpression: "SET #name = :name",
+            ExpressionAttributeNames: { "#name": "name" },
+            ExpressionAttributeValues: { ":name": trimmedName },
+          }),
+        );
+
+        // Backfill: every game (active or completed) that has this player
+        // baked into it keeps the name they had *at the time* — otherwise
+        // a typo fix wouldn't show up anywhere in History or the Hall of
+        // Fame. Active games get a surgical single-field update (safe
+        // alongside concurrent buy-in clicks on the same game); completed
+        // games are frozen records nothing else ever writes to, so a full
+        // settlements-array replace there is safe.
+        const allItems = await dynamo.send(
+          new QueryCommand({
+            TableName: TABLE_NAME,
+            KeyConditionExpression: "pk = :pk",
+            ExpressionAttributeValues: { ":pk": GROUP_PK },
+          }),
+        );
+        const affectedGames = (allItems.Items || []).filter(
+          (i) => i.sk.startsWith("GAME#") && i.players && i.players[playerId],
+        );
+
+        await Promise.all(
+          affectedGames.map((game) => {
+            if (game.status === "COMPLETED" && game.settlements) {
+              const updatedSettlements = game.settlements.map((s) => ({
+                ...s,
+                from: s.fromId === playerId ? trimmedName : s.from,
+                to: s.toId === playerId ? trimmedName : s.to,
+              }));
+              return dynamo.send(
+                new UpdateCommand({
+                  TableName: TABLE_NAME,
+                  Key: { pk: GROUP_PK, sk: game.sk },
+                  UpdateExpression:
+                    "SET players.#pid.#name = :name, settlements = :settlements",
+                  ExpressionAttributeNames: { "#pid": playerId, "#name": "name" },
+                  ExpressionAttributeValues: {
+                    ":name": trimmedName,
+                    ":settlements": updatedSettlements,
+                  },
+                }),
+              );
+            }
+
+            return dynamo.send(
+              new UpdateCommand({
+                TableName: TABLE_NAME,
+                Key: { pk: GROUP_PK, sk: game.sk },
+                UpdateExpression: "SET players.#pid.#name = :name",
+                ExpressionAttributeNames: { "#pid": playerId, "#name": "name" },
+                ExpressionAttributeValues: { ":name": trimmedName },
+              }),
+            );
+          }),
+        );
+
+        return { statusCode: 200, headers, body: JSON.stringify({ updated: true }) };
+      }
 
       if (body.action === "CLAIM_PLAYER" || body.action === "UNCLAIM_PLAYER") {
         const data = await dynamo.send(
@@ -232,8 +324,102 @@ exports.handler = async (event) => {
         };
       }
 
+      if (body.action === "UPDATE_BUYIN") {
+        const { gameSk, playerId, delta } = body;
+        if (!gameSk || !playerId || (delta !== 1 && delta !== -1)) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({
+              error: "gameSk, playerId and delta (+1/-1) required",
+            }),
+          };
+        }
+
+        try {
+          await dynamo.send(
+            new UpdateCommand({
+              TableName: TABLE_NAME,
+              Key: { pk: GROUP_PK, sk: gameSk },
+              // Atomic increment/decrement on just this player's buyIns —
+              // never touches the rest of the game item, so two people
+              // adjusting different (or the same) player's buy-ins at the
+              // same time can't clobber each other.
+              UpdateExpression:
+                "SET players.#pid.buyIns = players.#pid.buyIns + :delta",
+              ConditionExpression:
+                delta < 0
+                  ? "players.#pid.buyIns > :floor"
+                  : "attribute_exists(players.#pid.buyIns)",
+              ExpressionAttributeNames: { "#pid": playerId },
+              // DynamoDB rejects the whole request if any provided
+              // ExpressionAttributeValues isn't referenced by the
+              // expressions — :floor is only used on the decrement path.
+              ExpressionAttributeValues:
+                delta < 0 ? { ":delta": delta, ":floor": 1 } : { ":delta": delta },
+            }),
+          );
+        } catch (err) {
+          if (err.name !== "ConditionalCheckFailedException") throw err;
+          // Already at the floor (or game/player vanished) — treat as a
+          // no-op rather than an error.
+        }
+
+        return { statusCode: 200, headers, body: JSON.stringify({ updated: true }) };
+      }
+
+      if (body.action === "UPDATE_FINAL_CHIPS") {
+        const { gameSk, playerId, finalChips } = body;
+        if (!gameSk || !playerId) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: "gameSk and playerId required" }),
+          };
+        }
+
+        await dynamo.send(
+          new UpdateCommand({
+            TableName: TABLE_NAME,
+            Key: { pk: GROUP_PK, sk: gameSk },
+            UpdateExpression: "SET players.#pid.finalChips = :chips",
+            ExpressionAttributeNames: { "#pid": playerId },
+            ExpressionAttributeValues: {
+              ":chips": finalChips === null || finalChips === undefined
+                ? null
+                : Number(finalChips),
+            },
+          }),
+        );
+
+        return { statusCode: 200, headers, body: JSON.stringify({ updated: true }) };
+      }
+
       if (body.action === "END_GAME") {
-        const { game, saveToHistory = true, includeInStats = true } = body;
+        // Read the game fresh from the table rather than trusting whatever
+        // snapshot the client had lying around — buy-ins/chips may have
+        // been updated (by this user or someone else) since they loaded
+        // the page.
+        const { game: clientGame, saveToHistory = true, includeInStats = true } = body;
+        if (!clientGame?.sk) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: "Missing game reference" }),
+          };
+        }
+        const gameRes = await dynamo.send(
+          new GetCommand({ TableName: TABLE_NAME, Key: { pk: GROUP_PK, sk: clientGame.sk } }),
+        );
+        const game = gameRes.Item;
+        if (!game) {
+          return {
+            statusCode: 404,
+            headers,
+            body: JSON.stringify({ error: "Active game not found — it may have already been ended." }),
+          };
+        }
+
         const result = calculateSettlements(
           game.players,
           game.buyInAmount,
@@ -266,9 +452,7 @@ exports.handler = async (event) => {
         const completedGame = {
           ...game,
           pk: GROUP_PK,
-          sk:
-            game.sk ||
-            `GAME#${new Date().toISOString()}#${crypto.randomUUID()}`,
+          sk: game.sk,
           status: "COMPLETED",
           players: result.players,
           settlements: result.settlements,
@@ -306,7 +490,7 @@ exports.handler = async (event) => {
     }
 
     if (method === "DELETE" && path.startsWith("/poker/")) {
-      const sk = event.pathParameters.id;
+      const sk = decodeURIComponent(event.pathParameters.id);
       await dynamo.send(
         new DeleteCommand({
           TableName: TABLE_NAME,

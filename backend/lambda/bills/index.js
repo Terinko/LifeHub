@@ -6,12 +6,14 @@ const {
   QueryCommand,
   PutCommand,
   DeleteCommand,
+  UpdateCommand,
 } = require("@aws-sdk/lib-dynamodb");
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
 
 const TABLE_NAME = process.env.TABLE_NAME;
+const USERS_TABLE = process.env.USERS_TABLE;
 
 const headers = {
   "Content-Type": "application/json",
@@ -29,6 +31,19 @@ exports.handler = async (event) => {
   const method = event.requestContext?.http?.method || event.httpMethod;
 
   try {
+    if (USERS_TABLE && userId !== "PENDING_AUTH_USER") {
+      await docClient
+        .send(
+          new UpdateCommand({
+            TableName: USERS_TABLE,
+            Key: { pk: `USER#${userId}` },
+            UpdateExpression: "SET lastUsedBills = :now",
+            ExpressionAttributeValues: { ":now": new Date().toISOString() },
+          }),
+        )
+        .catch((err) => console.error("Failed to record bills usage:", err));
+    }
+
     switch (method) {
       // ==========================================
       // GET: Retrieve strictly this user's bills

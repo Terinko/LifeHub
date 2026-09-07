@@ -33,6 +33,33 @@ const TogglePill = ({ label, icon, isActive, onClick }) => {
   );
 };
 
+const formatRelative = (iso) => {
+  if (!iso) return "never";
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString();
+};
+
+const countActiveThisWeek = (users) =>
+  users.filter(
+    (u) =>
+      u.lastActiveAt &&
+      Date.now() - new Date(u.lastActiveAt).getTime() < 7 * 24 * 60 * 60 * 1000,
+  ).length;
+
+const TOOL_USAGE_FIELDS = [
+  { key: "lastUsedBills", label: "Bills" },
+  { key: "lastUsedKitchen", label: "Kitchen" },
+  { key: "lastUsedPoker", label: "Poker" },
+  { key: "lastUsedFantasy", label: "Fantasy" },
+];
+
 const Admin = () => {
   const navigate = useNavigate();
   const [users, setUsers] = useState([]);
@@ -282,13 +309,23 @@ const Admin = () => {
         {/* MODERN USER ROSTER */}
         <h3
           style={{
-            marginBottom: "16px",
+            marginBottom: "4px",
             fontSize: "18px",
             color: "var(--ios-text)",
           }}
         >
           Active Users
         </h3>
+        <div
+          style={{
+            marginBottom: "16px",
+            fontSize: "13px",
+            color: "var(--ios-text-sec)",
+          }}
+        >
+          {users.length} user{users.length === 1 ? "" : "s"} ·{" "}
+          {countActiveThisWeek(users)} active this week
+        </div>
         <div
           style={{
             display: "flex",
@@ -335,6 +372,8 @@ const Admin = () => {
                     {user.role === "ADMIN"
                       ? "System Administrator"
                       : "Guest User"}
+                    {" · Last active: "}
+                    {formatRelative(user.lastActiveAt)}
                   </div>
                 </div>
                 {user.role !== "ADMIN" && (
@@ -352,6 +391,23 @@ const Admin = () => {
                     Remove
                   </button>
                 )}
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  gap: "10px",
+                  flexWrap: "wrap",
+                  marginBottom: "12px",
+                  fontSize: "11px",
+                  color: "var(--ios-text-sec)",
+                }}
+              >
+                {TOOL_USAGE_FIELDS.map(({ key, label }) => (
+                  <span key={key}>
+                    {label}: {formatRelative(user[key])}
+                  </span>
+                ))}
               </div>
 
               {user.role !== "ADMIN" ? (

@@ -6,6 +6,7 @@ const {
   ScanCommand,
   GetCommand,
   DeleteCommand,
+  UpdateCommand,
 } = require("@aws-sdk/lib-dynamodb");
 const {
   CognitoIdentityProviderClient,
@@ -61,6 +62,8 @@ exports.handler = async (event) => {
           new GetCommand({ TableName: TABLE_NAME, Key: { pk: callerPk } }),
         );
 
+        const now = new Date().toISOString();
+
         if (!profile.Item) {
           const newRootAdmin = {
             pk: callerPk,
@@ -74,7 +77,8 @@ exports.handler = async (event) => {
               pokerStats: true,
               fantasy: true,
             },
-            createdAt: new Date().toISOString(),
+            createdAt: now,
+            lastActiveAt: now,
           };
           await docClient.send(
             new PutCommand({ TableName: TABLE_NAME, Item: newRootAdmin }),
@@ -85,7 +89,23 @@ exports.handler = async (event) => {
             body: JSON.stringify(newRootAdmin),
           };
         }
-        return { statusCode: 200, headers, body: JSON.stringify(profile.Item) };
+
+        await docClient
+          .send(
+            new UpdateCommand({
+              TableName: TABLE_NAME,
+              Key: { pk: callerPk },
+              UpdateExpression: "SET lastActiveAt = :now",
+              ExpressionAttributeValues: { ":now": now },
+            }),
+          )
+          .catch((err) => console.error("Failed to record last active:", err));
+
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({ ...profile.Item, lastActiveAt: now }),
+        };
       }
 
       const allUsers = await docClient.send(

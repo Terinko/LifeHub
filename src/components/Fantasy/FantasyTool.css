@@ -349,13 +349,39 @@
 .stake-row {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  gap: 10px;
   font-size: 14px;
-  padding: 4px 0;
+  padding: 6px 0;
+}
+
+.stake-player-info {
+  min-width: 0;
+  flex: 1;
 }
 
 .stake-player {
   font-weight: 600;
+}
+
+.stake-pos {
+  font-weight: 400;
+  color: #8c9288;
+}
+
+.stake-leagues {
+  font-size: 12px;
+  color: #8c9288;
+  margin-top: 1px;
+  overflow-wrap: break-word;
+}
+
+.stake-points {
+  font-size: 13px;
+  font-weight: 600;
+  color: #3a3d36;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .stake-league {
@@ -396,11 +422,16 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
+  flex: 1;
 }
 
 .league-name {
   font-weight: 700;
   font-size: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .league-detail {
@@ -416,6 +447,7 @@
   font-weight: 600;
   cursor: pointer;
   padding: 6px 10px;
+  flex-shrink: 0;
 }
 
 .add-league-card {

@@ -7,12 +7,14 @@ const {
   QueryCommand,
   PutCommand,
   DeleteCommand,
+  UpdateCommand,
 } = require("@aws-sdk/lib-dynamodb");
 const crypto = require("crypto");
 
 const client = new DynamoDBClient({});
 const dynamo = DynamoDBDocumentClient.from(client);
 const TABLE_NAME = process.env.TABLE_NAME;
+const USERS_TABLE = process.env.USERS_TABLE;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 // ==========================================
@@ -275,6 +277,19 @@ exports.handler = async (event) => {
   try {
     const method = event.requestContext.http.method;
     const path = event.requestContext.http.path;
+
+    if (USERS_TABLE) {
+      await dynamo
+        .send(
+          new UpdateCommand({
+            TableName: USERS_TABLE,
+            Key: { pk: `USER#${userId}` },
+            UpdateExpression: "SET lastUsedKitchen = :now",
+            ExpressionAttributeValues: { ":now": new Date().toISOString() },
+          }),
+        )
+        .catch((err) => console.error("Failed to record kitchen usage:", err));
+    }
 
     if (method === "GET" && path === "/kitchen") {
       const types = ["GROCERY", "INVENTORY", "RECIPE"];

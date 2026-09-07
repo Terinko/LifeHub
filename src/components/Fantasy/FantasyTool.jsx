@@ -24,6 +24,7 @@ const FantasyTool = () => {
   const [activeTab, setActiveTab] = useState("guide");
 
   const [leagues, setLeagues] = useState([]);
+  const [loadingLeagues, setLoadingLeagues] = useState(true);
   const [guide, setGuide] = useState(null);
   const [loadingGuide, setLoadingGuide] = useState(true);
   const [showAllGames, setShowAllGames] = useState(false);
@@ -43,6 +44,7 @@ const FantasyTool = () => {
   };
 
   const loadLeagues = async () => {
+    setLoadingLeagues(true);
     try {
       const res = await fetch(`${API_BASE}/fantasy/leagues`, {
         headers: await getAuthHeaders(),
@@ -52,6 +54,7 @@ const FantasyTool = () => {
     } catch (e) {
       console.error(e);
     }
+    setLoadingLeagues(false);
   };
 
   const loadGuide = async () => {
@@ -131,14 +134,19 @@ const FantasyTool = () => {
   const handleUnlink = async (league) => {
     if (!window.confirm(`Unlink "${league.nickname || league.leagueId}"?`)) return;
     try {
-      await fetch(`${API_BASE}/fantasy/leagues/${encodeURIComponent(league.sk)}`, {
-        method: "DELETE",
-        headers: await getAuthHeaders(),
-      });
+      const res = await fetch(
+        `${API_BASE}/fantasy/leagues/${encodeURIComponent(league.sk)}`,
+        { method: "DELETE", headers: await getAuthHeaders() },
+      );
+      if (!res.ok) {
+        alert("Failed to unlink that league. Try again.");
+        return;
+      }
       await loadLeagues();
       await loadGuide();
     } catch (e) {
       console.error(e);
+      alert("Failed to unlink that league. Try again.");
     }
   };
 
@@ -151,8 +159,7 @@ const FantasyTool = () => {
 
   const statusClass = (game) => {
     if (game.completed) return "status-final";
-    if (game.status && game.status.toLowerCase().includes("progress"))
-      return "status-live";
+    if (game.state === "in") return "status-live";
     return "status-scheduled";
   };
 
@@ -166,7 +173,25 @@ const FantasyTool = () => {
   const openInNewTab = (url) => window.open(url, "_blank", "noopener,noreferrer");
 
   const sumPoints = (players) =>
-    players.reduce((sum, p) => sum + (p.points || 0), 0);
+    players.reduce(
+      (sum, p) => sum + (p.points || []).reduce((a, b) => a + (b || 0), 0),
+      0,
+    );
+
+  const formatPoints = (points) =>
+    points.map((pt) => (pt != null ? pt.toFixed(1) : "–")).join(" / ");
+
+  const renderStakeRow = (p) => (
+    <div key={p.name} className="stake-row">
+      <div className="stake-player-info">
+        <div className="stake-player">
+          {p.name} <span className="stake-pos">{p.pos}</span>
+        </div>
+        <div className="stake-leagues">{p.leagues.join(", ")}</div>
+      </div>
+      <div className="stake-points">{formatPoints(p.points)} pts</div>
+    </div>
+  );
 
   const matchupMarginText = (m) => {
     const my = Number(m.myScore) || 0;
@@ -258,7 +283,10 @@ const FantasyTool = () => {
                         </div>
                         {m.bye ? (
                           <div style={{ fontSize: "14px", color: "#8c9288" }}>
-                            {m.myTeamName} — bye week, no matchup
+                            {m.myTeamName}
+                            {m.noMatchupYet
+                              ? " — no matchup data yet (still drafting or preseason)"
+                              : " — bye week, no matchup"}
                           </div>
                         ) : (
                           <div className="matchup-row">
@@ -291,7 +319,7 @@ const FantasyTool = () => {
                   <div className="bye-banner">
                     <strong>🛌 On Bye This Week</strong>
                     {guide.byePlayers
-                      .map((p) => `${p.name} (${p.league})`)
+                      .map((p) => `${p.name} (${p.leagues.join(", ")})`)
                       .join(" • ")}
                   </div>
                 )}
@@ -306,7 +334,7 @@ const FantasyTool = () => {
                           <span className="stake-player">{p.name}</span>'s team won
                           ({p.game})
                         </span>
-                        <span className="stake-league">{p.league}</span>
+                        <span className="stake-league">{p.leagues.join(", ")}</span>
                       </div>
                     ))}
                     {guide.recap.rootAgainstLosses.map((p, i) => (
@@ -316,7 +344,7 @@ const FantasyTool = () => {
                           <span className="stake-player">{p.name}</span>'s team lost
                           ({p.game})
                         </span>
-                        <span className="stake-league">{p.league}</span>
+                        <span className="stake-league">{p.leagues.join(", ")}</span>
                       </div>
                     ))}
                     {guide.recap.rootForLosses.map((p, i) => (
@@ -326,7 +354,7 @@ const FantasyTool = () => {
                           <span className="stake-player">{p.name}</span>'s team lost
                           ({p.game})
                         </span>
-                        <span className="stake-league">{p.league}</span>
+                        <span className="stake-league">{p.leagues.join(", ")}</span>
                       </div>
                     ))}
                     {guide.recap.rootAgainstWins.map((p, i) => (
@@ -336,7 +364,7 @@ const FantasyTool = () => {
                           <span className="stake-player">{p.name}</span>'s team won
                           ({p.game})
                         </span>
-                        <span className="stake-league">{p.league}</span>
+                        <span className="stake-league">{p.leagues.join(", ")}</span>
                       </div>
                     ))}
                   </div>
@@ -400,21 +428,7 @@ const FantasyTool = () => {
                                 <div className="stake-label root-for">
                                   🟢 Rooting For
                                 </div>
-                                {game.rootFor.map((p, i) => (
-                                  <div key={i} className="stake-row">
-                                    <span className="stake-player">
-                                      {p.name}{" "}
-                                      <span style={{ fontWeight: 400, color: "#8c9288" }}>
-                                        {p.pos}
-                                      </span>
-                                    </span>
-                                    <span className="stake-league">
-                                      {isExpanded && p.points != null
-                                        ? `${p.points} pts`
-                                        : p.league}
-                                    </span>
-                                  </div>
-                                ))}
+                                {game.rootFor.map((p) => renderStakeRow(p))}
                               </div>
                             )}
 
@@ -423,21 +437,7 @@ const FantasyTool = () => {
                                 <div className="stake-label root-against">
                                   🔴 Rooting Against
                                 </div>
-                                {game.rootAgainst.map((p, i) => (
-                                  <div key={i} className="stake-row">
-                                    <span className="stake-player">
-                                      {p.name}{" "}
-                                      <span style={{ fontWeight: 400, color: "#8c9288" }}>
-                                        {p.pos}
-                                      </span>
-                                    </span>
-                                    <span className="stake-league">
-                                      {isExpanded && p.points != null
-                                        ? `${p.points} pts`
-                                        : p.league}
-                                    </span>
-                                  </div>
-                                ))}
+                                {game.rootAgainst.map((p) => renderStakeRow(p))}
                               </div>
                             )}
 
@@ -473,7 +473,7 @@ const FantasyTool = () => {
                           className="toggle-games-btn"
                           onClick={() => setShowAllGames(!showAllGames)}
                         >
-                          {showAllGames ? "▲ Hide" : "▼ Show"} {otherGames.length} other
+                          {showAllGames ? "▾ Hide" : "▸ Show"} {otherGames.length} other
                           game{otherGames.length === 1 ? "" : "s"} with no stake
                         </button>
                       )}
@@ -512,7 +512,13 @@ const FantasyTool = () => {
 
         {activeTab === "leagues" && (
           <div className="list-container">
-            {leagues.length === 0 && (
+            {loadingLeagues && (
+              <p style={{ textAlign: "center", color: "#8c9288" }}>
+                Loading your leagues...
+              </p>
+            )}
+
+            {!loadingLeagues && leagues.length === 0 && (
               <p style={{ textAlign: "center", color: "#8c9288" }}>
                 No leagues linked yet.
               </p>
@@ -622,7 +628,7 @@ const FantasyTool = () => {
                     </div>
                     <div className="field-group">
                       <label className="field-label">
-                        espn_s2 cookie {leagues.some((l) => l.platform === "ESPN" && l.leagueId === form.leagueId && l.hasCookies) ? "(leave blank to keep saved)" : "(private leagues only)"}
+                        espn_s2 cookie {leagues.some((l) => l.platform === "ESPN" && l.leagueId === form.leagueId.trim() && l.hasCookies) ? "(leave blank to keep saved)" : "(private leagues only)"}
                       </label>
                       <input
                         className="ios-input-modal"

@@ -6,6 +6,7 @@ const {
   PutCommand,
   DeleteCommand,
   GetCommand,
+  UpdateCommand,
 } = require("@aws-sdk/lib-dynamodb");
 const crypto = require("crypto");
 
@@ -147,6 +148,7 @@ function decryptCookies(ciphertext, iv, tag) {
 }
 
 function maskLeague(item) {
+  // eslint-disable-next-line no-unused-vars
   const { espnCookieCipher, espnCookieIv, espnCookieTag, ...rest } = item;
   return { ...rest, hasCookies: !!espnCookieCipher };
 }
@@ -185,11 +187,28 @@ async function getSleeperPlayerCache() {
     if (!p || !p.team || !p.position) continue;
     if (!["QB", "RB", "WR", "TE", "K", "DEF"].includes(p.position)) continue;
     trimmed[id] = {
-      name:
-        p.full_name || `${p.first_name || ""} ${p.last_name || ""}`.trim(),
+      name: p.full_name || `${p.first_name || ""} ${p.last_name || ""}`.trim(),
       team: p.team,
       pos: p.position,
     };
+  }
+
+  // Best-effort de-dup: if a concurrent request already refreshed the cache
+  // while we were downloading, don't clobber their equally-fresh write —
+  // this doesn't avoid the duplicate ~5MB fetch itself, but it does stop
+  // two concurrent refreshes from fighting over the write.
+  const recheck = await dynamo.send(
+    new GetCommand({
+      TableName: TABLE_NAME,
+      Key: { pk: "CACHE#SLEEPER_PLAYERS", sk: "META" },
+    }),
+  );
+  if (
+    recheck.Item &&
+    Date.now() - new Date(recheck.Item.fetchedAt).getTime() <
+      SLEEPER_PLAYER_CACHE_TTL_MS
+  ) {
+    return recheck.Item.players;
   }
 
   const item = {
@@ -271,6 +290,17 @@ exports.handler = async (event) => {
       };
     }
 
+    await dynamo
+      .send(
+        new UpdateCommand({
+          TableName: USERS_TABLE,
+          Key: { pk: `USER#${userId}` },
+          UpdateExpression: "SET lastUsedFantasy = :now",
+          ExpressionAttributeValues: { ":now": new Date().toISOString() },
+        }),
+      )
+      .catch((err) => console.error("Failed to record fantasy usage:", err));
+
     const USER_PK = `USER#${userId}`;
 
     // -----------------------------------------------------------------
@@ -322,7 +352,10 @@ exports.handler = async (event) => {
           return {
             statusCode: 400,
             headers,
-            body: JSON.stringify({ error: "Could not find that Sleeper league. Double check the League ID." }),
+            body: JSON.stringify({
+              error:
+                "Could not find that Sleeper league. Double check the League ID.",
+            }),
           };
         }
 
@@ -351,8 +384,14 @@ exports.handler = async (event) => {
           sleeperUserId: match.user_id,
           linkedAt: new Date().toISOString(),
         };
-        await dynamo.send(new PutCommand({ TableName: TABLE_NAME, Item: item }));
-        return { statusCode: 200, headers, body: JSON.stringify(maskLeague(item)) };
+        await dynamo.send(
+          new PutCommand({ TableName: TABLE_NAME, Item: item }),
+        );
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify(maskLeague(item)),
+        };
       }
 
       if (platform === "ESPN") {
@@ -413,8 +452,14 @@ exports.handler = async (event) => {
           ...cookieFields,
           linkedAt: new Date().toISOString(),
         };
-        await dynamo.send(new PutCommand({ TableName: TABLE_NAME, Item: item }));
-        return { statusCode: 200, headers, body: JSON.stringify(maskLeague(item)) };
+        await dynamo.send(
+          new PutCommand({ TableName: TABLE_NAME, Item: item }),
+        );
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify(maskLeague(item)),
+        };
       }
 
       return {
@@ -460,28 +505,59 @@ exports.handler = async (event) => {
         };
       }
 
-      const sleeperState = await fetchJson("https://api.sleeper.app/v1/state/nfl");
-      const week = Number(event.queryStringParameters?.week) || sleeperState.week || 1;
+      const sleeperState = await fetchJson(
+        "https://api.sleeper.app/v1/state/nfl",
+      );
+      const week =
+        Number(event.queryStringParameters?.week) || sleeperState.week || 1;
       const season = event.queryStringParameters?.season || sleeperState.season;
-
-      const needsSleeperPlayers = leagues.some((l) => l.platform === "SLEEPER");
-      const sleeperPlayers = needsSleeperPlayers
-        ? await getSleeperPlayerCache()
-        : null;
 
       const rootForByTeam = {};
       const rootAgainstByTeam = {};
       const leagueErrors = [];
       const matchups = [];
 
+      const needsSleeperPlayers = leagues.some((l) => l.platform === "SLEEPER");
+      let sleeperPlayers = null;
+      if (needsSleeperPlayers) {
+        try {
+          sleeperPlayers = await getSleeperPlayerCache();
+        } catch (cacheErr) {
+          // Don't let a cache refresh failure (throttling, transient AWS
+          // error, etc.) take down the whole guide — degrade to unresolved
+          // Sleeper players instead of 500ing every linked league.
+          console.error("Failed to refresh Sleeper player cache:", cacheErr);
+          leagueErrors.push({
+            league: "Sleeper",
+            message:
+              "Couldn't refresh Sleeper player data — try again shortly.",
+          });
+          sleeperPlayers = {};
+        }
+      }
+
+      // Same player rostered across multiple leagues gets merged into one
+      // entry, with its leagues/points kept as parallel arrays, instead of
+      // showing up as a separate row per league.
       const pushEntry = (map, team, entry) => {
         const t = normTeam(team);
         if (!t || t === "FA") return;
         if (!map[t]) map[t] = [];
-        const full = { ...entry, team: t };
-        if (!map[t].some((e) => e.name === full.name && e.league === full.league)) {
-          map[t].push(full);
+        const existing = map[t].find((e) => e.name === entry.name);
+        if (existing) {
+          if (!existing.leagues.includes(entry.league)) {
+            existing.leagues.push(entry.league);
+            existing.points.push(entry.points ?? null);
+          }
+          return;
         }
+        map[t].push({
+          name: entry.name,
+          pos: entry.pos,
+          team: t,
+          leagues: [entry.league],
+          points: [entry.points ?? null],
+        });
       };
 
       const scoreboardUrl = `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?week=${week}&seasontype=2${season ? `&dates=${season}` : ""}`;
@@ -497,25 +573,59 @@ exports.handler = async (event) => {
             try {
               if (league.platform === "SLEEPER") {
                 const [rosters, matchupsData, users] = await Promise.all([
-                  fetchJson(`https://api.sleeper.app/v1/league/${league.leagueId}/rosters`),
-                  fetchJson(`https://api.sleeper.app/v1/league/${league.leagueId}/matchups/${week}`),
-                  fetchJson(`https://api.sleeper.app/v1/league/${league.leagueId}/users`),
+                  fetchJson(
+                    `https://api.sleeper.app/v1/league/${league.leagueId}/rosters`,
+                  ),
+                  fetchJson(
+                    `https://api.sleeper.app/v1/league/${league.leagueId}/matchups/${week}`,
+                  ),
+                  fetchJson(
+                    `https://api.sleeper.app/v1/league/${league.leagueId}/users`,
+                  ),
                 ]);
-                const myRoster = rosters.find((r) => r.owner_id === league.sleeperUserId);
-                if (!myRoster) return;
-                const myMatchup = matchupsData.find((m) => m.roster_id === myRoster.roster_id);
-                if (!myMatchup) return;
+                const teamName = (ownerId) => {
+                  const u = users.find((x) => x.user_id === ownerId);
+                  return (
+                    u?.metadata?.team_name || u?.display_name || "Unknown Team"
+                  );
+                };
+
+                const myRoster = rosters.find(
+                  (r) => r.owner_id === league.sleeperUserId,
+                );
+                if (!myRoster) {
+                  leagueErrors.push({
+                    league: label,
+                    message:
+                      "Couldn't find your roster in this league — the linked Sleeper username may no longer match.",
+                  });
+                  return;
+                }
+                const myMatchup = matchupsData.find(
+                  (m) => m.roster_id === myRoster.roster_id,
+                );
+                if (!myMatchup) {
+                  // Not an error — the league just hasn't generated matchups
+                  // yet (still drafting, preseason, etc). Show a card that
+                  // says so instead of vanishing with no explanation.
+                  matchups.push({
+                    league: label,
+                    platform: "SLEEPER",
+                    leagueId: league.leagueId,
+                    myTeamName: teamName(league.sleeperUserId),
+                    bye: true,
+                    noMatchupYet: true,
+                  });
+                  return;
+                }
                 const oppMatchup = matchupsData.find(
-                  (m) => m.matchup_id === myMatchup.matchup_id && m.roster_id !== myRoster.roster_id,
+                  (m) =>
+                    m.matchup_id === myMatchup.matchup_id &&
+                    m.roster_id !== myRoster.roster_id,
                 );
                 const oppRoster = oppMatchup
                   ? rosters.find((r) => r.roster_id === oppMatchup.roster_id)
                   : null;
-
-                const teamName = (ownerId) => {
-                  const u = users.find((x) => x.user_id === ownerId);
-                  return u?.metadata?.team_name || u?.display_name || "Unknown Team";
-                };
 
                 matchups.push({
                   league: label,
@@ -581,19 +691,29 @@ exports.handler = async (event) => {
                 const url = `https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/${league.season}/segments/0/leagues/${league.leagueId}?view=mTeam&view=mRoster&view=mMatchup&view=mSettings`;
                 const leagueData = await fetchJson(
                   url,
-                  cookieHeader ? { headers: { Cookie: cookieHeader } } : undefined,
+                  cookieHeader
+                    ? { headers: { Cookie: cookieHeader } }
+                    : undefined,
                 );
 
-                const espnWeek = week || leagueData.status?.currentMatchupPeriod || 1;
+                const espnWeek = week;
                 const myTeam = (leagueData.teams || []).find(
                   (t) => String(t.id) === String(league.espnTeamId),
                 );
-                if (!myTeam) return;
+                if (!myTeam) {
+                  leagueErrors.push({
+                    league: label,
+                    message:
+                      "Couldn't find your team in this league — double check the linked ESPN team ID.",
+                  });
+                  return;
+                }
 
                 const matchup = (leagueData.schedule || []).find(
                   (m) =>
                     m.matchupPeriodId === espnWeek &&
-                    (m.home?.teamId === myTeam.id || m.away?.teamId === myTeam.id),
+                    (m.home?.teamId === myTeam.id ||
+                      m.away?.teamId === myTeam.id),
                 );
                 const oppTeamId = matchup
                   ? matchup.home?.teamId === myTeam.id
@@ -688,7 +808,9 @@ exports.handler = async (event) => {
             normTeam(c.team.abbreviation),
           );
           const rootFor = teamAbbrevs.flatMap((t) => rootForByTeam[t] || []);
-          const rootAgainst = teamAbbrevs.flatMap((t) => rootAgainstByTeam[t] || []);
+          const rootAgainst = teamAbbrevs.flatMap(
+            (t) => rootAgainstByTeam[t] || [],
+          );
           const completed = !!comp?.status?.type?.completed;
 
           let winningTeam = null;
@@ -698,7 +820,9 @@ exports.handler = async (event) => {
               score: Number(c.score) || 0,
             }));
             if (scored.length === 2 && scored[0].score !== scored[1].score) {
-              winningTeam = scored.reduce((a, b) => (a.score > b.score ? a : b)).team;
+              winningTeam = scored.reduce((a, b) =>
+                a.score > b.score ? a : b,
+              ).team;
             }
           }
 
@@ -708,6 +832,7 @@ exports.handler = async (event) => {
             shortName: ev.shortName,
             date: ev.date,
             status: comp?.status?.type?.description || "Scheduled",
+            state: comp?.status?.type?.state || "pre",
             liveDetail: comp?.status?.type?.shortDetail || null,
             completed,
             winningTeam,
@@ -734,13 +859,19 @@ exports.handler = async (event) => {
         .filter((g) => g.completed && g.winningTeam)
         .forEach((g) => {
           g.rootFor.forEach((p) => {
-            (p.team === g.winningTeam ? recap.rootForWins : recap.rootForLosses).push({
+            (p.team === g.winningTeam
+              ? recap.rootForWins
+              : recap.rootForLosses
+            ).push({
               ...p,
               game: g.shortName,
             });
           });
           g.rootAgainst.forEach((p) => {
-            (p.team === g.winningTeam ? recap.rootAgainstWins : recap.rootAgainstLosses).push({
+            (p.team === g.winningTeam
+              ? recap.rootAgainstWins
+              : recap.rootAgainstLosses
+            ).push({
               ...p,
               game: g.shortName,
             });

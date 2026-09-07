@@ -60,6 +60,7 @@ export class BackendStack extends cdk.Stack {
       handler: "index.handler",
       environment: {
         TABLE_NAME: billsTable.tableName,
+        USERS_TABLE: usersTable.tableName,
       },
     });
 
@@ -69,6 +70,7 @@ export class BackendStack extends cdk.Stack {
       handler: "kitchen.handler",
       environment: {
         TABLE_NAME: kitchenTable.tableName,
+        USERS_TABLE: usersTable.tableName,
         GEMINI_API_KEY: process.env.GEMINI_API_KEY || "",
         WALMART_PUBLISHER_ID: process.env.WALMART_PUBLISHER_ID || "",
       },
@@ -102,9 +104,13 @@ export class BackendStack extends cdk.Stack {
     billsTable.grantReadWriteData(billsLambda);
     kitchenTable.grantReadWriteData(kitchenLambda);
     pokerTable.grantReadWriteData(pokerLambda);
-    usersTable.grantReadData(pokerLambda);
     fantasyTable.grantReadWriteData(fantasyLambda);
-    usersTable.grantReadData(fantasyLambda);
+    // Read for permission checks; write so each tool can record a
+    // lastUsed<Tool> timestamp on the caller's profile for admin visibility.
+    usersTable.grantReadWriteData(pokerLambda);
+    usersTable.grantReadWriteData(fantasyLambda);
+    usersTable.grantWriteData(billsLambda);
+    usersTable.grantWriteData(kitchenLambda);
 
     const userPool = new cognito.UserPool(this, "LifeHubUserPool", {
       userPoolName: "LifeHubUsers",
@@ -344,12 +350,47 @@ export class BackendStack extends cdk.Stack {
       },
     );
 
-    new s3deploy.BucketDeployment(this, "DeployLifeHubWebsite", {
-      sources: [s3deploy.Source.asset(path.join(__dirname, "../../dist"))],
-      destinationBucket: websiteBucket,
-      distribution: distribution,
-      distributionPaths: ["/*"],
-    });
+    const distDir = path.join(__dirname, "../../dist");
+
+    // Hashed build assets (filename changes whenever content does) — safe
+    // to cache "forever". Deployed first, without pruning, so the second
+    // deployment's prune pass doesn't race it.
+    const assetsDeployment = new s3deploy.BucketDeployment(
+      this,
+      "DeployLifeHubAssets",
+      {
+        sources: [s3deploy.Source.asset(distDir, { exclude: ["index.html"] })],
+        destinationBucket: websiteBucket,
+        cacheControl: [
+          s3deploy.CacheControl.setPublic(),
+          s3deploy.CacheControl.maxAge(cdk.Duration.days(365)),
+          s3deploy.CacheControl.immutable(),
+        ],
+        prune: false,
+      },
+    );
+
+    // index.html must always be revalidated — it's the only thing that
+    // references the current hashed asset filenames. Without this, a
+    // browser (iOS home-screen web apps especially) can keep serving a
+    // stale index.html that points at asset files a later deploy has
+    // since deleted, leaving the page blank with no visible error.
+    const indexDeployment = new s3deploy.BucketDeployment(
+      this,
+      "DeployLifeHubIndex",
+      {
+        sources: [s3deploy.Source.asset(distDir, { exclude: ["assets/**"] })],
+        destinationBucket: websiteBucket,
+        cacheControl: [s3deploy.CacheControl.noCache()],
+        distribution,
+        distributionPaths: ["/*"],
+        prune: false,
+      },
+    );
+    // Make sure the new hashed assets are actually in the bucket (and the
+    // invalidation covers them) before the new index.html that points at
+    // them goes live.
+    indexDeployment.node.addDependency(assetsDeployment);
 
     new cdk.CfnOutput(this, "ApiEndpointUrl", {
       value: httpApi.url!,
