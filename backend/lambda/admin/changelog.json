@@ -1,0 +1,22 @@
+[
+  {
+    "id": "2026-09-08-poker-stats-charts",
+    "date": "2026-09-08",
+    "tools": ["pokerStats"],
+    "bullets": [
+      "Added graphs to your personal Poker stats: a bankroll-over-time chart, a win/loss chart per game, and a head-to-head breakdown of who you've won the most from (and lost the most to).",
+      "The group Hall of Fame now has a full sortable leaderboard table, a ranked net-winnings chart, and a games-per-month activity chart."
+    ]
+  },
+  {
+    "id": "2026-09-08-kitchen-merge-and-motion",
+    "date": "2026-09-08",
+    "tools": ["kitchen"],
+    "bullets": [
+      "Adding a grocery or pantry item you already have now tops up the existing item instead of creating a duplicate row — even when the unit doesn't match exactly (e.g. \"cups\" vs \"bag\" now shows as a combined quantity you can edit).",
+      "Marking a grocery item as bought now moves it to your pantry with a quick animation instead of freezing the screen while it saves.",
+      "The edit screen for a grocery/pantry item now lets you edit every quantity on it, not just the first one.",
+      "Added a \"Quick Meal\" feature that is more flexible than the recipe option, allowing users to adjust what quantity of ingredients they are using each time they make it."
+    ]
+  }
+]

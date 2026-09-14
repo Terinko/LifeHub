@@ -17,24 +17,49 @@ const {
 const ddbClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(ddbClient);
 const cognitoClient = new CognitoIdentityProviderClient({});
+const CHANGELOG = require("./changelog.json");
 
 const TABLE_NAME = process.env.TABLE_NAME;
 const USER_POOL_ID = process.env.USER_POOL_ID;
+
+// Anyone with an account before "What's New" shipped gets backfilled to
+// this fixed point (the day before it went out) instead of "now", so the
+// entries dated on/after launch still surface once, but nothing older
+// floods in as a giant backlog. New users created afterward start caught
+// up (see the POST handler below), since there's nothing for them to miss.
+const CHANGELOG_EPOCH = "2026-09-07T00:00:00.000Z";
 
 const headers = {
   "Content-Type": "application/json",
   "Access-Control-Allow-Origin": "*",
 };
 
+function getUnseenChangelog(userProfile) {
+  const lastSeen = userProfile.lastSeenChangelogAt || CHANGELOG_EPOCH;
+  const isAdminRole = userProfile.role === "ADMIN";
+  return CHANGELOG.filter((entry) => new Date(entry.date) > new Date(lastSeen))
+    .filter(
+      (entry) =>
+        isAdminRole ||
+        !entry.tools ||
+        entry.tools.length === 0 ||
+        entry.tools.some((t) => userProfile.permissions?.[t]),
+    )
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+}
+
 exports.handler = async (event) => {
   const method = event.requestContext.http.method;
+  const path = event.requestContext.http.path;
   const callerSub = event.requestContext.authorizer?.jwt?.claims?.sub;
   const isSelfLookup =
     method === "GET" && event.queryStringParameters?.me === "true";
+  const isMarkChangelogSeen =
+    method === "POST" && path === "/admin/changelog-seen";
 
   try {
     // 1. INLINE AUTHORIZATION CHECK
-    if (!isSelfLookup) {
+    if (!isSelfLookup && !isMarkChangelogSeen) {
       const callerRes = await docClient.send(
         new GetCommand({
           TableName: TABLE_NAME,
@@ -79,6 +104,7 @@ exports.handler = async (event) => {
             },
             createdAt: now,
             lastActiveAt: now,
+            lastSeenChangelogAt: now,
           };
           await docClient.send(
             new PutCommand({ TableName: TABLE_NAME, Item: newRootAdmin }),
@@ -86,16 +112,20 @@ exports.handler = async (event) => {
           return {
             statusCode: 200,
             headers,
-            body: JSON.stringify(newRootAdmin),
+            body: JSON.stringify({ ...newRootAdmin, unseenChangelog: [] }),
           };
         }
 
+        // Backfill lastSeenChangelogAt for pre-existing accounts (only if
+        // missing) so the "What's New" popup has a real baseline instead of
+        // defaulting to the epoch on every single request.
         await docClient
           .send(
             new UpdateCommand({
               TableName: TABLE_NAME,
               Key: { pk: callerPk },
-              UpdateExpression: "SET lastActiveAt = :now",
+              UpdateExpression:
+                "SET lastActiveAt = :now, lastSeenChangelogAt = if_not_exists(lastSeenChangelogAt, :now)",
               ExpressionAttributeValues: { ":now": now },
             }),
           )
@@ -104,7 +134,11 @@ exports.handler = async (event) => {
         return {
           statusCode: 200,
           headers,
-          body: JSON.stringify({ ...profile.Item, lastActiveAt: now }),
+          body: JSON.stringify({
+            ...profile.Item,
+            lastActiveAt: now,
+            unseenChangelog: getUnseenChangelog(profile.Item),
+          }),
         };
       }
 
@@ -116,6 +150,21 @@ exports.handler = async (event) => {
         headers,
         body: JSON.stringify(allUsers.Items || []),
       };
+    }
+
+    // ==========================================
+    // POST /admin/changelog-seen: dismiss the "What's New" popup
+    // ==========================================
+    if (isMarkChangelogSeen) {
+      await docClient.send(
+        new UpdateCommand({
+          TableName: TABLE_NAME,
+          Key: { pk: `USER#${callerSub}` },
+          UpdateExpression: "SET lastSeenChangelogAt = :now",
+          ExpressionAttributeValues: { ":now": new Date().toISOString() },
+        }),
+      );
+      return { statusCode: 200, headers, body: JSON.stringify({ success: true }) };
     }
 
     // ==========================================
@@ -160,6 +209,9 @@ exports.handler = async (event) => {
           fantasy: false,
         },
         createdAt: new Date().toISOString(),
+        // New invitees start caught up on "What's New" — there's nothing
+        // for them to have missed, so don't dump the backlog on them.
+        lastSeenChangelogAt: new Date().toISOString(),
       };
 
       await docClient.send(

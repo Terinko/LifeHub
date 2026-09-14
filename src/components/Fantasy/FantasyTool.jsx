@@ -28,7 +28,11 @@ const FantasyTool = () => {
   const [guide, setGuide] = useState(null);
   const [loadingGuide, setLoadingGuide] = useState(true);
   const [showAllGames, setShowAllGames] = useState(false);
+  const [showCompletedGames, setShowCompletedGames] = useState(false);
   const [expandedGameId, setExpandedGameId] = useState(null);
+  // Per-game box score, fetched only when that game is expanded. Keyed by
+  // game id: { loading, teams }.
+  const [boxScores, setBoxScores] = useState({});
 
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
@@ -57,24 +61,52 @@ const FantasyTool = () => {
     setLoadingLeagues(false);
   };
 
-  const loadGuide = async () => {
-    setLoadingGuide(true);
+  // `background` skips the loading-state flash — used by the auto-refresh
+  // poll below so live scores update in place instead of the whole guide
+  // blanking out to "Loading..." every 30s.
+  const loadGuide = async (background = false) => {
+    if (!background) setLoadingGuide(true);
     try {
-      const res = await fetch(`${API_BASE}/fantasy/guide`, {
-        headers: await getAuthHeaders(),
-      });
+      // Belt-and-suspenders against any client/network-level caching (seen
+      // on iOS Safari PWAs especially) silently serving a stale response
+      // instead of the live score — force a real network hit every time.
+      const res = await fetch(
+        `${API_BASE}/fantasy/guide?_=${Date.now()}`,
+        {
+          headers: await getAuthHeaders(),
+          cache: "no-store",
+        },
+      );
       const json = await res.json();
       setGuide(json);
     } catch (e) {
       console.error(e);
     }
-    setLoadingGuide(false);
+    if (!background) setLoadingGuide(false);
   };
 
   useEffect(() => {
     loadLeagues();
     loadGuide();
   }, []);
+
+  // Live scores don't push — nothing was ever re-fetching after the initial
+  // load, so the scoreboard just sat frozen at whatever it showed on page
+  // load. Poll while the guide tab is actually being looked at, and refresh
+  // immediately when the tab regains focus (e.g. switching back from
+  // another app mid-game).
+  useEffect(() => {
+    if (activeTab !== "guide") return undefined;
+    const refreshIfVisible = () => {
+      if (document.visibilityState === "visible") loadGuide(true);
+    };
+    const interval = setInterval(refreshIfVisible, 30000);
+    document.addEventListener("visibilitychange", refreshIfVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", refreshIfVisible);
+    };
+  }, [activeTab]);
 
   const handleAddLeague = async (e) => {
     e.preventDefault();
@@ -172,11 +204,74 @@ const FantasyTool = () => {
 
   const openInNewTab = (url) => window.open(url, "_blank", "noopener,noreferrer");
 
-  const sumPoints = (players) =>
-    players.reduce(
-      (sum, p) => sum + (p.points || []).reduce((a, b) => a + (b || 0), 0),
-      0,
-    );
+  // Which columns from ESPN's public box score are actually worth showing
+  // per stat group — the raw counting stats, not derived ones like AVG/QBR.
+  const BOX_SCORE_GROUPS = {
+    passing: ["C/ATT", "YDS", "TD", "INT"],
+    rushing: ["CAR", "YDS", "TD"],
+    receiving: ["REC", "YDS", "TD"],
+    kicking: ["FG", "XP"],
+  };
+
+  const normalizePlayerName = (name) =>
+    (name || "").toLowerCase().replace(/[.'-]/g, "").trim();
+
+  // ESPN's public (no-auth) box score summary — a different, CORS-open
+  // endpoint from the fantasy APIs, so this works the same whether the
+  // league is Sleeper or ESPN. Fetched directly from the browser since it's
+  // fully public data.
+  const loadBoxScore = async (gameId) => {
+    setBoxScores((prev) => ({
+      ...prev,
+      [gameId]: { ...prev[gameId], loading: true },
+    }));
+    try {
+      const res = await fetch(
+        `https://site.api.espn.com/apis/site/v2/sports/football/nfl/summary?event=${gameId}`,
+      );
+      const json = await res.json();
+      setBoxScores((prev) => ({
+        ...prev,
+        [gameId]: { loading: false, teams: json.boxscore?.players || [] },
+      }));
+    } catch (e) {
+      console.error(e);
+      setBoxScores((prev) => ({
+        ...prev,
+        [gameId]: { loading: false, teams: null },
+      }));
+    }
+  };
+
+  // Finds a player across both teams' box score stat groups and builds a
+  // compact line like "6 REC, 49 YDS, 1 TD" — joining multiple groups
+  // (e.g. a dual-threat back) with " · ". Returns null if there's no match
+  // (name mismatch, defense/special teams, etc.) so the row is just omitted.
+  const findPlayerStatLine = (teams, playerName) => {
+    if (!teams) return null;
+    const target = normalizePlayerName(playerName);
+    const segments = [];
+    teams.forEach((teamBlock) => {
+      (teamBlock.statistics || []).forEach((group) => {
+        const wantedLabels = BOX_SCORE_GROUPS[group.name];
+        if (!wantedLabels) return;
+        const athleteRow = (group.athletes || []).find(
+          (a) => normalizePlayerName(a.athlete?.displayName) === target,
+        );
+        if (!athleteRow) return;
+        const parts = wantedLabels
+          .map((label) => {
+            const idx = group.labels.indexOf(label);
+            if (idx === -1) return null;
+            const val = athleteRow.stats[idx];
+            return val && val !== "0" ? `${val} ${label}` : null;
+          })
+          .filter(Boolean);
+        if (parts.length) segments.push(parts.join(", "));
+      });
+    });
+    return segments.length ? segments.join(" · ") : null;
+  };
 
   const formatPoints = (points) =>
     points.map((pt) => (pt != null ? pt.toFixed(1) : "–")).join(" / ");
@@ -192,15 +287,6 @@ const FantasyTool = () => {
       <div className="stake-points">{formatPoints(p.points)} pts</div>
     </div>
   );
-
-  const matchupMarginText = (m) => {
-    const my = Number(m.myScore) || 0;
-    const opp = Number(m.oppScore) || 0;
-    if (my === 0 && opp === 0) return null; // nothing on the board yet
-    const diff = Math.abs(my - opp).toFixed(1);
-    if (my === opp) return "Tied up right now.";
-    return my > opp ? `Leading by ${diff} pts.` : `Need ${diff}+ more pts to take the lead.`;
-  };
 
   return (
     <div className="view tool-view">
@@ -272,46 +358,59 @@ const FantasyTool = () => {
                 {guide.matchups?.length > 0 && (
                   <>
                     <div className="section-heading">Your Matchups</div>
-                    {guide.matchups.map((m, i) => (
-                      <div
-                        key={i}
-                        className="matchup-card clickable-card"
-                        onClick={() => openInNewTab(matchupUrl(m))}
-                      >
-                        <div className="matchup-league-label">
-                          {m.league} <span className="external-hint">↗</span>
+                    {guide.matchups.map((m, i) => {
+                      const status = m.bye ? null : m.projection;
+                      return (
+                        <div
+                          key={i}
+                          className="matchup-card clickable-card"
+                          onClick={() => openInNewTab(matchupUrl(m))}
+                        >
+                          <div className="matchup-league-label">
+                            {m.league} <span className="external-hint">↗</span>
+                          </div>
+                          {m.bye ? (
+                            <div style={{ fontSize: "14px", color: "#8c9288" }}>
+                              {m.myTeamName}
+                              {m.noMatchupYet
+                                ? " — no matchup data yet (still drafting or preseason)"
+                                : " — bye week, no matchup"}
+                            </div>
+                          ) : (
+                            <div className="matchup-row">
+                              <div className="matchup-team">
+                                <div className="matchup-team-name">
+                                  {m.myTeamName}
+                                </div>
+                                <div className="matchup-team-record">
+                                  {m.myRecord}
+                                </div>
+                                <div className="matchup-score">
+                                  {Number(m.myScore).toFixed(1)}
+                                </div>
+                              </div>
+                              <div className="matchup-vs">VS</div>
+                              <div className="matchup-team opp">
+                                <div className="matchup-team-name">
+                                  {m.oppTeamName}
+                                </div>
+                                <div className="matchup-team-record">
+                                  {m.oppRecord}
+                                </div>
+                                <div className="matchup-score">
+                                  {Number(m.oppScore).toFixed(1)}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          {status && (
+                            <div className={`matchup-margin ${status.cls}`}>
+                              {status.text}
+                            </div>
+                          )}
                         </div>
-                        {m.bye ? (
-                          <div style={{ fontSize: "14px", color: "#8c9288" }}>
-                            {m.myTeamName}
-                            {m.noMatchupYet
-                              ? " — no matchup data yet (still drafting or preseason)"
-                              : " — bye week, no matchup"}
-                          </div>
-                        ) : (
-                          <div className="matchup-row">
-                            <div className="matchup-team">
-                              <div className="matchup-team-name">{m.myTeamName}</div>
-                              <div className="matchup-team-record">{m.myRecord}</div>
-                              <div className="matchup-score">
-                                {Number(m.myScore).toFixed(1)}
-                              </div>
-                            </div>
-                            <div className="matchup-vs">VS</div>
-                            <div className="matchup-team opp">
-                              <div className="matchup-team-name">{m.oppTeamName}</div>
-                              <div className="matchup-team-record">{m.oppRecord}</div>
-                              <div className="matchup-score">
-                                {Number(m.oppScore).toFixed(1)}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                        {!m.bye && matchupMarginText(m) && (
-                          <div className="matchup-margin">{matchupMarginText(m)}</div>
-                        )}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </>
                 )}
 
@@ -324,51 +423,6 @@ const FantasyTool = () => {
                   </div>
                 )}
 
-                {guide.recap && (
-                  <div className="recap-card">
-                    <h4>📋 How It Went</h4>
-                    {guide.recap.rootForWins.map((p, i) => (
-                      <div key={`ffw-${i}`} className="recap-row">
-                        <span>
-                          <span className="recap-icon">✅</span>
-                          <span className="stake-player">{p.name}</span>'s team won
-                          ({p.game})
-                        </span>
-                        <span className="stake-league">{p.leagues.join(", ")}</span>
-                      </div>
-                    ))}
-                    {guide.recap.rootAgainstLosses.map((p, i) => (
-                      <div key={`fal-${i}`} className="recap-row">
-                        <span>
-                          <span className="recap-icon">😈</span>
-                          <span className="stake-player">{p.name}</span>'s team lost
-                          ({p.game})
-                        </span>
-                        <span className="stake-league">{p.leagues.join(", ")}</span>
-                      </div>
-                    ))}
-                    {guide.recap.rootForLosses.map((p, i) => (
-                      <div key={`ffl-${i}`} className="recap-row">
-                        <span>
-                          <span className="recap-icon">❌</span>
-                          <span className="stake-player">{p.name}</span>'s team lost
-                          ({p.game})
-                        </span>
-                        <span className="stake-league">{p.leagues.join(", ")}</span>
-                      </div>
-                    ))}
-                    {guide.recap.rootAgainstWins.map((p, i) => (
-                      <div key={`faw-${i}`} className="recap-row">
-                        <span>
-                          <span className="recap-icon">😬</span>
-                          <span className="stake-player">{p.name}</span>'s team won
-                          ({p.game})
-                        </span>
-                        <span className="stake-league">{p.leagues.join(", ")}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
 
                 {guide.games.length === 0 && (
                   <p style={{ textAlign: "center", color: "#8c9288" }}>
@@ -380,93 +434,154 @@ const FantasyTool = () => {
                   const stakesGames = guide.games.filter(
                     (g) => g.rootFor.length > 0 || g.rootAgainst.length > 0,
                   );
+                  const liveStakesGames = stakesGames.filter((g) => !g.completed);
+                  const completedStakesGames = stakesGames.filter(
+                    (g) => g.completed,
+                  );
                   const otherGames = guide.games.filter(
                     (g) => g.rootFor.length === 0 && g.rootAgainst.length === 0,
                   );
 
-                  return (
-                    <>
-                      {stakesGames.length > 0 && (
-                        <div className="section-heading">Games With Stakes</div>
-                      )}
-                      {stakesGames.map((game) => {
-                        const isExpanded = expandedGameId === game.id;
-                        const forPts = sumPoints(game.rootFor);
-                        const againstPts = sumPoints(game.rootAgainst);
-                        return (
-                          <div
-                            key={game.id}
-                            className="game-card clickable-card"
-                            onClick={() =>
-                              setExpandedGameId(isExpanded ? null : game.id)
-                            }
-                          >
-                            <div className="game-card-header">
-                              <div>
-                                <div className="game-matchup">
-                                  {game.shortName}{" "}
-                                  <span className="external-hint">
-                                    {isExpanded ? "▾" : "▸"}
-                                  </span>
-                                </div>
-                                <div className="game-meta">
-                                  {game.completed
-                                    ? `Final ${game.teams
-                                        .map((t) => `${t.abbreviation} ${t.score}`)
-                                        .join(" - ")}`
-                                    : game.liveDetail || formatKickoff(game.date)}
-                                  {game.broadcast ? ` • ${game.broadcast}` : ""}
-                                </div>
-                              </div>
-                              <span className={`status-badge ${statusClass(game)}`}>
-                                {game.completed ? "Final" : game.status}
+                  const renderStakesGameCard = (game) => {
+                    const isExpanded = expandedGameId === game.id;
+                    return (
+                      <div
+                        key={game.id}
+                        className="game-card clickable-card"
+                        onClick={() => {
+                          const next = isExpanded ? null : game.id;
+                          setExpandedGameId(next);
+                          if (next) loadBoxScore(next);
+                        }}
+                      >
+                        <div className="game-card-header">
+                          <div>
+                            <div className="game-matchup">
+                              {game.shortName}{" "}
+                              <span className="external-hint">
+                                {isExpanded ? "▾" : "▸"}
                               </span>
                             </div>
+                            <div className="game-meta">
+                              {game.completed
+                                ? `Final ${game.teams
+                                    .map((t) => `${t.abbreviation} ${t.score}`)
+                                    .join(" - ")}`
+                                : game.liveDetail || formatKickoff(game.date)}
+                              {game.broadcast ? ` • ${game.broadcast}` : ""}
+                            </div>
+                          </div>
+                          <span className={`status-badge ${statusClass(game)}`}>
+                            {game.completed ? "Final" : game.status}
+                          </span>
+                        </div>
 
-                            {game.rootFor.length > 0 && (
-                              <div className="stake-section">
-                                <div className="stake-label root-for">
-                                  🟢 Rooting For
-                                </div>
-                                {game.rootFor.map((p) => renderStakeRow(p))}
+                        {game.rootFor.length > 0 && (
+                          <div className="stake-section">
+                            <div className="stake-label root-for">
+                              🟢 Rooting For
+                            </div>
+                            {game.rootFor.map((p) => renderStakeRow(p))}
+                          </div>
+                        )}
+
+                        {game.rootAgainst.length > 0 && (
+                          <div className="stake-section">
+                            <div className="stake-label root-against">
+                              🔴 Rooting Against
+                            </div>
+                            {game.rootAgainst.map((p) => renderStakeRow(p))}
+                          </div>
+                        )}
+
+                        {isExpanded && (
+                          <div className="box-score-panel">
+                            <div className="box-score-heading">
+                              📊 Player Stats
+                            </div>
+                            {boxScores[game.id]?.loading && (
+                              <div className="box-score-loading">
+                                Loading stats...
                               </div>
                             )}
-
-                            {game.rootAgainst.length > 0 && (
-                              <div className="stake-section">
-                                <div className="stake-label root-against">
-                                  🔴 Rooting Against
-                                </div>
-                                {game.rootAgainst.map((p) => renderStakeRow(p))}
-                              </div>
-                            )}
-
-                            {isExpanded &&
-                              game.rootFor.length > 0 &&
-                              game.rootAgainst.length > 0 && (
-                                <div className="stakes-tally">
-                                  {forPts === againstPts
-                                    ? "Your players are dead even right now."
-                                    : forPts > againstPts
-                                      ? `Your side is ahead, ${forPts.toFixed(1)} to ${againstPts.toFixed(1)} fantasy pts.`
-                                      : `You're getting outscored, ${againstPts.toFixed(1)} to ${forPts.toFixed(1)} fantasy pts.`}
+                            {!boxScores[game.id]?.loading &&
+                              boxScores[game.id]?.teams &&
+                              (() => {
+                                const rows = [
+                                  ...game.rootFor,
+                                  ...game.rootAgainst,
+                                ]
+                                  .map((p) => ({
+                                    name: p.name,
+                                    line: findPlayerStatLine(
+                                      boxScores[game.id].teams,
+                                      p.name,
+                                    ),
+                                  }))
+                                  .filter((r) => r.line);
+                                return rows.length > 0 ? (
+                                  rows.map((r) => (
+                                    <div
+                                      key={r.name}
+                                      className="box-score-row"
+                                    >
+                                      <span className="box-score-player">
+                                        {r.name}
+                                      </span>
+                                      <span className="box-score-line">
+                                        {r.line}
+                                      </span>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <div className="box-score-loading">
+                                    No stat lines yet.
+                                  </div>
+                                );
+                              })()}
+                            {!boxScores[game.id]?.loading &&
+                              boxScores[game.id]?.teams === null && (
+                                <div className="box-score-loading">
+                                  Couldn't load stats for this game.
                                 </div>
                               )}
-
-                            {isExpanded && (
-                              <button
-                                className="toggle-games-btn"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openInNewTab(gameUrl(game));
-                                }}
-                              >
-                                Open live Gamecast on ESPN ↗
-                              </button>
-                            )}
                           </div>
-                        );
-                      })}
+                        )}
+
+                        {isExpanded && (
+                          <button
+                            className="toggle-games-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openInNewTab(gameUrl(game));
+                            }}
+                          >
+                            Open live Gamecast on ESPN ↗
+                          </button>
+                        )}
+                      </div>
+                    );
+                  };
+
+                  return (
+                    <>
+                      {(liveStakesGames.length > 0 ||
+                        completedStakesGames.length > 0) && (
+                        <div className="section-heading">Games With Stakes</div>
+                      )}
+                      {liveStakesGames.map(renderStakesGameCard)}
+
+                      {completedStakesGames.length > 0 && (
+                        <button
+                          className="toggle-games-btn"
+                          onClick={() => setShowCompletedGames(!showCompletedGames)}
+                        >
+                          {showCompletedGames ? "▾ Hide" : "▸ Show"}{" "}
+                          {completedStakesGames.length} completed game
+                          {completedStakesGames.length === 1 ? "" : "s"}
+                        </button>
+                      )}
+                      {showCompletedGames && completedStakesGames.map(renderStakesGameCard)}
 
                       {otherGames.length > 0 && (
                         <button

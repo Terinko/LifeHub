@@ -19,6 +19,9 @@ const ENC_KEY = process.env.FANTASY_ENC_KEY;
 const headers = {
   "Access-Control-Allow-Origin": "*",
   "Content-Type": "application/json",
+  // Live scores must never be served from a cache — belt-and-suspenders
+  // alongside the frontend's own cache: "no-store" fetch.
+  "Cache-Control": "no-store",
 };
 
 // Player cache is refreshed at most once every 20h (the full Sleeper player
@@ -241,6 +244,115 @@ function recordStr(wins, losses, ties) {
   const l = losses || 0;
   const t = ties || 0;
   return t > 0 ? `${w}-${l}-${t}` : `${w}-${l}`;
+}
+
+const round1 = (n) => Math.round(n * 10) / 10;
+
+// Builds the "what do I actually need to win this matchup" projection —
+// which of each side's starters still have a game left to change their
+// score, and what the current lead/deficit against them works out to.
+// A player counts as "remaining" if their NFL team is playing this week and
+// that game isn't final yet (in-progress counts the same as not-yet-started,
+// same convention the big fantasy platforms use for these "magic number"
+// widgets).
+function buildProjection(
+  myScore,
+  oppScore,
+  myStarters,
+  oppStarters,
+  teamsPlayingThisWeek,
+  gameStateByTeam,
+) {
+  const isRemaining = (p) =>
+    teamsPlayingThisWeek.has(p.team) && !gameStateByTeam[p.team]?.completed;
+
+  const myRemaining = myStarters.filter(isRemaining);
+  const oppRemaining = oppStarters.filter(isRemaining);
+  const my = Number(myScore) || 0;
+  const opp = Number(oppScore) || 0;
+  // More than 3 names gets unwieldy on a small card — name them individually
+  // only when there's a short, glanceable list; otherwise just say whose
+  // players they are.
+  const describePlayers = (list, whoseLabel) =>
+    list.length <= 3 ? list.map((p) => p.name).join(", ") : whoseLabel;
+
+  const nobodyStarted =
+    my === 0 &&
+    opp === 0 &&
+    myRemaining.length === myStarters.length &&
+    oppRemaining.length === oppStarters.length;
+
+  if (myStarters.length + oppStarters.length > 0 && nobodyStarted) {
+    return { cls: "", text: "The games haven't started yet." };
+  }
+
+  const myDone = myRemaining.length === 0;
+  const oppDone = oppRemaining.length === 0;
+
+  // Both sides locked in — the matchup is decided.
+  if (myDone && oppDone) {
+    if (my === opp)
+      return { cls: "tied", text: `Tied, ${my.toFixed(1)}–${opp.toFixed(1)}.` };
+    return my > opp
+      ? { cls: "won", text: `✅ You won, ${my.toFixed(1)}–${opp.toFixed(1)}.` }
+      : { cls: "lost", text: `❌ You lost, ${opp.toFixed(1)}–${my.toFixed(1)}.` };
+  }
+
+  // Opponent's locked in but you still have players — an exact target.
+  if (oppDone) {
+    if (my > opp)
+      return {
+        cls: "won",
+        text: "✅ You've already won — your opponent has nobody left to play.",
+      };
+    if (my < opp)
+      return {
+        cls: "lost",
+        text: `You need ${describePlayers(myRemaining, "the rest of your players")} to combine for ${round1(opp - my)}+ points to win.`,
+      };
+    return {
+      cls: "tied",
+      text: `Tied — any points from ${describePlayers(myRemaining, "the rest of your players")} win it for you.`,
+    };
+  }
+
+  // You're locked in but your opponent still has players — an exact target.
+  if (myDone) {
+    if (my > opp)
+      return {
+        cls: "won",
+        text: `You need ${describePlayers(oppRemaining, "the rest of your opponent's players")} to score ${round1(my - opp)} or fewer combined points for you to hold the win.`,
+      };
+    if (my < opp)
+      return {
+        cls: "lost",
+        text: "❌ You've locked in a loss — your players are done and you're behind.",
+      };
+    return {
+      cls: "tied",
+      text: `Tied — you'll lose if ${describePlayers(oppRemaining, "the rest of your opponent's players")} score anything more.`,
+    };
+  }
+
+  // Both sides still have players in play — the standard "magic number"
+  // framing, measured against the current (not final) opposing score.
+  if (my > opp)
+    return {
+      cls: "won",
+      text: `You're up by ${round1(my - opp)}. You need ${describePlayers(oppRemaining, "the rest of your opponent's players")} to combine for ${round1(my - opp)} or fewer points to hold the win.`,
+    };
+  if (my < opp)
+    return {
+      cls: "lost",
+      text: `You need ${describePlayers(myRemaining, "the rest of your players")} to combine for ${round1(opp - my)}+ points to take the lead.`,
+    };
+  return {
+    cls: "tied",
+    text:
+      myRemaining.length + oppRemaining.length <= 3
+        ? `Tied at ${my.toFixed(1)}. ${describePlayers([...myRemaining, ...oppRemaining], "several players")} still to play.`
+        : `Tied at ${my.toFixed(1)}, with players still to play on both sides.`,
+  };
 }
 
 function resolveEspnPlayer(entry, week) {
@@ -627,6 +739,34 @@ exports.handler = async (event) => {
                   ? rosters.find((r) => r.roster_id === oppMatchup.roster_id)
                   : null;
 
+                const myStartersResolved = (myMatchup.starters || [])
+                  .filter((id) => id && id !== "0")
+                  .map((pid) => {
+                    const p = resolveSleeperPlayer(pid, sleeperPlayers);
+                    if (!p) return null;
+                    return {
+                      name: p.name,
+                      pos: p.pos,
+                      team: normTeam(p.team),
+                      points: myMatchup.players_points?.[pid] ?? 0,
+                    };
+                  })
+                  .filter(Boolean);
+
+                const oppStartersResolved = (oppMatchup?.starters || [])
+                  .filter((id) => id && id !== "0")
+                  .map((pid) => {
+                    const p = resolveSleeperPlayer(pid, sleeperPlayers);
+                    if (!p) return null;
+                    return {
+                      name: p.name,
+                      pos: p.pos,
+                      team: normTeam(p.team),
+                      points: oppMatchup.players_points?.[pid] ?? 0,
+                    };
+                  })
+                  .filter(Boolean);
+
                 matchups.push({
                   league: label,
                   platform: "SLEEPER",
@@ -648,33 +788,28 @@ exports.handler = async (event) => {
                       )
                     : null,
                   bye: !oppMatchup,
+                  // Used to build the "who's left to play" projection once
+                  // the scoreboard is in — stripped before the response goes out.
+                  myStarters: myStartersResolved,
+                  oppStarters: oppStartersResolved,
                 });
 
-                (myMatchup.starters || [])
-                  .filter((id) => id && id !== "0")
-                  .forEach((pid) => {
-                    const p = resolveSleeperPlayer(pid, sleeperPlayers);
-                    if (p)
-                      pushEntry(rootForByTeam, p.team, {
-                        name: p.name,
-                        pos: p.pos,
-                        league: label,
-                        points: myMatchup.players_points?.[pid] ?? null,
-                      });
-                  });
-
-                (oppMatchup?.starters || [])
-                  .filter((id) => id && id !== "0")
-                  .forEach((pid) => {
-                    const p = resolveSleeperPlayer(pid, sleeperPlayers);
-                    if (p)
-                      pushEntry(rootAgainstByTeam, p.team, {
-                        name: p.name,
-                        pos: p.pos,
-                        league: label,
-                        points: oppMatchup.players_points?.[pid] ?? null,
-                      });
-                  });
+                myStartersResolved.forEach((p) =>
+                  pushEntry(rootForByTeam, p.team, {
+                    name: p.name,
+                    pos: p.pos,
+                    league: label,
+                    points: p.points,
+                  }),
+                );
+                oppStartersResolved.forEach((p) =>
+                  pushEntry(rootAgainstByTeam, p.team, {
+                    name: p.name,
+                    pos: p.pos,
+                    league: label,
+                    points: p.points,
+                  }),
+                );
               }
 
               if (league.platform === "ESPN") {
@@ -724,16 +859,24 @@ exports.handler = async (event) => {
                   oppTeamId != null
                     ? (leagueData.teams || []).find((t) => t.id === oppTeamId)
                     : null;
-                const mySide = matchup
-                  ? matchup.home?.teamId === myTeam.id
-                    ? matchup.home
-                    : matchup.away
-                  : null;
-                const oppSide = matchup
-                  ? matchup.home?.teamId === myTeam.id
-                    ? matchup.away
-                    : matchup.home
-                  : null;
+
+                const myStartersResolved = (myTeam.roster?.entries || [])
+                  .map((entry) => resolveEspnPlayer(entry, espnWeek))
+                  .filter(Boolean)
+                  .map((p) => ({ ...p, team: normTeam(p.team) }));
+                const oppStartersResolved = (oppTeam?.roster?.entries || [])
+                  .map((entry) => resolveEspnPlayer(entry, espnWeek))
+                  .filter(Boolean)
+                  .map((p) => ({ ...p, team: normTeam(p.team) }));
+
+                // ESPN's matchup.home/away.totalPoints does NOT update live —
+                // it sits at 0 until the league fully closes out the week,
+                // even while individual players' actual stats (statSourceId
+                // 0) are already posted and updating in real time. Sum the
+                // starters' live points ourselves instead of trusting that
+                // field (confirmed directly against live league data).
+                const sumStarterPoints = (starters) =>
+                  round1(starters.reduce((sum, p) => sum + (p.points || 0), 0));
 
                 matchups.push({
                   league: label,
@@ -742,14 +885,14 @@ exports.handler = async (event) => {
                   espnTeamId: league.espnTeamId,
                   season: league.season,
                   myTeamName: espnTeamName(myTeam),
-                  myScore: mySide?.totalPoints ?? 0,
+                  myScore: sumStarterPoints(myStartersResolved),
                   myRecord: recordStr(
                     myTeam.record?.overall?.wins,
                     myTeam.record?.overall?.losses,
                     myTeam.record?.overall?.ties,
                   ),
                   oppTeamName: oppTeam ? espnTeamName(oppTeam) : null,
-                  oppScore: oppTeam ? (oppSide?.totalPoints ?? 0) : null,
+                  oppScore: oppTeam ? sumStarterPoints(oppStartersResolved) : null,
                   oppRecord: oppTeam
                     ? recordStr(
                         oppTeam.record?.overall?.wins,
@@ -758,29 +901,29 @@ exports.handler = async (event) => {
                       )
                     : null,
                   bye: !oppTeam,
+                  // Used to build the "who's left to play" projection once
+                  // the scoreboard is in — stripped before the response goes out.
+                  myStarters: myStartersResolved,
+                  oppStarters: oppStartersResolved,
                 });
 
-                (myTeam.roster?.entries || []).forEach((entry) => {
-                  const p = resolveEspnPlayer(entry, espnWeek);
-                  if (p)
-                    pushEntry(rootForByTeam, p.team, {
-                      name: p.name,
-                      pos: p.pos,
-                      league: label,
-                      points: p.points,
-                    });
-                });
+                myStartersResolved.forEach((p) =>
+                  pushEntry(rootForByTeam, p.team, {
+                    name: p.name,
+                    pos: p.pos,
+                    league: label,
+                    points: p.points,
+                  }),
+                );
 
-                (oppTeam?.roster?.entries || []).forEach((entry) => {
-                  const p = resolveEspnPlayer(entry, espnWeek);
-                  if (p)
-                    pushEntry(rootAgainstByTeam, p.team, {
-                      name: p.name,
-                      pos: p.pos,
-                      league: label,
-                      points: p.points,
-                    });
-                });
+                oppStartersResolved.forEach((p) =>
+                  pushEntry(rootAgainstByTeam, p.team, {
+                    name: p.name,
+                    pos: p.pos,
+                    league: label,
+                    points: p.points,
+                  }),
+                );
               }
             } catch (leagueErr) {
               console.error(`Failed to load league ${league.sk}:`, leagueErr);
@@ -800,6 +943,29 @@ exports.handler = async (event) => {
       const byePlayers = Object.entries(rootForByTeam)
         .filter(([team]) => !teamsPlayingThisWeek.has(team))
         .flatMap(([, entries]) => entries);
+
+      const gameStateByTeam = {};
+      (scoreboard.events || []).forEach((ev) => {
+        const comp = ev.competitions?.[0];
+        const completed = !!comp?.status?.type?.completed;
+        (comp?.competitors || []).forEach((c) => {
+          gameStateByTeam[normTeam(c.team.abbreviation)] = { completed };
+        });
+      });
+
+      matchups.forEach((m) => {
+        if (m.bye) return;
+        m.projection = buildProjection(
+          m.myScore,
+          m.oppScore,
+          m.myStarters || [],
+          m.oppStarters || [],
+          teamsPlayingThisWeek,
+          gameStateByTeam,
+        );
+        delete m.myStarters;
+        delete m.oppStarters;
+      });
 
       const games = (scoreboard.events || [])
         .map((ev) => {
@@ -849,41 +1015,6 @@ exports.handler = async (event) => {
         })
         .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-      const recap = {
-        rootForWins: [],
-        rootForLosses: [],
-        rootAgainstWins: [],
-        rootAgainstLosses: [],
-      };
-      games
-        .filter((g) => g.completed && g.winningTeam)
-        .forEach((g) => {
-          g.rootFor.forEach((p) => {
-            (p.team === g.winningTeam
-              ? recap.rootForWins
-              : recap.rootForLosses
-            ).push({
-              ...p,
-              game: g.shortName,
-            });
-          });
-          g.rootAgainst.forEach((p) => {
-            (p.team === g.winningTeam
-              ? recap.rootAgainstWins
-              : recap.rootAgainstLosses
-            ).push({
-              ...p,
-              game: g.shortName,
-            });
-          });
-        });
-      const hasRecap =
-        recap.rootForWins.length +
-          recap.rootForLosses.length +
-          recap.rootAgainstWins.length +
-          recap.rootAgainstLosses.length >
-        0;
-
       return {
         statusCode: 200,
         headers,
@@ -893,7 +1024,6 @@ exports.handler = async (event) => {
           matchups,
           byePlayers,
           games,
-          recap: hasRecap ? recap : null,
           leaguesLinked: leagues.length,
           leagueErrors,
         }),

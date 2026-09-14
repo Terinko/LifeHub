@@ -127,6 +127,40 @@ function round2(n) {
   return Math.round(n * 100) / 100;
 }
 
+// Merges an incoming quantity/unit into an already-matched existing item.
+// When the units convert cleanly into one number (e.g. tbsp -> cup), the
+// primary quantity/currentQuantity field is summed as before. When they
+// don't (e.g. "cups" vs "bag"), the incoming amount is kept visible instead
+// of being lost or spawning a duplicate row: it's added into a matching
+// `extra` entry (by normalized unit) or appended as a new one.
+function mergeQuantity(existingItem, itemType, incomingQty, incomingUnit) {
+  const isPantry = itemType === "INVENTORY";
+  const existingQty = isPantry
+    ? Number(existingItem.currentQuantity)
+    : Number(existingItem.quantity);
+  const convertedQty = convertUnit(incomingQty, incomingUnit, existingItem.unit);
+  const merged = { ...existingItem };
+
+  if (convertedQty !== null) {
+    if (isPantry) merged.currentQuantity = round2(existingQty + convertedQty);
+    else merged.quantity = round2(existingQty + convertedQty);
+    return merged;
+  }
+
+  const incomingUnitNorm = normalizeUnit(incomingUnit);
+  const extra = Array.isArray(existingItem.extra)
+    ? existingItem.extra.map((e) => ({ ...e }))
+    : [];
+  const extraMatch = extra.find((e) => normalizeUnit(e.unit) === incomingUnitNorm);
+  if (extraMatch) {
+    extraMatch.quantity = round2(Number(extraMatch.quantity) + incomingQty);
+  } else {
+    extra.push({ quantity: round2(incomingQty), unit: incomingUnit });
+  }
+  merged.extra = extra;
+  return merged;
+}
+
 function checkPantry(requiredIngredients, inventory, multiplier) {
   const missingIngredients = [];
   const updatedInventoryMap = new Map();
@@ -171,6 +205,16 @@ function checkPantry(requiredIngredients, inventory, multiplier) {
 
     // FORGIVING UNIT FALLBACK (fixes "panini bread")
     if (have === null) have = invQty;
+
+    // Fold in any compound "extra" quantities (units that didn't convert
+    // into the primary field when merged) that DO convert to what the
+    // recipe is asking for, so a compound pantry item isn't under-counted.
+    if (Array.isArray(match.extra)) {
+      for (const ex of match.extra) {
+        const converted = convertUnit(Number(ex.quantity) || 0, ex.unit, req.unit);
+        if (converted !== null) have += converted;
+      }
+    }
 
     if (have < requiredQty) {
       canMake = false;
@@ -279,7 +323,8 @@ exports.handler = async (event) => {
     const path = event.requestContext.http.path;
 
     if (USERS_TABLE) {
-      await dynamo
+      // Fire-and-forget: don't make every Kitchen request wait on this.
+      dynamo
         .send(
           new UpdateCommand({
             TableName: USERS_TABLE,
@@ -292,7 +337,7 @@ exports.handler = async (event) => {
     }
 
     if (method === "GET" && path === "/kitchen") {
-      const types = ["GROCERY", "INVENTORY", "RECIPE"];
+      const types = ["GROCERY", "INVENTORY", "RECIPE", "QUICKMEAL"];
       let allItems = [];
       for (const t of types) {
         const data = await dynamo.send(
@@ -364,29 +409,111 @@ exports.handler = async (event) => {
       }
 
       if (body.action === "PURCHASE_GROCERY") {
-        const { item } = body;
-        await dynamo.send(
-          new DeleteCommand({
+        const { item: groceryItem } = body;
+
+        const existingPantry = await dynamo.send(
+          new QueryCommand({
             TableName: TABLE_NAME,
-            Key: { pk: `USER#${userId}#GROCERY`, sk: item.sk },
+            KeyConditionExpression: "pk = :pk",
+            ExpressionAttributeValues: { ":pk": `USER#${userId}#INVENTORY` },
+            ConsistentRead: true,
           }),
         );
-        await dynamo.send(
-          new PutCommand({
-            TableName: TABLE_NAME,
-            Item: {
+        const existingItem = findInventoryMatch(
+          groceryItem.name,
+          existingPantry.Items || [],
+        );
+
+        const pantryItem = existingItem
+          ? {
+              ...mergeQuantity(
+                existingItem,
+                "INVENTORY",
+                Number(groceryItem.quantity),
+                groceryItem.unit,
+              ),
               pk: `USER#${userId}#INVENTORY`,
-              sk: item.sk,
-              name: item.name,
-              currentQuantity: item.quantity,
-              unit: item.unit,
-            },
-          }),
-        );
+            }
+          : {
+              pk: `USER#${userId}#INVENTORY`,
+              sk: groceryItem.sk,
+              name: groceryItem.name,
+              currentQuantity: groceryItem.quantity,
+              unit: groceryItem.unit,
+            };
+
+        await Promise.all([
+          dynamo.send(
+            new DeleteCommand({
+              TableName: TABLE_NAME,
+              Key: { pk: `USER#${userId}#GROCERY`, sk: groceryItem.sk },
+            }),
+          ),
+          dynamo.send(new PutCommand({ TableName: TABLE_NAME, Item: pantryItem })),
+        ]);
+
         return {
           statusCode: 200,
           headers,
-          body: JSON.stringify({ success: true }),
+          body: JSON.stringify({
+            success: true,
+            pantryItem: { ...pantryItem, pk: "INVENTORY" },
+          }),
+        };
+      }
+
+      if (body.action === "LOG_QUICK_MEAL") {
+        const { items: usedItems } = body; // [{ pantrySk, name, quantity, unit }]
+
+        const existingPantry = await dynamo.send(
+          new QueryCommand({
+            TableName: TABLE_NAME,
+            KeyConditionExpression: "pk = :pk",
+            ExpressionAttributeValues: { ":pk": `USER#${userId}#INVENTORY` },
+            ConsistentRead: true,
+          }),
+        );
+        const pantryItems = existingPantry.Items || [];
+
+        const writes = [];
+        const updatedPantryItems = [];
+
+        for (const used of usedItems || []) {
+          // The pantry row may have been renamed/recreated since this Quick
+          // Meal was built — fall back to a fuzzy name match, and just skip
+          // it entirely if it's genuinely gone rather than erroring out.
+          let match = pantryItems.find((p) => p.sk === used.pantrySk);
+          if (!match && used.name) {
+            match = findInventoryMatch(used.name, pantryItems);
+          }
+          if (!match) continue;
+
+          const usedQty = Number(used.quantity) || 0;
+          // No quantity set (or set to 0) means "don't decrement this one
+          // this time" — same idea as an unquantified recipe ingredient.
+          if (usedQty <= 0) continue;
+          const converted = convertUnit(usedQty, used.unit, match.unit);
+          const decrementBy = converted !== null ? converted : usedQty;
+          // Forgiving on purpose: logging a meal never blocks on insufficient
+          // stock, it just floors at 0 instead of going negative.
+          const newQty = Math.max(
+            0,
+            round2(Number(match.currentQuantity) - decrementBy),
+          );
+
+          const updatedItem = { ...match, currentQuantity: newQty };
+          updatedPantryItems.push({ ...updatedItem, pk: "INVENTORY" });
+          writes.push(
+            dynamo.send(new PutCommand({ TableName: TABLE_NAME, Item: updatedItem })),
+          );
+        }
+
+        await Promise.all(writes);
+
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({ success: true, pantryItems: updatedPantryItems }),
         };
       }
 
@@ -403,12 +530,17 @@ exports.handler = async (event) => {
             TableName: TABLE_NAME,
             KeyConditionExpression: "pk = :pk",
             ExpressionAttributeValues: { ":pk": `USER#${userId}#${itemType}` },
+            ConsistentRead: true,
           }),
         );
 
-        const targetName = normalizeName(body.name);
-        const existingItem = (existingData.Items || []).find(
-          (i) => normalizeName(i.name) === targetName,
+        // Exact match on the normalized name first, then fall back to the
+        // fuzzy substring match already used for recipe pantry-checking
+        // (catches cases the naive trailing-"s" strip misses, e.g.
+        // "tomatoes" vs "tomato").
+        const existingItem = findInventoryMatch(
+          body.name,
+          existingData.Items || [],
         );
 
         if (existingItem) {
@@ -416,21 +548,10 @@ exports.handler = async (event) => {
           const addQty = isPantry
             ? Number(body.currentQuantity)
             : Number(body.quantity);
-          const existingQty = isPantry
-            ? Number(existingItem.currentQuantity)
-            : Number(existingItem.quantity);
-          const convertedQty = convertUnit(
-            addQty,
-            body.unit,
-            existingItem.unit,
-          );
-
-          if (convertedQty !== null) {
-            item = { ...existingItem, pk: `USER#${userId}#${itemType}` };
-            if (isPantry)
-              item.currentQuantity = round2(existingQty + convertedQty);
-            else item.quantity = round2(existingQty + convertedQty);
-          }
+          item = {
+            ...mergeQuantity(existingItem, itemType, addQty, body.unit),
+            pk: `USER#${userId}#${itemType}`,
+          };
         }
       }
 

@@ -2,7 +2,15 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { signOut, fetchAuthSession } from "aws-amplify/auth";
-import { Receipt, ChefHat, Spade, Tv, ShieldCheck, Lock } from "lucide-react";
+import {
+  Receipt,
+  ChefHat,
+  Spade,
+  Tv,
+  ShieldCheck,
+  Lock,
+  Briefcase,
+} from "lucide-react";
 import "./Hub.css";
 
 const API_BASE = "https://9im6v06twk.execute-api.us-east-1.amazonaws.com";
@@ -46,10 +54,19 @@ const TOOLS = [
   },
 ];
 
+const TOOL_LABELS = {
+  bills: "Bills",
+  kitchen: "Kitchen",
+  poker: "Poker",
+  pokerStats: "Poker Stats",
+  fantasy: "Fantasy",
+};
+
 const Hub = () => {
   const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [changelog, setChangelog] = useState([]);
 
   const getAuthHeaders = async () => {
     const session = await fetchAuthSession();
@@ -68,6 +85,9 @@ const Hub = () => {
         });
         const data = await response.json();
         setProfile(data);
+        if (data?.unseenChangelog?.length > 0) {
+          setChangelog(data.unseenChangelog);
+        }
       } catch (error) {
         console.error("Failed to load profile", error);
       }
@@ -75,6 +95,18 @@ const Hub = () => {
     };
     fetchProfile();
   }, []);
+
+  const dismissChangelog = async () => {
+    setChangelog([]);
+    try {
+      await fetch(`${API_BASE}/admin/changelog-seen`, {
+        method: "POST",
+        headers: await getAuthHeaders(),
+      });
+    } catch (error) {
+      console.error("Failed to mark changelog seen", error);
+    }
+  };
 
   const handleSignOut = async () => {
     try {
@@ -136,6 +168,22 @@ const Hub = () => {
 
             {isAdmin && (
               <div
+                onClick={() => navigate("/applications")}
+                className="hub-card"
+              >
+                <div
+                  className="hub-card-icon"
+                  style={{ background: "#f0eaf7" }}
+                >
+                  <Briefcase size={24} color="#6b4a8a" strokeWidth={1.75} />
+                </div>
+                <div className="hub-card-label">Applications</div>
+                <div className="hub-card-subtitle">Job search tracker</div>
+              </div>
+            )}
+
+            {isAdmin && (
+              <div
                 onClick={() => navigate("/admin")}
                 className="hub-card admin-card"
               >
@@ -159,6 +207,35 @@ const Hub = () => {
           </div>
         )}
       </div>
+
+      {changelog.length > 0 && (
+        <div className="whats-new-overlay">
+          <div className="whats-new-card">
+            <div className="whats-new-header">What's New</div>
+            <div className="whats-new-body">
+              {changelog.map((entry) => (
+                <div key={entry.id} className="whats-new-entry">
+                  <div className="whats-new-tag">
+                    {!entry.tools || entry.tools.length === 0
+                      ? "General"
+                      : entry.tools.map((t) => TOOL_LABELS[t] || t).join(", ")}
+                  </div>
+                  <ul>
+                    {entry.bullets.map((bullet, i) => (
+                      <li key={i}>{bullet}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+            <div className="whats-new-footer">
+              <button onClick={dismissChangelog} className="whats-new-done-btn">
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

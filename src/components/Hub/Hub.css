@@ -139,3 +139,102 @@
 .hub-empty-state small {
   font-size: 13px;
 }
+
+/* --- "What's New" popup: a floating card centered on screen, with room
+   (and blur) on every side — modeled after the iOS terms-of-service sheet:
+   fixed title, a scrolling body, and an action that's always in view. --- */
+.whats-new-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(6px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 36px 20px;
+  box-sizing: border-box;
+  z-index: 1000;
+}
+
+.whats-new-card {
+  background: white;
+  width: 100%;
+  max-width: 420px;
+  max-height: 100%;
+  border-radius: 20px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.whats-new-header {
+  flex-shrink: 0;
+  padding: 18px 20px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 17px;
+  color: #2c3029;
+  border-bottom: 1px solid #f0f0eb;
+}
+
+.whats-new-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  min-height: 0;
+}
+
+.whats-new-entry {
+  margin-bottom: 20px;
+}
+
+.whats-new-entry:last-child {
+  margin-bottom: 0;
+}
+
+.whats-new-tag {
+  display: inline-block;
+  background: #eaf1ea;
+  color: #4c664d;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  margin-bottom: 8px;
+}
+
+.whats-new-entry ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.whats-new-entry li {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #3a3d36;
+  margin-bottom: 6px;
+}
+
+.whats-new-footer {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
+  padding: 14px 20px;
+  border-top: 1px solid #f0f0eb;
+  background: white;
+}
+
+.whats-new-done-btn {
+  background: #798f7a;
+  color: white;
+  border: none;
+  padding: 12px 28px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+}

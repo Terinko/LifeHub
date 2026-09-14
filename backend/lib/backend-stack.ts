@@ -54,6 +54,13 @@ export class BackendStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
+    const applicationsTable = new dynamodb.Table(this, "ApplicationsTable", {
+      partitionKey: { name: "pk", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "sk", type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
     const billsLambda = new lambda.Function(this, "LifeHubBillsHandler", {
       runtime: lambda.Runtime.NODEJS_20_X,
       code: lambda.Code.fromAsset("lambda/bills"),
@@ -101,16 +108,31 @@ export class BackendStack extends cdk.Stack {
       memorySize: 512,
     });
 
+    const applicationsLambda = new lambda.Function(this, "ApplicationsHandler", {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      code: lambda.Code.fromAsset("lambda/applications"),
+      handler: "index.handler",
+      environment: {
+        TABLE_NAME: applicationsTable.tableName,
+        USERS_TABLE: usersTable.tableName,
+      },
+    });
+
     billsTable.grantReadWriteData(billsLambda);
     kitchenTable.grantReadWriteData(kitchenLambda);
     pokerTable.grantReadWriteData(pokerLambda);
     fantasyTable.grantReadWriteData(fantasyLambda);
+    applicationsTable.grantReadWriteData(applicationsLambda);
     // Read for permission checks; write so each tool can record a
     // lastUsed<Tool> timestamp on the caller's profile for admin visibility.
     usersTable.grantReadWriteData(pokerLambda);
     usersTable.grantReadWriteData(fantasyLambda);
     usersTable.grantWriteData(billsLambda);
     usersTable.grantWriteData(kitchenLambda);
+    // Admin-only tool: just needs to re-verify the caller's role, no usage
+    // stamping (the admin-visibility feature is about tracking everyone
+    // *else*, not the admin's own use of an admin-only tool).
+    usersTable.grantReadData(applicationsLambda);
 
     const userPool = new cognito.UserPool(this, "LifeHubUserPool", {
       userPoolName: "LifeHubUsers",
@@ -202,6 +224,10 @@ export class BackendStack extends cdk.Stack {
       "FantasyIntegration",
       fantasyLambda,
     );
+    const applicationsIntegration = new HttpLambdaIntegration(
+      "ApplicationsIntegration",
+      applicationsLambda,
+    );
 
     httpApi.addRoutes({
       path: "/admin/users",
@@ -211,6 +237,13 @@ export class BackendStack extends cdk.Stack {
         apigw.HttpMethod.PUT,
         apigw.HttpMethod.DELETE,
       ],
+      integration: adminIntegration,
+      authorizer,
+    });
+
+    httpApi.addRoutes({
+      path: "/admin/changelog-seen",
+      methods: [apigw.HttpMethod.POST],
       integration: adminIntegration,
       authorizer,
     });
@@ -316,6 +349,20 @@ export class BackendStack extends cdk.Stack {
       path: "/fantasy/guide",
       methods: [apigw.HttpMethod.GET],
       integration: fantasyIntegration,
+      authorizer,
+    });
+
+    httpApi.addRoutes({
+      path: "/applications",
+      methods: [apigw.HttpMethod.GET, apigw.HttpMethod.POST],
+      integration: applicationsIntegration,
+      authorizer,
+    });
+
+    httpApi.addRoutes({
+      path: "/applications/{id}",
+      methods: [apigw.HttpMethod.DELETE],
+      integration: applicationsIntegration,
       authorizer,
     });
 

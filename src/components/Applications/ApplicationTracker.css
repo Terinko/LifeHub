@@ -1,0 +1,152 @@
+/* --- Board layout: horizontally-scrolling status columns --- */
+.app-board {
+  display: flex;
+  gap: 14px;
+  padding: 16px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  align-items: flex-start;
+}
+
+.app-column {
+  flex: 0 0 250px;
+  background: #f4f4f0;
+  border-radius: 16px;
+  padding: 12px;
+  min-height: 120px;
+}
+
+.app-column-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #3a3d36;
+  padding: 4px 4px 12px;
+}
+
+.app-column-count {
+  background: #d8d8d2;
+  color: #3a3d36;
+  border-radius: 12px;
+  padding: 1px 8px;
+  font-size: 12px;
+}
+
+.app-column-empty {
+  font-size: 13px;
+  color: #8c9288;
+  padding: 8px 4px;
+}
+
+/* --- Cards --- */
+.app-card {
+  background: white;
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e8e8e2;
+}
+
+.app-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.app-card-company {
+  font-weight: 700;
+  font-size: 15px;
+  color: #2c3029;
+}
+
+.app-card-position {
+  font-size: 13px;
+  color: #6b6f66;
+  margin-top: 1px;
+}
+
+.app-card-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.app-icon-btn {
+  background: none;
+  border: none;
+  color: #8c9288;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.app-icon-btn.delete:hover,
+.app-icon-btn.delete:active {
+  color: #e64848;
+}
+
+.app-card-meta {
+  font-size: 12px;
+  color: #8c9288;
+  margin-bottom: 2px;
+}
+
+.app-card-stale {
+  font-size: 12px;
+  color: #b5721f;
+  background: #fdf3e3;
+  border-radius: 8px;
+  padding: 4px 8px;
+  margin: 8px 0;
+  display: inline-block;
+}
+
+.app-status-select {
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #d8d8d2;
+  background: #f9f9f6;
+  color: #3a3d36;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* --- Add/Edit modal --- */
+.app-modal-content > * {
+  margin-bottom: 8px;
+}
+
+.app-form-row {
+  display: flex;
+  gap: 10px;
+}
+
+.app-form-row > * {
+  flex: 1;
+}
+
+.app-submit-btn {
+  width: 100%;
+  background: #4c664d;
+  color: white;
+  border: none;
+  padding: 14px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+.app-submit-btn:disabled {
+  opacity: 0.6;
+}

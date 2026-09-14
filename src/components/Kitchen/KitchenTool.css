@@ -139,6 +139,46 @@
   align-items: center;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
   border: 1px solid #f0f0eb;
+  overflow: hidden;
+  animation: kitchenItemEnter 0.22s ease-out;
+}
+
+/* Plays once when a new item mounts (added, or moved into this list) */
+@keyframes kitchenItemEnter {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Applied just before an item is actually removed from state, so marking
+   something bought (or deleting it) reads as a deliberate motion instead
+   of the row just vanishing once the network call finally resolves. */
+.kitchen-list-item.kitchen-item-leaving {
+  animation: kitchenItemLeave 0.28s ease-in forwards;
+  pointer-events: none;
+}
+
+@keyframes kitchenItemLeave {
+  from {
+    opacity: 1;
+    max-height: 80px;
+    padding-top: 14px;
+    padding-bottom: 14px;
+    margin-bottom: 12px;
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.97);
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-bottom: 0;
+  }
 }
 
 .item-left-group {
@@ -373,4 +413,178 @@
   font-weight: 600;
   font-size: 15px;
   cursor: pointer;
+}
+
+.edit-extra-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.add-quantity-btn {
+  display: block;
+  width: 100%;
+  background: none;
+  border: 1.5px dashed #c4cfc5;
+  color: #4c664d;
+  border-radius: 12px;
+  padding: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 24px;
+}
+
+.add-quantity-btn.small {
+  display: inline-block;
+  width: auto;
+  padding: 6px 14px;
+  font-size: 13px;
+  margin-bottom: 0;
+}
+
+/* --- Quick Meals --- */
+.meals-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.meals-section-header h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #3a3d36;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.pantry-picker-list {
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.pantry-picker-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  background: none;
+  border: none;
+  border-bottom: 1px solid #f0f0eb;
+  padding: 12px 4px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #3a3d36;
+  cursor: pointer;
+  text-align: left;
+}
+
+.pantry-picker-row:last-child {
+  border-bottom: none;
+}
+
+.quick-meal-items {
+  margin-bottom: 12px;
+}
+
+.quick-meal-item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0eb;
+}
+
+.quick-meal-item-row:last-child {
+  border-bottom: none;
+}
+
+.quick-meal-item-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #3a3d36;
+}
+
+.qty-stepper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.qty-stepper-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid #d8d8d2;
+  background: #f4f4f0;
+  color: #3a3d36;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.qty-stepper-btn:active {
+  background: #e8e8e2;
+  transform: scale(0.9);
+}
+
+.qty-stepper-value {
+  font-size: 13px;
+  font-weight: 600;
+  min-width: 56px;
+  text-align: center;
+  display: inline-block;
+  animation: qtyBump 0.18s ease-out;
+}
+
+/* Retriggered on every +/- tap via a `key` change on the element, so the
+   number gives a little tactile "pop" each time it updates. */
+@keyframes qtyBump {
+  0% {
+    transform: scale(1.3);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.quick-meal-card {
+  animation: kitchenItemEnter 0.22s ease-out;
+}
+
+.quick-meal-ate-btn {
+  transition:
+    background-color 0.2s ease,
+    transform 0.15s ease;
+}
+
+.quick-meal-ate-btn.just-logged {
+  animation: ateBounce 0.4s ease;
+}
+
+@keyframes ateBounce {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.04);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.quick-meal-caption {
+  font-size: 11px;
+  color: #a3aca4;
+  text-align: center;
+  margin-top: 6px;
 }
