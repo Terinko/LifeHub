@@ -397,7 +397,7 @@ export class BackendStack extends cdk.Stack {
       },
     );
 
-    const distDir = path.join(__dirname, "../../dist");
+    const distDir = path.join(__dirname, "../../apps/web/dist");
 
     // Hashed build assets (filename changes whenever content does) — safe
     // to cache "forever". Deployed first, without pruning, so the second

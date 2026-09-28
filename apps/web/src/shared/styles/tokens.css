@@ -1,0 +1,14 @@
+/* Design tokens shared by every feature. Use these instead of hex values in
+   components; new features add to this file rather than defining their own
+   :root variables. */
+:root {
+  --ios-bg: #f2f2f7; /* Standard iOS system background */
+  --ios-card: #ffffff;
+  --ios-text: #000000;
+  --ios-text-sec: #8e8e93;
+  --ios-blue: #007aff;
+  --ios-red: #ff3b30;
+  --ios-border: #c6c6c8;
+  --safe-top: env(safe-area-inset-top);
+  --safe-bottom: env(safe-area-inset-bottom);
+}
