@@ -28,11 +28,11 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1 # Change this if your region is different (e.g., us-east-2)
 
-        # NEW: Install React dependencies (runs in root directory)
+      # Installs every npm workspace (apps/web, packages/*) from the root lockfile
       - name: Install Frontend Dependencies
-        run: npm install
+        run: npm ci
 
-      # NEW: Build the React app (creates the /dist folder)
+      # Builds apps/web into apps/web/dist, which the CDK stack uploads to S3
       - name: Build Frontend
         run: npm run build
 

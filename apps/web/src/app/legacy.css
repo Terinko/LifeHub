@@ -1,0 +1,13 @@
+/* Global stylesheets of the tools that haven't been rewritten yet. They
+   override each other's shared class names (.ios-nav-bar, .tool-view,
+   .ios-input-modal…), so they load as one file, in their original order, to
+   keep every page looking the same while the tool code is lazy-loaded.
+   Delete a line here when its tool moves to CSS Modules. */
+@import "./index.css";
+@import "./App.css";
+@import "../components/Hub/Hub.css";
+@import "../components/Bills/BillsTool.css";
+@import "../components/Kitchen/KitchenTool.css";
+@import "../components/Poker/PokerTool.css";
+@import "../components/Fantasy/FantasyTool.css";
+@import "../components/Weather/WeatherTool.css";

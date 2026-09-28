@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "types": ["vite/client", "vitest/globals", "@testing-library/jest-dom"],
+    // Existing tools are still .jsx; they build as-is and get type-checked
+    // as each one is rewritten in TypeScript.
+    "allowJs": true,
+    "checkJs": false
+  },
+  "include": ["src", "vite.config.ts"]
+}

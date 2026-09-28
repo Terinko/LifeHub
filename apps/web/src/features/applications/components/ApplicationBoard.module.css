@@ -1,0 +1,43 @@
+/* Horizontally scrolling status columns */
+.board {
+  display: flex;
+  gap: 14px;
+  padding: 16px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  align-items: flex-start;
+}
+
+.column {
+  flex: 0 0 250px;
+  background: #f4f4f0;
+  border-radius: 16px;
+  padding: 12px;
+  min-height: 120px;
+}
+
+.columnHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #3a3d36;
+  padding: 4px 4px 12px;
+}
+
+.count {
+  background: #d8d8d2;
+  color: #3a3d36;
+  border-radius: 12px;
+  padding: 1px 8px;
+  font-size: 12px;
+}
+
+.empty {
+  font-size: 13px;
+  color: #8c9288;
+  padding: 8px 4px;
+}

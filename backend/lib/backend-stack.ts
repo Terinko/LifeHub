@@ -3,6 +3,7 @@ import * as cdk from "aws-cdk-lib";
 import { Construct } from "constructs";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as lambda from "aws-cdk-lib/aws-lambda";
+import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import * as apigw from "aws-cdk-lib/aws-apigatewayv2";
 import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
 import * as s3 from "aws-cdk-lib/aws-s3";
@@ -15,6 +16,8 @@ import * as cognito from "aws-cdk-lib/aws-cognito";
 import { HttpUserPoolAuthorizer } from "aws-cdk-lib/aws-apigatewayv2-authorizers";
 
 dotenv.config();
+
+const repoRoot = path.join(__dirname, "../..");
 
 export class BackendStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -108,10 +111,16 @@ export class BackendStack extends cdk.Stack {
       memorySize: 512,
     });
 
-    const applicationsLambda = new lambda.Function(this, "ApplicationsHandler", {
-      runtime: lambda.Runtime.NODEJS_20_X,
-      code: lambda.Code.fromAsset("lambda/applications"),
-      handler: "index.handler",
+    // Bundled from services/api with esbuild. Keep the construct id
+    // ("ApplicationsHandler") unchanged so CloudFormation updates this
+    // function in place instead of replacing it.
+    const applicationsLambda = new NodejsFunction(this, "ApplicationsHandler", {
+      runtime: lambda.Runtime.NODEJS_24_X,
+      entry: path.join(repoRoot, "services/api/src/applications/handler.ts"),
+      handler: "handler",
+      projectRoot: repoRoot,
+      depsLockFilePath: path.join(repoRoot, "package-lock.json"),
+      bundling: { minify: true },
       environment: {
         TABLE_NAME: applicationsTable.tableName,
         USERS_TABLE: usersTable.tableName,
@@ -397,7 +406,7 @@ export class BackendStack extends cdk.Stack {
       },
     );
 
-    const distDir = path.join(__dirname, "../../dist");
+    const distDir = path.join(__dirname, "../../apps/web/dist");
 
     // Hashed build assets (filename changes whenever content does) — safe
     // to cache "forever". Deployed first, without pruning, so the second
