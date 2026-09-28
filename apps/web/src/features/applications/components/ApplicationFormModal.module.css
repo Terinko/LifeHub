@@ -1,0 +1,33 @@
+.content > * {
+  margin-bottom: 8px;
+}
+
+.row {
+  display: flex;
+  gap: 10px;
+}
+
+.row > * {
+  flex: 1;
+}
+
+.notes {
+  min-height: 80px;
+}
+
+.submit {
+  width: 100%;
+  background: #4c664d;
+  color: white;
+  border: none;
+  padding: 14px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+.submit:disabled {
+  opacity: 0.6;
+}

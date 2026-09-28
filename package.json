@@ -4,6 +4,7 @@
   "type": "module",
   "workspaces": [
     "apps/*",
+    "services/*",
     "packages/*"
   ],
   "scripts": {
@@ -16,6 +17,7 @@
     "format:check": "prettier --check ."
   },
   "devDependencies": {
+    "esbuild": "^0.28.2",
     "prettier": "^3.9.9"
   }
 }

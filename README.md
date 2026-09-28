@@ -5,9 +5,10 @@ A personal hub of small tools: Bills, Kitchen, Poker, Fantasy, Applications and 
 ## Repository layout
 
 ```
-apps/web/        React + Vite frontend (TypeScript; older tools are still .jsx)
-packages/        code shared between frontend and backend (added as tools are rewritten)
-backend/         AWS CDK stack and Lambda handlers (moves to services/api + infra later)
+apps/web/          React + Vite frontend (TypeScript; older tools are still .jsx)
+services/api/      Lambda handlers in TypeScript, bundled per tool by the CDK stack
+packages/shared/   types and zod schemas used by both apps/web and services/api
+backend/           AWS CDK stack, plus the Lambdas not yet moved to services/api
 ```
 
 The root `package.json` is an npm workspace. Run everything from the repo root:
@@ -29,7 +30,8 @@ Pushing to `main` deploys the frontend and backend to AWS (`.github/workflows/ba
 ```
 apps/web/src/
   app/          entry point, providers, router, auth guard
-  features/     one folder per tool (tools move here as they're rewritten)
+  features/     one folder per tool (tools move here as they're rewritten;
+                applications/ is the reference example)
   components/   tools not yet rewritten
   shared/       api client, reusable UI, hooks, pure helpers, styles/tokens.css
   config.ts     every environment-specific value
@@ -59,3 +61,18 @@ features/<tool>/
 7. Colors and spacing come from `shared/styles/tokens.css`, not hex values in JSX.
 8. `PascalCase.tsx` for components, `useCamelCase.ts` for hooks, `camelCase.ts` otherwise, lowercase folder names.
 9. No file-wide `eslint-disable`. Disable a single line with a reason when you must.
+
+## Backend structure
+
+Each tool in `services/api/src/<tool>/` is split the same way:
+
+```
+handler.ts      route table: "METHOD /path" -> route, wrapped by shared/createHandler
+routes/         one file per endpoint: validate input with a shared zod schema, call the service
+service.ts      business rules
+repository.ts   every DynamoDB call for the tool
+```
+
+`shared/createHandler.ts` does what every Lambda needs: reads the caller from the Cognito token, loads their profile, checks access, parses JSON, adds CORS headers and turns thrown `HttpError`s into `{ error }` responses.
+
+The CDK stack bundles each handler with esbuild (`NodejsFunction`). When moving a Lambda over, keep its construct id so CloudFormation updates it in place, and compare `npx cdk synth` against `main` before merging.

@@ -1,0 +1,76 @@
+.card {
+  background: white;
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e8e8e2;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.company {
+  font-weight: 700;
+  font-size: 15px;
+  color: #2c3029;
+}
+
+.position {
+  font-size: 13px;
+  color: #6b6f66;
+  margin-top: 1px;
+}
+
+.actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.iconButton {
+  background: none;
+  border: none;
+  color: #8c9288;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.deleteButton:hover,
+.deleteButton:active {
+  color: #e64848;
+}
+
+.meta {
+  font-size: 12px;
+  color: #8c9288;
+  margin-bottom: 2px;
+}
+
+.stale {
+  font-size: 12px;
+  color: #b5721f;
+  background: #fdf3e3;
+  border-radius: 8px;
+  padding: 4px 8px;
+  margin: 8px 0;
+  display: inline-block;
+}
+
+.statusSelect {
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #d8d8d2;
+  background: #f9f9f6;
+  color: #3a3d36;
+  font-size: 12px;
+  font-weight: 600;
+}
