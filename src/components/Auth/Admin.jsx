@@ -70,6 +70,7 @@ const Admin = () => {
     poker: false,
     pokerStats: false,
     fantasy: false,
+    weather: false,
   });
   const [loading, setLoading] = useState(false);
 
@@ -119,6 +120,7 @@ const Admin = () => {
         poker: false,
         pokerStats: false,
         fantasy: false,
+        weather: false,
       });
       loadUsers();
       alert("Invite sent! They will receive a temporary password via email.");
@@ -281,6 +283,18 @@ const Admin = () => {
                   setInvitePerms({
                     ...invitePerms,
                     fantasy: !invitePerms.fantasy,
+                  });
+                }}
+              />
+              <TogglePill
+                label="Weather"
+                icon="🌦️"
+                isActive={invitePerms.weather}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setInvitePerms({
+                    ...invitePerms,
+                    weather: !invitePerms.weather,
                   });
                 }}
               />
@@ -449,6 +463,12 @@ const Admin = () => {
                     icon="🏈"
                     isActive={user.permissions?.fantasy}
                     onClick={() => togglePermission(user, "fantasy")}
+                  />
+                  <TogglePill
+                    label="Weather"
+                    icon="🌦️"
+                    isActive={user.permissions?.weather}
+                    onClick={() => togglePermission(user, "weather")}
                   />
                 </div>
               ) : (

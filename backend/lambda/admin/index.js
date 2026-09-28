@@ -101,6 +101,7 @@ exports.handler = async (event) => {
               poker: true,
               pokerStats: true,
               fantasy: true,
+              weather: true,
             },
             createdAt: now,
             lastActiveAt: now,
@@ -207,6 +208,7 @@ exports.handler = async (event) => {
           poker: false,
           pokerStats: false,
           fantasy: false,
+          weather: false,
         },
         createdAt: new Date().toISOString(),
         // New invitees start caught up on "What's New" — there's nothing

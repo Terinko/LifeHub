@@ -18,5 +18,27 @@
       "The edit screen for a grocery/pantry item now lets you edit every quantity on it, not just the first one.",
       "Added a \"Quick Meal\" feature that is more flexible than the recipe option, allowing users to adjust what quantity of ingredients they are using each time they make it."
     ]
+  },
+  {
+    "id": "2026-09-14-quick-meals-replace-recipes",
+    "date": "2026-09-14",
+    "tools": ["kitchen"],
+    "bullets": [
+      "Recipes are gone — Quick Meals is now the one way to build a meal, since it turned out to just work better.",
+      "You can now paste a whole ingredient list and have it parsed into a Quick Meal in one shot, instead of adding items one at a time (the same AI parsing Recipes used to use).",
+      "Quick Meal items no longer have to already be in your pantry — you can add something \"not tracked\" (like a condiment you don't inventory) and it'll just sit there as a reminder without affecting your pantry when you log the meal.",
+      "The Meals tab is simpler now — one list, and the \"+\" in the top bar starts a new Quick Meal directly."
+    ]
+  },
+  {
+    "id": "2026-09-28-weather-tool",
+    "date": "2026-09-28",
+    "tools": ["weather"],
+    "bullets": [
+      "New Weather tool — an ad-free forecast with a live sky that rains, snows, storms, and shows the stars depending on the actual conditions.",
+      "Temperatures average three weather models (the National Blend of Models, ECMWF, and ICON), which tested more accurate than any single one against real airport readings.",
+      "Includes a next-2-hours rain timeline, hourly and 10-day forecasts, and official National Weather Service alerts.",
+      "Save as many places as you want and swipe between them."
+    ]
   }
 ]

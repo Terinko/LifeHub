@@ -257,7 +257,7 @@
   color: #e64848;
 }
 
-/* --- RECIPE CARDS --- */
+/* --- MEAL CARDS (Quick Meals) --- */
 .recipe-card {
   background: white;
   border-radius: 16px;
@@ -280,15 +280,6 @@
   margin: 0;
   font-size: 18px;
   font-weight: 700;
-}
-
-.recipe-link {
-  font-size: 14px;
-  color: #798f7a;
-  text-decoration: none;
-  font-weight: 500;
-  margin-bottom: 20px;
-  display: inline-block;
 }
 
 .cooked-btn {
@@ -436,29 +427,45 @@
   margin-bottom: 24px;
 }
 
-.add-quantity-btn.small {
-  display: inline-block;
-  width: auto;
-  padding: 6px 14px;
-  font-size: 13px;
-  margin-bottom: 0;
+.add-quantity-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* --- Quick Meals --- */
-.meals-section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
+.field-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #798f7a;
+  margin-bottom: 6px;
 }
 
-.meals-section-header h3 {
-  margin: 0;
-  font-size: 15px;
+.field-help {
+  font-size: 12px;
+  color: #8c9288;
+  margin: 4px 0 16px;
+  line-height: 1.4;
+}
+
+.paste-ingredients-section {
+  margin-bottom: 16px;
+  padding-top: 16px;
+  border-top: 1px dashed #e8e8e2;
+}
+
+.untracked-badge {
+  display: inline-block;
+  font-size: 10px;
   font-weight: 700;
-  color: #3a3d36;
   text-transform: uppercase;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.3px;
+  color: #a3aca4;
+  background: #f0f0eb;
+  border-radius: 8px;
+  padding: 2px 6px;
+  margin-left: 6px;
+  vertical-align: middle;
 }
 
 .pantry-picker-list {

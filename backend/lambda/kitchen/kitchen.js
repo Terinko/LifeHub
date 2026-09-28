@@ -21,19 +21,6 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 // DETERMINISTIC DOMAIN ENGINE
 // ==========================================
 
-const PANTRY_STAPLES = [
-  "salt",
-  "pepper",
-  "black pepper",
-  "oil",
-  "olive oil",
-  "vegetable oil",
-  "canola oil",
-  "butter",
-  "water",
-  "sugar",
-];
-
 const UNIT_ALIASES = {
   cup: "cup",
   cups: "cup",
@@ -161,105 +148,10 @@ function mergeQuantity(existingItem, itemType, incomingQty, incomingUnit) {
   return merged;
 }
 
-function checkPantry(requiredIngredients, inventory, multiplier) {
-  const missingIngredients = [];
-  const updatedInventoryMap = new Map();
-  let canMake = true;
-
-  const workingInventory = JSON.parse(JSON.stringify(inventory));
-  const scaledRequired = [];
-
-  for (const req of requiredIngredients) {
-    if (!req.name || PANTRY_STAPLES.includes(normalizeName(req.name))) continue;
-    const match = findInventoryMatch(req.name, workingInventory);
-
-    // 1. Is it unquantified? (e.g., "cheese")
-    const isUnquantified =
-      req.quantity === undefined ||
-      req.quantity === null ||
-      req.quantity === "" ||
-      isNaN(Number(req.quantity)) ||
-      Number(req.quantity) === 0;
-
-    if (isUnquantified) {
-      if (!match) {
-        canMake = false;
-        missingIngredients.push({ name: req.name, quantity: "Any", unit: "" });
-      }
-      scaledRequired.push({ ...req, quantity: "Any" });
-      continue; // Skip the math!
-    }
-
-    // 2. Perform quantified checks
-    const requiredQty = round2(Number(req.quantity) * multiplier);
-    scaledRequired.push({ ...req, quantity: requiredQty });
-
-    if (!match) {
-      canMake = false;
-      missingIngredients.push({ ...req, quantity: requiredQty });
-      continue;
-    }
-
-    const invQty = Number(match.currentQuantity) || 0;
-    let have = convertUnit(invQty, match.unit, req.unit);
-
-    // FORGIVING UNIT FALLBACK (fixes "panini bread")
-    if (have === null) have = invQty;
-
-    // Fold in any compound "extra" quantities (units that didn't convert
-    // into the primary field when merged) that DO convert to what the
-    // recipe is asking for, so a compound pantry item isn't under-counted.
-    if (Array.isArray(match.extra)) {
-      for (const ex of match.extra) {
-        const converted = convertUnit(Number(ex.quantity) || 0, ex.unit, req.unit);
-        if (converted !== null) have += converted;
-      }
-    }
-
-    if (have < requiredQty) {
-      canMake = false;
-      missingIngredients.push({
-        name: req.name,
-        quantity: round2(requiredQty - have),
-        unit: req.unit,
-      });
-      match.currentQuantity = 0;
-      updatedInventoryMap.set(match.sk, 0);
-    } else {
-      const remaining = have - requiredQty;
-      let remainingInOriginalUnit = convertUnit(
-        remaining,
-        req.unit,
-        match.unit,
-      );
-      if (remainingInOriginalUnit === null) remainingInOriginalUnit = remaining; // fallback
-
-      const newQty = round2(remainingInOriginalUnit);
-      match.currentQuantity = newQty;
-      updatedInventoryMap.set(match.sk, newQty);
-    }
-  }
-
-  const updatedInventory = Array.from(
-    updatedInventoryMap,
-    ([sk, currentQuantity]) => ({
-      sk,
-      currentQuantity,
-    }),
-  );
-
-  return {
-    canMake,
-    requiredIngredients: scaledRequired,
-    updatedInventory,
-    missingIngredients,
-  };
-}
-
 async function parseIngredientsWithGemini(ingredientsText) {
   const promptText = `
-    Extract each ingredient from this recipe's ingredients list.
-    - If an ingredient lacks a quantity (e.g. "cheese"), omit the quantity and unit.
+    Extract each food item from this ingredients list.
+    - If an item lacks a quantity (e.g. "cheese"), omit the quantity and unit.
     - Convert any fractions into decimals (e.g., 1/4 becomes 0.25).
     Return exact structured JSON.
     Ingredients list:
@@ -337,7 +229,7 @@ exports.handler = async (event) => {
     }
 
     if (method === "GET" && path === "/kitchen") {
-      const types = ["GROCERY", "INVENTORY", "RECIPE", "QUICKMEAL"];
+      const types = ["GROCERY", "INVENTORY", "QUICKMEAL"];
       let allItems = [];
       for (const t of types) {
         const data = await dynamo.send(
@@ -358,53 +250,15 @@ exports.handler = async (event) => {
     if (method === "POST" && path === "/kitchen") {
       const body = JSON.parse(event.body);
 
-      if (body.action === "PARSE_RECIPE") {
+      // Used by the Quick Meal builder's "paste a list" option — parses
+      // free-text ingredients into structured {name, quantity, unit} rows.
+      // One Gemini call per explicit tap, never automatic.
+      if (body.action === "PARSE_INGREDIENTS") {
         const parsed = await parseIngredientsWithGemini(body.ingredientsText);
         return {
           statusCode: 200,
           headers,
           body: JSON.stringify({ ingredients: parsed }),
-        };
-      }
-
-      if (body.action === "COOK_RECIPE") {
-        const { recipe, inventory, multiplier } = body;
-        const mult = Number(multiplier) > 0 ? Number(multiplier) : 1;
-
-        const result = checkPantry(recipe.ingredients, inventory, mult);
-        if (!result.canMake)
-          return {
-            statusCode: 400,
-            headers,
-            body: JSON.stringify({ error: "Insufficient ingredients", result }),
-          };
-
-        for (const item of result.updatedInventory) {
-          if (item.currentQuantity <= 0) {
-            await dynamo.send(
-              new DeleteCommand({
-                TableName: TABLE_NAME,
-                Key: { pk: `USER#${userId}#INVENTORY`, sk: item.sk },
-              }),
-            );
-          } else {
-            const original = inventory.find((i) => i.sk === item.sk);
-            await dynamo.send(
-              new PutCommand({
-                TableName: TABLE_NAME,
-                Item: {
-                  ...original,
-                  pk: `USER#${userId}#INVENTORY`,
-                  currentQuantity: item.currentQuantity,
-                },
-              }),
-            );
-          }
-        }
-        return {
-          statusCode: 200,
-          headers,
-          body: JSON.stringify({ success: true, result }),
         };
       }
 

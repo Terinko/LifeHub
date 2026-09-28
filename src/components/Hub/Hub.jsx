@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   Lock,
   Briefcase,
+  CloudSun,
 } from "lucide-react";
 import "./Hub.css";
 
@@ -28,7 +29,7 @@ const TOOLS = [
   {
     key: "kitchen",
     label: "Kitchen",
-    subtitle: "Recipes & grocery list",
+    subtitle: "Quick meals & grocery list",
     icon: ChefHat,
     path: "/kitchen",
     accent: "#eaf1ea",
@@ -52,6 +53,15 @@ const TOOLS = [
     accent: "#e8eef4",
     iconColor: "#2f5f8a",
   },
+  {
+    key: "weather",
+    label: "Weather",
+    subtitle: "Ad-free forecast",
+    icon: CloudSun,
+    path: "/weather",
+    accent: "#e6f0fa",
+    iconColor: "#2f6d99",
+  },
 ];
 
 const TOOL_LABELS = {
@@ -60,6 +70,7 @@ const TOOL_LABELS = {
   poker: "Poker",
   pokerStats: "Poker Stats",
   fantasy: "Fantasy",
+  weather: "Weather",
 };
 
 const Hub = () => {
@@ -133,6 +144,7 @@ const Hub = () => {
     kitchen: false,
     poker: false,
     fantasy: false,
+    weather: false,
   };
   const isAdmin = profile?.role === "ADMIN";
   const visibleTools = TOOLS.filter((t) => isAdmin || perms[t.key]);

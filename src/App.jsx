@@ -15,6 +15,7 @@ import KitchenTool from "./components/Kitchen/KitchenTool";
 import PokerTool from "./components/Poker/PokerTool";
 import FantasyTool from "./components/Fantasy/FantasyTool";
 import ApplicationTracker from "./components/Applications/ApplicationTracker";
+import WeatherTool from "./components/Weather/WeatherTool";
 import Login from "./components/Auth/Login";
 import Admin from "./components/Auth/Admin";
 
@@ -72,6 +73,10 @@ const App = () => {
         <Route
           path="/fantasy"
           element={isAuthenticated ? <FantasyTool /> : <Navigate to="/login" />}
+        />
+        <Route
+          path="/weather"
+          element={isAuthenticated ? <WeatherTool /> : <Navigate to="/login" />}
         />
         <Route
           path="/applications"

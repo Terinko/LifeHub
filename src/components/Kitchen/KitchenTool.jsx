@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchAuthSession } from "aws-amplify/auth";
 import "./KitchenTool.css";
@@ -8,17 +8,6 @@ import "./KitchenTool.css";
 const API_BASE = "https://9im6v06twk.execute-api.us-east-1.amazonaws.com";
 
 // --- LOCAL DETERMINISTIC ENGINE ---
-const PANTRY_STAPLES = [
-  "salt",
-  "pepper",
-  "black pepper",
-  "oil",
-  "olive oil",
-  "vegetable oil",
-  "butter",
-  "water",
-  "sugar",
-];
 const VOLUME_TO_ML = {
   cup: 236.588,
   tbsp: 14.7868,
@@ -100,100 +89,6 @@ function formatQtyDisplay(item, isPantry) {
   return parts.join(" + ");
 }
 
-function calculateAvailability(recipeIngredients, inventory, multiplier) {
-  if (
-    !recipeIngredients ||
-    !Array.isArray(recipeIngredients) ||
-    recipeIngredients.length === 0
-  ) {
-    return {
-      canMake: false,
-      missingIngredients: [
-        {
-          name: "⚠️ Legacy format. Click edit and save.",
-          quantity: "Any",
-          unit: "",
-        },
-      ],
-    };
-  }
-
-  const missingIngredients = [];
-  let canMake = true;
-
-  for (const req of recipeIngredients) {
-    if (!req || !req.name) {
-      canMake = false;
-      continue;
-    }
-    if (PANTRY_STAPLES.includes(normalizeName(req.name))) continue;
-
-    const target = normalizeName(req.name);
-    let match = inventory.find((i) => normalizeName(i.name) === target);
-    if (!match) {
-      match = inventory.find((i) => {
-        const invName = normalizeName(i.name);
-        return (
-          invName &&
-          target &&
-          (invName.includes(target) || target.includes(invName))
-        );
-      });
-    }
-
-    // 1. IS IT UNQUANTIFIED? (Fixes the "cheese" issue)
-    const isUnquantified =
-      req.quantity === undefined ||
-      req.quantity === null ||
-      req.quantity === "" ||
-      isNaN(Number(req.quantity)) ||
-      Number(req.quantity) === 0;
-
-    if (isUnquantified) {
-      if (!match) {
-        canMake = false;
-        missingIngredients.push({ name: req.name, quantity: "Any", unit: "" });
-      }
-      continue; // Skip the math completely!
-    }
-
-    const requiredQty = Number(req.quantity) * multiplier;
-
-    if (!match) {
-      canMake = false;
-      missingIngredients.push({ ...req, quantity: requiredQty });
-      continue;
-    }
-
-    const invQty = Number(match.currentQuantity) || 0;
-    let have = convertUnit(invQty, match.unit, req.unit);
-
-    // 2. FORGIVING UNIT FALLBACK (Fixes the "panini bread" issue)
-    if (have === null) {
-      have = invQty;
-    }
-
-    // Fold in any compound "extra" quantities that DO convert to what the
-    // recipe is asking for, so a compound pantry item isn't under-counted.
-    if (Array.isArray(match.extra)) {
-      for (const ex of match.extra) {
-        const converted = convertUnit(Number(ex.quantity) || 0, ex.unit, req.unit);
-        if (converted !== null) have += converted;
-      }
-    }
-
-    if (isNaN(have) || have < requiredQty) {
-      canMake = false;
-      missingIngredients.push({
-        name: req.name,
-        quantity: Math.round((requiredQty - (have || 0)) * 100) / 100,
-        unit: req.unit || match.unit,
-      });
-    }
-  }
-  return { canMake, missingIngredients };
-}
-
 const KitchenTool = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("list");
@@ -204,20 +99,10 @@ const KitchenTool = () => {
   const [newItemQty, setNewItemQty] = useState("");
   const [newItemUnit, setNewItemUnit] = useState("");
 
-  const [isRecipeModalOpen, setIsRecipeModalOpen] = useState(false);
-  const [recipeName, setRecipeName] = useState("");
-  const [recipeUrl, setRecipeUrl] = useState("");
-  const [recipeIngredientsText, setRecipeIngredientsText] = useState("");
-  const [editingRecipe, setEditingRecipe] = useState(null);
-
   const [editingItem, setEditingItem] = useState(null);
   const [editQty, setEditQty] = useState("");
   const [editUnit, setEditUnit] = useState("");
   const [editExtra, setEditExtra] = useState([]);
-
-  const [checkingRecipe, setCheckingRecipe] = useState(null);
-  const [portionBySk, setPortionBySk] = useState({});
-  const getPortion = (sk) => portionBySk[sk] || 1;
 
   // sk's currently mid fade-out (marked bought / deleted) so the row plays
   // its leave animation before actually being removed from kitchenData.
@@ -229,10 +114,18 @@ const KitchenTool = () => {
   const [quickMealName, setQuickMealName] = useState("");
   const [quickMealItems, setQuickMealItems] = useState([]);
   // "pick" = choosing which pantry item to add, "qty" = entering how much
-  // of the just-picked item, null = neither sub-step is showing.
+  // of the just-picked item, "custom" = adding an item that isn't tracked
+  // in the pantry at all, null = no sub-step showing.
   const [pantryPickerStep, setPantryPickerStep] = useState(null);
   const [pendingPantryItem, setPendingPantryItem] = useState(null);
   const [pendingPantryQty, setPendingPantryQty] = useState("1");
+  const [pendingCustomName, setPendingCustomName] = useState("");
+  const [pendingCustomUnit, setPendingCustomUnit] = useState("");
+
+  // --- Quick Meals: "paste a list" (reuses the same AI parsing action the
+  // old Recipes feature used) — one Gemini call per explicit tap.
+  const [ingredientsText, setIngredientsText] = useState("");
+  const [parsingIngredients, setParsingIngredients] = useState(false);
 
   // --- Quick Meals: per-card quantities, adjustable inline via +/- before
   // logging. Keyed by quick meal sk; falls back to the saved item defaults
@@ -269,20 +162,7 @@ const KitchenTool = () => {
 
   const groceries = kitchenData.filter((item) => item.pk === "GROCERY");
   const pantry = kitchenData.filter((item) => item.pk === "INVENTORY");
-  const recipes = kitchenData.filter((item) => item.pk === "RECIPE");
   const quickMeals = kitchenData.filter((item) => item.pk === "QUICKMEAL");
-
-  const recipeAvailabilities = useMemo(() => {
-    const acc = {};
-    recipes.forEach((r) => {
-      acc[r.sk] = calculateAvailability(
-        r.ingredients,
-        pantry,
-        getPortion(r.sk),
-      );
-    });
-    return acc;
-  }, [recipes, pantry, portionBySk]);
 
   const handleAddGrocery = async (e) => {
     e.preventDefault();
@@ -399,100 +279,6 @@ const KitchenTool = () => {
     }
   };
 
-  const [savingRecipe, setSavingRecipe] = useState(false);
-  const handleSaveRecipe = async () => {
-    if (!recipeName || !recipeIngredientsText)
-      return alert("Please provide a name and paste ingredients!");
-    setSavingRecipe(true);
-
-    try {
-      const headers = await getAuthHeaders();
-      const parseRes = await fetch(`${API_BASE}/kitchen`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          action: "PARSE_RECIPE",
-          ingredientsText: recipeIngredientsText,
-        }),
-      });
-      const parsedData = await parseRes.json();
-
-      if (!parsedData.ingredients || parsedData.ingredients.length === 0) {
-        setSavingRecipe(false);
-        return alert(
-          "The AI failed to read these ingredients. Try simplifying the text.",
-        );
-      }
-
-      const payload = {
-        pk: "RECIPE",
-        name: recipeName,
-        url: recipeUrl,
-        ingredientsText: recipeIngredientsText,
-        ingredients: parsedData.ingredients,
-      };
-      if (editingRecipe) payload.sk = editingRecipe.sk;
-
-      await fetch(`${API_BASE}/kitchen`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(payload),
-      });
-
-      setRecipeName("");
-      setRecipeUrl("");
-      setRecipeIngredientsText("");
-      setEditingRecipe(null);
-      setIsRecipeModalOpen(false);
-      loadData();
-    } catch (e) {
-      alert("Failed to save recipe.");
-    }
-    setSavingRecipe(false);
-  };
-
-  const handleExecuteCook = async (recipe) => {
-    try {
-      const res = await fetch(`${API_BASE}/kitchen`, {
-        method: "POST",
-        headers: await getAuthHeaders(),
-        body: JSON.stringify({
-          action: "COOK_RECIPE",
-          recipe,
-          inventory: pantry,
-          multiplier: getPortion(recipe.sk),
-        }),
-      });
-      if (!res.ok)
-        throw new Error("Failed to cook. Make sure you have the ingredients.");
-      setCheckingRecipe(null);
-      loadData();
-      alert("Inventory updated! Hope it was delicious.");
-    } catch (e) {
-      alert(e.message);
-    }
-  };
-
-  const handleAddMissingToList = async (missingIngredients) => {
-    const authHeaders = await getAuthHeaders();
-    for (const missing of missingIngredients) {
-      await fetch(`${API_BASE}/kitchen`, {
-        method: "POST",
-        headers: authHeaders,
-        // Fallback to 1 if the quantity was "Any" so it doesn't break your shopping list
-        body: JSON.stringify({
-          pk: "GROCERY",
-          name: missing.name,
-          quantity: missing.quantity === "Any" ? 1 : missing.quantity,
-          unit: missing.unit,
-        }),
-      });
-    }
-    setCheckingRecipe(null);
-    loadData();
-    alert("Missing items added to your grocery list!");
-  };
-
   // --- Quick Meals ---
 
   const openNewQuickMeal = () => {
@@ -544,6 +330,85 @@ const KitchenTool = () => {
 
   const removeQuickMealItem = (idx) =>
     setQuickMealItems((prev) => prev.filter((_, i) => i !== idx));
+
+  // Not everything in a Quick Meal has to be a pantry item you track (hot
+  // sauce, a side you don't inventory, etc.) — this is the other path out of
+  // the picker, alongside choosing an existing pantry row.
+  const startAddCustomQuickMealItem = () => {
+    setPendingCustomName("");
+    setPendingCustomUnit("");
+    setPendingPantryQty("1");
+    setPantryPickerStep("custom");
+  };
+
+  const confirmAddCustomQuickMealItem = () => {
+    const name = pendingCustomName.trim();
+    if (!name) return;
+    const raw = pendingPantryQty.trim();
+    const qty = raw === "" ? 0 : Number(raw);
+    if (isNaN(qty) || qty < 0) return;
+    setQuickMealItems((prev) => [
+      ...prev,
+      { pantrySk: null, name, quantity: qty, unit: pendingCustomUnit.trim() },
+    ]);
+    setPantryPickerStep(null);
+    setPendingCustomName("");
+    setPendingCustomUnit("");
+  };
+
+  // Best-effort link to an existing pantry row by name, same exact/fuzzy
+  // matching convention used elsewhere in this file (getAvailablePantryQty) —
+  // used when parsed ingredients happen to match something already tracked.
+  const findPantryMatch = (name) => {
+    const target = normalizeName(name);
+    return (
+      pantry.find((p) => normalizeName(p.name) === target) ||
+      pantry.find((p) => {
+        const n = normalizeName(p.name);
+        return n && target && (n.includes(target) || target.includes(n));
+      })
+    );
+  };
+
+  // Paste a whole ingredient list and have it parsed into individual Quick
+  // Meal item rows in one shot — reuses the same AI action the old Recipes
+  // feature used. One Gemini call per explicit tap, never automatic.
+  const handleParseIngredients = async () => {
+    if (!ingredientsText.trim()) return;
+    setParsingIngredients(true);
+    try {
+      const res = await fetch(`${API_BASE}/kitchen`, {
+        method: "POST",
+        headers: await getAuthHeaders(),
+        body: JSON.stringify({
+          action: "PARSE_INGREDIENTS",
+          ingredientsText,
+        }),
+      });
+      const data = await res.json();
+      if (!data.ingredients || data.ingredients.length === 0) {
+        alert(
+          "Couldn't read any ingredients from that text. Try simplifying it.",
+        );
+        return;
+      }
+      const newItems = data.ingredients.map((ing) => {
+        const match = findPantryMatch(ing.name);
+        return {
+          pantrySk: match ? match.sk : null,
+          name: match ? match.name : ing.name,
+          quantity: Number(ing.quantity) || 0,
+          unit: ing.unit || match?.unit || "",
+        };
+      });
+      setQuickMealItems((prev) => [...prev, ...newItems]);
+      setIngredientsText("");
+    } catch (e) {
+      console.error(e);
+      alert("Failed to parse ingredients.");
+    }
+    setParsingIngredients(false);
+  };
 
   const handleSaveQuickMeal = async () => {
     if (!quickMealName.trim())
@@ -666,16 +531,7 @@ const KitchenTool = () => {
         </button>
         <h2>Kitchen</h2>
         {activeTab === "meals" ? (
-          <button
-            className="ios-add-btn"
-            onClick={() => {
-              setEditingRecipe(null);
-              setRecipeName("");
-              setRecipeUrl("");
-              setRecipeIngredientsText("");
-              setIsRecipeModalOpen(true);
-            }}
-          >
+          <button className="ios-add-btn" onClick={openNewQuickMeal}>
             +
           </button>
         ) : (
@@ -700,7 +556,7 @@ const KitchenTool = () => {
           className={`segmented-btn ${activeTab === "meals" ? "active" : ""}`}
           onClick={() => setActiveTab("meals")}
         >
-          Meals
+          Quick Meals
         </button>
       </div>
 
@@ -802,24 +658,13 @@ const KitchenTool = () => {
 
         {activeTab === "meals" && (
           <div className="list-container">
-            <div className="meals-section-header">
-              <h3>Quick Meals</h3>
-              <button
-                type="button"
-                className="add-quantity-btn small"
-                onClick={openNewQuickMeal}
-              >
-                + New Quick Meal
-              </button>
-            </div>
-
             {quickMeals.length === 0 ? (
               <div className="empty-state">
                 <p>No quick meals yet.</p>
                 <small>
-                  Build one out of items you already have in your pantry —
-                  handy for things like breakfast that don't need a full
-                  recipe.
+                  Tap + above to build one from your pantry, or paste a list
+                  of ingredients — handy for things like breakfast that don't
+                  need a full recipe.
                 </small>
               </div>
             ) : (
@@ -847,6 +692,11 @@ const KitchenTool = () => {
                       <div key={idx} className="quick-meal-item-row">
                         <span className="quick-meal-item-name">
                           {item.name}
+                          {!item.pantrySk && (
+                            <span className="untracked-badge">
+                              not tracked
+                            </span>
+                          )}
                         </span>
                         <div className="qty-stepper">
                           <button
@@ -905,116 +755,6 @@ const KitchenTool = () => {
               ))
             )}
 
-            <div className="meals-section-header" style={{ marginTop: "28px" }}>
-              <h3>Recipes</h3>
-            </div>
-
-            {recipes.length === 0 ? (
-              <div className="empty-state">
-                <p>No recipes saved.</p>
-              </div>
-            ) : (
-              recipes.map((recipe) => {
-                const avail = recipeAvailabilities[recipe.sk] || {
-                  canMake: false,
-                };
-                return (
-                  <div key={recipe.sk} className="recipe-card">
-                    <div className="recipe-header">
-                      <h3 className="recipe-title">{recipe.name}</h3>
-                      <div>
-                        <button
-                          className="icon-btn"
-                          onClick={() => {
-                            setEditingRecipe(recipe);
-                            setRecipeName(recipe.name);
-                            setRecipeUrl(recipe.url || "");
-                            setRecipeIngredientsText(
-                              recipe.ingredientsText || "",
-                            );
-                            setIsRecipeModalOpen(true);
-                          }}
-                        >
-                          ✎
-                        </button>
-                        <button
-                          className="icon-btn delete"
-                          onClick={() => handleDeleteItem(recipe, "RECIPE")}
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    </div>
-
-                    <p
-                      style={{
-                        fontSize: "13px",
-                        color: "#8c9288",
-                        margin: "0 0 12px 0",
-                        lineHeight: "1.4",
-                      }}
-                    >
-                      {recipe.ingredients
-                        ? recipe.ingredients
-                            .map((i) => {
-                              const qty = i.quantity ? i.quantity : "";
-                              const unit = i.quantity && i.unit ? i.unit : "";
-                              return `${qty} ${unit} ${i.name}`.trim();
-                            })
-                            .join(", ")
-                        : "No parsed ingredients"}
-                    </p>
-
-                    <div
-                      className="portion-selector"
-                      style={{ display: "flex", gap: "6px", margin: "8px 0" }}
-                    >
-                      {[0.5, 1, 2, 3].map((p) => (
-                        <button
-                          key={p}
-                          type="button"
-                          onClick={() =>
-                            setPortionBySk((prev) => ({
-                              ...prev,
-                              [recipe.sk]: p,
-                            }))
-                          }
-                          style={{
-                            flex: 1,
-                            padding: "6px 0",
-                            borderRadius: "8px",
-                            border: "1px solid #D8D8D2",
-                            background:
-                              getPortion(recipe.sk) === p
-                                ? "#3A3D36"
-                                : "#F4F4F0",
-                            color:
-                              getPortion(recipe.sk) === p ? "#fff" : "#3A3D36",
-                            fontSize: "13px",
-                            fontWeight: 600,
-                          }}
-                        >
-                          {p}x
-                        </button>
-                      ))}
-                    </div>
-
-                    <button
-                      className="cooked-btn"
-                      onClick={() => setCheckingRecipe(recipe)}
-                      style={{
-                        backgroundColor: avail.canMake ? "#4C664D" : "#D8D8D2",
-                        color: avail.canMake ? "#FFF" : "#3A3D36",
-                      }}
-                    >
-                      {avail.canMake
-                        ? "✓ Ready to Cook!"
-                        : "Missing Ingredients"}
-                    </button>
-                  </div>
-                );
-              })
-            )}
           </div>
         )}
       </div>
@@ -1045,108 +785,6 @@ const KitchenTool = () => {
               ↑
             </button>
           </form>
-        </div>
-      )}
-
-      {checkingRecipe && (
-        <div className="ios-modal-overlay">
-          <div className="ios-modal">
-            <div className="ios-modal-header">
-              {recipeAvailabilities[checkingRecipe.sk].canMake
-                ? "Ready to Cook!"
-                : "Missing Ingredients"}
-              <button
-                className="ios-modal-close"
-                onClick={() => setCheckingRecipe(null)}
-              >
-                ✕
-              </button>
-            </div>
-            <div className="ios-modal-content">
-              {recipeAvailabilities[checkingRecipe.sk].canMake ? (
-                <button
-                  onClick={() => handleExecuteCook(checkingRecipe)}
-                  className="ios-submit-btn full-width"
-                >
-                  Cook & Deduct Pantry
-                </button>
-              ) : (
-                <>
-                  <ul style={{ paddingLeft: "20px", marginBottom: "24px" }}>
-                    {recipeAvailabilities[
-                      checkingRecipe.sk
-                    ].missingIngredients.map((ing, idx) => (
-                      <li key={idx}>
-                        {ing.quantity === "Any" ? "" : ing.quantity} {ing.unit}{" "}
-                        {ing.name}
-                      </li>
-                    ))}
-                  </ul>
-                  <button
-                    onClick={() =>
-                      handleAddMissingToList(
-                        recipeAvailabilities[checkingRecipe.sk]
-                          .missingIngredients,
-                      )
-                    }
-                    className="ios-submit-btn full-width"
-                  >
-                    Add Missing to List
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isRecipeModalOpen && (
-        <div className="ios-modal-overlay">
-          <div className="ios-modal">
-            <div className="ios-modal-header">
-              {editingRecipe ? "Edit Recipe" : "New Recipe"}
-              <button
-                className="ios-modal-close"
-                onClick={() => setIsRecipeModalOpen(false)}
-              >
-                ✕
-              </button>
-            </div>
-            <div className="ios-modal-content">
-              <input
-                className="ios-input-modal"
-                placeholder="Recipe Name"
-                value={recipeName}
-                onChange={(e) => setRecipeName(e.target.value)}
-                style={{ marginBottom: "12px", width: "100%" }}
-              />
-              <input
-                className="ios-input-modal"
-                placeholder="Link"
-                value={recipeUrl}
-                onChange={(e) => setRecipeUrl(e.target.value)}
-                style={{ marginBottom: "12px", width: "100%" }}
-              />
-              <textarea
-                className="ios-input-modal"
-                placeholder="Paste ingredients..."
-                value={recipeIngredientsText}
-                onChange={(e) => setRecipeIngredientsText(e.target.value)}
-                style={{
-                  marginBottom: "24px",
-                  minHeight: "100px",
-                  width: "100%",
-                }}
-              />
-              <button
-                onClick={handleSaveRecipe}
-                className="ios-submit-btn full-width"
-                disabled={savingRecipe}
-              >
-                {savingRecipe ? "Parsing with AI..." : "Save Recipe"}
-              </button>
-            </div>
-          </div>
         </div>
       )}
 
@@ -1253,7 +891,12 @@ const KitchenTool = () => {
 
               {quickMealItems.map((item, idx) => (
                 <div className="edit-extra-row" key={idx}>
-                  <span style={{ flex: 2, fontSize: "14px" }}>{item.name}</span>
+                  <span style={{ flex: 2, fontSize: "14px" }}>
+                    {item.name}
+                    {!item.pantrySk && (
+                      <span className="untracked-badge">not tracked</span>
+                    )}
+                  </span>
                   <span style={{ flex: 1, fontSize: "14px", color: "#8c9288" }}>
                     {item.quantity} {item.unit}
                   </span>
@@ -1274,6 +917,27 @@ const KitchenTool = () => {
               >
                 + Add item from pantry
               </button>
+
+              <div className="paste-ingredients-section">
+                <label className="field-label">
+                  Or paste a list of ingredients
+                </label>
+                <textarea
+                  className="ios-input-modal"
+                  placeholder={"2 eggs\n4 sausage links\n2 slices toast"}
+                  value={ingredientsText}
+                  onChange={(e) => setIngredientsText(e.target.value)}
+                  style={{ minHeight: "70px", width: "100%" }}
+                />
+                <button
+                  type="button"
+                  onClick={handleParseIngredients}
+                  className="add-quantity-btn"
+                  disabled={parsingIngredients || !ingredientsText.trim()}
+                >
+                  {parsingIngredients ? "Parsing with AI..." : "Parse & Add"}
+                </button>
+              </div>
 
               <button
                 onClick={handleSaveQuickMeal}
@@ -1298,26 +962,35 @@ const KitchenTool = () => {
                 ✕
               </button>
             </div>
-            <div className="ios-modal-content pantry-picker-list">
-              {pantry.length === 0 ? (
-                <p style={{ fontSize: "14px", color: "#8c9288" }}>
-                  Your pantry is empty.
-                </p>
-              ) : (
-                pantry.map((p) => (
-                  <button
-                    type="button"
-                    key={p.sk}
-                    className="pantry-picker-row"
-                    onClick={() => pickPantryItemForQuickMeal(p)}
-                  >
-                    <span>{p.name}</span>
-                    <span className="qty-badge">
-                      {formatQtyDisplay(p, true)}
-                    </span>
-                  </button>
-                ))
-              )}
+            <div className="ios-modal-content">
+              <button
+                type="button"
+                className="add-quantity-btn"
+                onClick={startAddCustomQuickMealItem}
+              >
+                + Item not in my pantry
+              </button>
+              <div className="pantry-picker-list">
+                {pantry.length === 0 ? (
+                  <p style={{ fontSize: "14px", color: "#8c9288" }}>
+                    Your pantry is empty.
+                  </p>
+                ) : (
+                  pantry.map((p) => (
+                    <button
+                      type="button"
+                      key={p.sk}
+                      className="pantry-picker-row"
+                      onClick={() => pickPantryItemForQuickMeal(p)}
+                    >
+                      <span>{p.name}</span>
+                      <span className="qty-badge">
+                        {formatQtyDisplay(p, true)}
+                      </span>
+                    </button>
+                  ))
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -1360,6 +1033,57 @@ const KitchenTool = () => {
         </div>
       )}
 
+      {pantryPickerStep === "custom" && (
+        <div className="ios-modal-overlay">
+          <div className="ios-modal">
+            <div className="ios-modal-header">
+              Add an item
+              <button
+                className="ios-modal-close"
+                onClick={() => setPantryPickerStep(null)}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="ios-modal-content">
+              <input
+                className="ios-input-modal"
+                placeholder="Item name"
+                autoFocus
+                value={pendingCustomName}
+                onChange={(e) => setPendingCustomName(e.target.value)}
+                style={{ marginBottom: "12px", width: "100%" }}
+              />
+              <div className="edit-extra-row" style={{ marginBottom: "8px" }}>
+                <input
+                  className="ios-input-modal"
+                  style={{ flex: 1 }}
+                  type="number"
+                  value={pendingPantryQty}
+                  onChange={(e) => setPendingPantryQty(e.target.value)}
+                />
+                <input
+                  className="ios-input-modal"
+                  style={{ flex: 1 }}
+                  placeholder="Unit"
+                  value={pendingCustomUnit}
+                  onChange={(e) => setPendingCustomUnit(e.target.value)}
+                />
+              </div>
+              <div className="field-help">
+                Not linked to your pantry — this is just a reminder, it won't
+                decrement anything when you log this meal.
+              </div>
+              <button
+                onClick={confirmAddCustomQuickMealItem}
+                className="ios-submit-btn full-width"
+              >
+                Add to Quick Meal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
