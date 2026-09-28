@@ -39,7 +39,6 @@ import {
   sceneFor,
   searchPlaces,
 } from "./weatherApi";
-import "./WeatherTool.css";
 import { API_BASE } from "../../config";
 
 const PLACES_KEY = "lifehub.weather.places";

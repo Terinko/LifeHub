@@ -12,7 +12,6 @@ import {
   Briefcase,
   CloudSun,
 } from "lucide-react";
-import "./Hub.css";
 import { API_BASE } from "../../config";
 import { getAuthHeaders } from "../../shared/api/client";
 

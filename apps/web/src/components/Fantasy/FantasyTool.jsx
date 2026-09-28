@@ -3,7 +3,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import "./FantasyTool.css";
 import { API_BASE } from "../../config";
 import { getAuthHeaders } from "../../shared/api/client";
 

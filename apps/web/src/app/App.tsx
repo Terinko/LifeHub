@@ -3,7 +3,6 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { useAuth } from "./auth";
 import { RequireAuth } from "./RequireAuth";
 import { LoadingScreen } from "./LoadingScreen";
-import "./App.css";
 
 // Each tool is its own bundle chunk, downloaded the first time it's opened.
 const Login = lazy(() => import("../components/Auth/Login"));

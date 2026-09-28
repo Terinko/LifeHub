@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { MyStatsCharts, GroupStatsCharts } from "./PokerStatsCharts";
-import "./PokerTool.css";
 import { API_BASE } from "../../config";
 import { getAuthHeaders } from "../../shared/api/client";
 
