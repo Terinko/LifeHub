@@ -12,13 +12,13 @@ backend/         AWS CDK stack and Lambda handlers (moves to services/api + infr
 
 The root `package.json` is an npm workspace. Run everything from the repo root:
 
-| Command | What it does |
-| --- | --- |
-| `npm install` | Installs every workspace |
-| `npm run dev` | Starts the frontend at http://localhost:5173 against the production API |
-| `npm run build` | Builds the frontend into `apps/web/dist` (the CDK stack uploads this) |
-| `npm run lint` / `npm run typecheck` / `npm test` | ESLint, TypeScript, Vitest |
-| `npm run format` | Prettier |
+| Command                                           | What it does                                                            |
+| ------------------------------------------------- | ----------------------------------------------------------------------- |
+| `npm install`                                     | Installs every workspace                                                |
+| `npm run dev`                                     | Starts the frontend at http://localhost:5173 against the production API |
+| `npm run build`                                   | Builds the frontend into `apps/web/dist` (the CDK stack uploads this)   |
+| `npm run lint` / `npm run typecheck` / `npm test` | ESLint, TypeScript, Vitest                                              |
+| `npm run format`                                  | Prettier                                                                |
 
 To point the frontend at a different backend, copy `apps/web/.env.example` to `apps/web/.env.local` and change the values. Defaults live in `apps/web/src/config.ts`.
 
