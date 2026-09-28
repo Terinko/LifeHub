@@ -45,7 +45,8 @@ const blend = (block, field, i) =>
 
 // --- Weather codes (WMO) ---------------------------------------------------
 
-const WET_CODES = (c) => (c >= 51 && c <= 67) || (c >= 80 && c <= 82) || c >= 95;
+const WET_CODES = (c) =>
+  (c >= 51 && c <= 67) || (c >= 80 && c <= 82) || c >= 95;
 const SNOW_CODES = (c) => (c >= 71 && c <= 77) || c === 85 || c === 86;
 
 const LABELS = {
@@ -80,7 +81,8 @@ const LABELS = {
 };
 
 export const codeLabel = (code, isDay = true) => {
-  if (!isDay && (code === 0 || code === 1)) return code === 0 ? "Clear night" : "Mostly clear";
+  if (!isDay && (code === 0 || code === 1))
+    return code === 0 ? "Clear night" : "Mostly clear";
   return LABELS[code] ?? "—";
 };
 
@@ -94,10 +96,15 @@ export function sceneFor(code, isDay) {
   else if (code >= 95) kind = "storm";
   else if (SNOW_CODES(code)) {
     kind = "snow";
-    intensity = code === 75 || code === 86 ? 2 : code === 71 || code === 85 ? 0.6 : 1;
+    intensity =
+      code === 75 || code === 86 ? 2 : code === 71 || code === 85 ? 0.6 : 1;
   } else if (WET_CODES(code)) {
     kind = "rain";
-    intensity = [65, 67, 82].includes(code) ? 2 : [51, 56, 61, 80].includes(code) ? 0.55 : 1;
+    intensity = [65, 67, 82].includes(code)
+      ? 2
+      : [51, 56, 61, 80].includes(code)
+        ? 0.55
+        : 1;
   }
   return { kind, isDay: !!isDay, intensity };
 }
@@ -222,15 +229,21 @@ function describeNowcast(values, precipNow, currentCode) {
   if (!values.length) return null;
   const WET = 0.005;
   const wetNow =
-    (precipNow ?? 0) > WET || values[0] > WET || (WET_CODES(currentCode) && !SNOW_CODES(currentCode));
-  const firstChange = values.findIndex((v) => (v > WET) !== wetNow);
+    (precipNow ?? 0) > WET ||
+    values[0] > WET ||
+    (WET_CODES(currentCode) && !SNOW_CODES(currentCode));
+  const firstChange = values.findIndex((v) => v > WET !== wetNow);
   const mins = firstChange * 15;
   if (wetNow) {
     if (firstChange === -1) return "Rain continuing for the next 2 hours";
-    return mins === 0 ? "Rain ending shortly" : `Rain ending in about ${mins} min`;
+    return mins === 0
+      ? "Rain ending shortly"
+      : `Rain ending in about ${mins} min`;
   }
   if (firstChange === -1) return "No rain expected for the next 2 hours";
-  return mins === 0 ? "Rain starting shortly" : `Rain starting in about ${mins} min`;
+  return mins === 0
+    ? "Rain starting shortly"
+    : `Rain starting in about ${mins} min`;
 }
 
 // --- Alerts (National Weather Service) --------------------------------------
@@ -277,9 +290,12 @@ export async function searchPlaces(query) {
 // NWS points lookup doubles as a free reverse geocoder for "use my location".
 export async function reverseLookup(lat, lon) {
   try {
-    const res = await fetch(`${NWS_URL}/points/${lat.toFixed(4)},${lon.toFixed(4)}`, {
-      headers: { Accept: "application/geo+json" },
-    });
+    const res = await fetch(
+      `${NWS_URL}/points/${lat.toFixed(4)},${lon.toFixed(4)}`,
+      {
+        headers: { Accept: "application/geo+json" },
+      },
+    );
     if (!res.ok) throw new Error();
     const j = await res.json();
     const rel = j.properties?.relativeLocation?.properties;
@@ -304,7 +320,11 @@ async function fetchCurrentBatch(places, modelParam) {
   places.forEach((p, i) => {
     const cur = list[i]?.current;
     if (cur?.temperature_2m != null) {
-      out[p.id] = { temp: cur.temperature_2m, code: cur.weather_code, isDay: cur.is_day === 1 };
+      out[p.id] = {
+        temp: cur.temperature_2m,
+        code: cur.weather_code,
+        isDay: cur.is_day === 1,
+      };
     }
   });
   return out;

@@ -240,7 +240,10 @@ const KitchenTool = () => {
       updatedItem.currentQuantity = Number(editQty);
 
     const cleanedExtra = editExtra
-      .map((e) => ({ quantity: Number(e.quantity), unit: (e.unit || "").trim() }))
+      .map((e) => ({
+        quantity: Number(e.quantity),
+        unit: (e.unit || "").trim(),
+      }))
       .filter((e) => e.unit && !isNaN(e.quantity) && e.quantity > 0);
     if (cleanedExtra.length > 0) updatedItem.extra = cleanedExtra;
     else delete updatedItem.extra;
@@ -460,7 +463,10 @@ const KitchenTool = () => {
       const current = prev[qm.sk] || (qm.items || []).map((i) => ({ ...i }));
       const updated = current.map((item, i) =>
         i === idx
-          ? { ...item, quantity: Math.max(0, (Number(item.quantity) || 0) + delta) }
+          ? {
+              ...item,
+              quantity: Math.max(0, (Number(item.quantity) || 0) + delta),
+            }
           : item,
       );
       return { ...prev, [qm.sk]: updated };
@@ -653,9 +659,9 @@ const KitchenTool = () => {
               <div className="empty-state">
                 <p>No quick meals yet.</p>
                 <small>
-                  Tap + above to build one from your pantry, or paste a list
-                  of ingredients — handy for things like breakfast that don't
-                  need a full recipe.
+                  Tap + above to build one from your pantry, or paste a list of
+                  ingredients — handy for things like breakfast that don't need
+                  a full recipe.
                 </small>
               </div>
             ) : (
@@ -684,9 +690,7 @@ const KitchenTool = () => {
                         <span className="quick-meal-item-name">
                           {item.name}
                           {!item.pantrySk && (
-                            <span className="untracked-badge">
-                              not tracked
-                            </span>
+                            <span className="untracked-badge">not tracked</span>
                           )}
                         </span>
                         <div className="qty-stepper">
@@ -745,7 +749,6 @@ const KitchenTool = () => {
                 </div>
               ))
             )}
-
           </div>
         )}
       </div>

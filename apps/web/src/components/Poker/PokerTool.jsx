@@ -300,11 +300,15 @@ const PokerTool = () => {
         }),
       });
       if (!res.ok) {
-        alert("Failed to save that buy-in change — reloading to make sure you're seeing the real numbers.");
+        alert(
+          "Failed to save that buy-in change — reloading to make sure you're seeing the real numbers.",
+        );
         loadProfileAndData();
       }
     } catch (e) {
-      alert("Failed to save that buy-in change — reloading to make sure you're seeing the real numbers.");
+      alert(
+        "Failed to save that buy-in change — reloading to make sure you're seeing the real numbers.",
+      );
       loadProfileAndData();
     }
   };
@@ -691,9 +695,7 @@ const PokerTool = () => {
                   }}
                 >
                   <div style={{ marginBottom: "12px" }}>
-                    <h3 style={{ margin: 0 }}>
-                      ${game.buyInAmount} Buy-in
-                    </h3>
+                    <h3 style={{ margin: 0 }}>${game.buyInAmount} Buy-in</h3>
                     <small style={{ color: "#888" }}>{participantNames}</small>
                     <div
                       style={{
@@ -704,7 +706,9 @@ const PokerTool = () => {
                       }}
                     >
                       Started {formatGameAge(game.date)}
-                      {stale ? " — looks abandoned? Consider cancelling it." : ""}
+                      {stale
+                        ? " — looks abandoned? Consider cancelling it."
+                        : ""}
                     </div>
                   </div>
                   {Object.entries(game.players).map(([id, p]) => (
@@ -769,7 +773,9 @@ const PokerTool = () => {
               );
             })}
 
-            <h3>{activeGames.length > 0 ? "Start Another Game" : "Start New Game"}</h3>
+            <h3>
+              {activeGames.length > 0 ? "Start Another Game" : "Start New Game"}
+            </h3>
             <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
               <label>
                 Buy-in ($):{" "}
@@ -904,9 +910,9 @@ const PokerTool = () => {
           <div className="list-container">
             {!myStats.linked && (
               <p style={{ color: "#888", textAlign: "center" }}>
-                No player linked to your account yet. Go to the Roster tab
-                and tap &quot;This is Me&quot; next to your name to start
-                tracking your personal stats.
+                No player linked to your account yet. Go to the Roster tab and
+                tap &quot;This is Me&quot; next to your name to start tracking
+                your personal stats.
               </p>
             )}
             {myStats.linked && myStats.gamesPlayed === 0 && (
@@ -916,361 +922,366 @@ const PokerTool = () => {
             )}
             {myStats.linked && myStats.gamesPlayed > 0 && (
               <>
-              <div
-                className="recipe-card"
-                style={{ background: "#f8f9fa", border: "2px solid #e1e4e8" }}
-              >
-                <h3
-                  style={{
-                    marginTop: 0,
-                    textAlign: "center",
-                    borderBottom: "1px solid #ddd",
-                    paddingBottom: "10px",
-                  }}
-                >
-                  📊 My Poker Career
-                </h3>
-
                 <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: "12px",
-                    marginTop: "16px",
-                  }}
+                  className="recipe-card"
+                  style={{ background: "#f8f9fa", border: "2px solid #e1e4e8" }}
                 >
+                  <h3
+                    style={{
+                      marginTop: 0,
+                      textAlign: "center",
+                      borderBottom: "1px solid #ddd",
+                      paddingBottom: "10px",
+                    }}
+                  >
+                    📊 My Poker Career
+                  </h3>
+
                   <div
                     style={{
-                      padding: "12px",
-                      background: "#fff",
-                      borderRadius: "8px",
-                      textAlign: "center",
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: "12px",
+                      marginTop: "16px",
                     }}
                   >
                     <div
                       style={{
-                        fontSize: "20px",
-                        fontWeight: "bold",
-                        color: myStats.netTotal >= 0 ? "green" : "#e64848",
+                        padding: "12px",
+                        background: "#fff",
+                        borderRadius: "8px",
+                        textAlign: "center",
                       }}
                     >
-                      {myStats.netTotal >= 0 ? "+" : "-"}$
-                      {Math.abs(myStats.netTotal).toFixed(2)}
+                      <div
+                        style={{
+                          fontSize: "20px",
+                          fontWeight: "bold",
+                          color: myStats.netTotal >= 0 ? "green" : "#e64848",
+                        }}
+                      >
+                        {myStats.netTotal >= 0 ? "+" : "-"}$
+                        {Math.abs(myStats.netTotal).toFixed(2)}
+                      </div>
+                      <small style={{ color: "#888" }}>Lifetime Winnings</small>
                     </div>
-                    <small style={{ color: "#888" }}>Lifetime Winnings</small>
-                  </div>
 
-                  <div
-                    style={{
-                      padding: "12px",
-                      background: "#fff",
-                      borderRadius: "8px",
-                      textAlign: "center",
-                    }}
-                  >
-                    <div style={{ fontSize: "20px", fontWeight: "bold" }}>
-                      {myStats.gamesPlayed}
-                    </div>
-                    <small style={{ color: "#888" }}>Games Played</small>
-                  </div>
-
-                  <div
-                    style={{
-                      padding: "12px",
-                      background: "#fff",
-                      borderRadius: "8px",
-                      textAlign: "center",
-                    }}
-                  >
-                    <div style={{ fontSize: "20px", fontWeight: "bold" }}>
-                      {myStats.winRate.toFixed(0)}%
-                    </div>
-                    <small style={{ color: "#888" }}>Win Rate</small>
-                  </div>
-
-                  <div
-                    style={{
-                      padding: "12px",
-                      background: "#fff",
-                      borderRadius: "8px",
-                      textAlign: "center",
-                    }}
-                  >
-                    <div style={{ fontSize: "20px", fontWeight: "bold" }}>
-                      {myStats.buyInsTotal}
-                    </div>
-                    <small style={{ color: "#888" }}>Total Buy-ins</small>
-                  </div>
-
-                  <div
-                    style={{
-                      padding: "12px",
-                      background: "#fff",
-                      borderRadius: "8px",
-                      textAlign: "center",
-                    }}
-                  >
                     <div
                       style={{
-                        fontSize: "20px",
-                        fontWeight: "bold",
-                        color: "green",
+                        padding: "12px",
+                        background: "#fff",
+                        borderRadius: "8px",
+                        textAlign: "center",
                       }}
                     >
-                      +${myStats.biggestWin.toFixed(2)}
+                      <div style={{ fontSize: "20px", fontWeight: "bold" }}>
+                        {myStats.gamesPlayed}
+                      </div>
+                      <small style={{ color: "#888" }}>Games Played</small>
                     </div>
-                    <small style={{ color: "#888" }}>Best Night</small>
-                  </div>
 
-                  <div
-                    style={{
-                      padding: "12px",
-                      background: "#fff",
-                      borderRadius: "8px",
-                      textAlign: "center",
-                    }}
-                  >
                     <div
                       style={{
-                        fontSize: "20px",
-                        fontWeight: "bold",
-                        color: "#e64848",
+                        padding: "12px",
+                        background: "#fff",
+                        borderRadius: "8px",
+                        textAlign: "center",
                       }}
                     >
-                      -${Math.abs(myStats.biggestLoss).toFixed(2)}
+                      <div style={{ fontSize: "20px", fontWeight: "bold" }}>
+                        {myStats.winRate.toFixed(0)}%
+                      </div>
+                      <small style={{ color: "#888" }}>Win Rate</small>
                     </div>
-                    <small style={{ color: "#888" }}>Worst Night</small>
-                  </div>
 
-                  <div
-                    style={{
-                      padding: "12px",
-                      background: "#fff",
-                      borderRadius: "8px",
-                      textAlign: "center",
-                    }}
-                  >
                     <div
                       style={{
-                        fontSize: "20px",
-                        fontWeight: "bold",
-                        color: myStats.avgNet >= 0 ? "green" : "#e64848",
+                        padding: "12px",
+                        background: "#fff",
+                        borderRadius: "8px",
+                        textAlign: "center",
                       }}
                     >
-                      {myStats.avgNet >= 0 ? "+" : "-"}$
-                      {Math.abs(myStats.avgNet).toFixed(2)}
+                      <div style={{ fontSize: "20px", fontWeight: "bold" }}>
+                        {myStats.buyInsTotal}
+                      </div>
+                      <small style={{ color: "#888" }}>Total Buy-ins</small>
                     </div>
-                    <small style={{ color: "#888" }}>Avg Net / Game</small>
+
+                    <div
+                      style={{
+                        padding: "12px",
+                        background: "#fff",
+                        borderRadius: "8px",
+                        textAlign: "center",
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: "20px",
+                          fontWeight: "bold",
+                          color: "green",
+                        }}
+                      >
+                        +${myStats.biggestWin.toFixed(2)}
+                      </div>
+                      <small style={{ color: "#888" }}>Best Night</small>
+                    </div>
+
+                    <div
+                      style={{
+                        padding: "12px",
+                        background: "#fff",
+                        borderRadius: "8px",
+                        textAlign: "center",
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: "20px",
+                          fontWeight: "bold",
+                          color: "#e64848",
+                        }}
+                      >
+                        -${Math.abs(myStats.biggestLoss).toFixed(2)}
+                      </div>
+                      <small style={{ color: "#888" }}>Worst Night</small>
+                    </div>
+
+                    <div
+                      style={{
+                        padding: "12px",
+                        background: "#fff",
+                        borderRadius: "8px",
+                        textAlign: "center",
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: "20px",
+                          fontWeight: "bold",
+                          color: myStats.avgNet >= 0 ? "green" : "#e64848",
+                        }}
+                      >
+                        {myStats.avgNet >= 0 ? "+" : "-"}$
+                        {Math.abs(myStats.avgNet).toFixed(2)}
+                      </div>
+                      <small style={{ color: "#888" }}>Avg Net / Game</small>
+                    </div>
+
+                    <div
+                      style={{
+                        padding: "12px",
+                        background: "#fff",
+                        borderRadius: "8px",
+                        textAlign: "center",
+                      }}
+                    >
+                      <div style={{ fontSize: "20px", fontWeight: "bold" }}>
+                        🔥 {myStats.bestStreak}
+                      </div>
+                      <small style={{ color: "#888" }}>
+                        Best Winning Streak
+                      </small>
+                    </div>
                   </div>
 
                   <div
                     style={{
+                      marginTop: "16px",
                       padding: "12px",
                       background: "#fff",
                       borderRadius: "8px",
                       textAlign: "center",
                     }}
                   >
-                    <div style={{ fontSize: "20px", fontWeight: "bold" }}>
-                      🔥 {myStats.bestStreak}
+                    <div style={{ fontSize: "16px", fontWeight: "bold" }}>
+                      {myStats.currentStreak > 0 &&
+                        `🔥 On a ${myStats.currentStreak}-game winning streak!`}
+                      {myStats.currentStreak < 0 &&
+                        `❄️ On a ${Math.abs(myStats.currentStreak)}-game losing streak`}
+                      {myStats.currentStreak === 0 && "No active streak"}
                     </div>
-                    <small style={{ color: "#888" }}>
-                      Best Winning Streak
-                    </small>
                   </div>
                 </div>
 
-                <div
-                  style={{
-                    marginTop: "16px",
-                    padding: "12px",
-                    background: "#fff",
-                    borderRadius: "8px",
-                    textAlign: "center",
-                  }}
-                >
-                  <div style={{ fontSize: "16px", fontWeight: "bold" }}>
-                    {myStats.currentStreak > 0 &&
-                      `🔥 On a ${myStats.currentStreak}-game winning streak!`}
-                    {myStats.currentStreak < 0 &&
-                      `❄️ On a ${Math.abs(myStats.currentStreak)}-game losing streak`}
-                    {myStats.currentStreak === 0 && "No active streak"}
-                  </div>
-                </div>
-              </div>
-
-              <MyStatsCharts
-                games={myStatsData.games}
-                playerIds={myStatsData.playerIds}
-              />
+                <MyStatsCharts
+                  games={myStatsData.games}
+                  playerIds={myStatsData.playerIds}
+                />
               </>
             )}
 
             {hasStats &&
               (funStats ? (
-              <>
-              <div
-                className="recipe-card"
-                style={{ background: "#f8f9fa", border: "2px solid #e1e4e8" }}
-              >
-                <h3
-                  style={{
-                    marginTop: 0,
-                    textAlign: "center",
-                    borderBottom: "1px solid #ddd",
-                    paddingBottom: "10px",
-                  }}
-                >
-                  🏆 Hall of Fame
-                </h3>
-
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "16px",
-                    marginTop: "12px",
-                    fontSize: "15px",
-                  }}
-                >
+                <>
                   <div
+                    className="recipe-card"
                     style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "flex-start",
+                      background: "#f8f9fa",
+                      border: "2px solid #e1e4e8",
                     }}
                   >
-                    <span>
-                      🎩 <strong>The Houdini:</strong>{" "}
-                      {funStats.houdini?.val > 0
-                        ? funStats.houdini.name
-                        : "N/A"}{" "}
-                      <br />
-                      <small style={{ color: "#888", fontSize: "12px" }}>
-                        Most buy-ins in a night while still profiting
-                      </small>
-                    </span>
-                    <span style={{ fontWeight: "bold" }}>
-                      {funStats.houdini?.val > 0
-                        ? `${funStats.houdini.val} buy-ins`
-                        : "-"}
-                    </span>
-                  </div>
+                    <h3
+                      style={{
+                        marginTop: 0,
+                        textAlign: "center",
+                        borderBottom: "1px solid #ddd",
+                        paddingBottom: "10px",
+                      }}
+                    >
+                      🏆 Hall of Fame
+                    </h3>
 
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "flex-start",
-                    }}
-                  >
-                    <span>
-                      💸 <strong>The Tilt Master:</strong>{" "}
-                      {funStats.tiltMaster?.val > 0
-                        ? funStats.tiltMaster.name
-                        : "N/A"}{" "}
-                      <br />
-                      <small style={{ color: "#888", fontSize: "12px" }}>
-                        Most buy-ins in a single night
-                      </small>
-                    </span>
-                    <span style={{ fontWeight: "bold" }}>
-                      {funStats.tiltMaster?.val > 0
-                        ? `${funStats.tiltMaster.val} buy-ins`
-                        : "-"}
-                    </span>
-                  </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "16px",
+                        marginTop: "12px",
+                        fontSize: "15px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "flex-start",
+                        }}
+                      >
+                        <span>
+                          🎩 <strong>The Houdini:</strong>{" "}
+                          {funStats.houdini?.val > 0
+                            ? funStats.houdini.name
+                            : "N/A"}{" "}
+                          <br />
+                          <small style={{ color: "#888", fontSize: "12px" }}>
+                            Most buy-ins in a night while still profiting
+                          </small>
+                        </span>
+                        <span style={{ fontWeight: "bold" }}>
+                          {funStats.houdini?.val > 0
+                            ? `${funStats.houdini.val} buy-ins`
+                            : "-"}
+                        </span>
+                      </div>
 
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "flex-start",
-                    }}
-                  >
-                    <span>
-                      📈 <strong>The ROI King:</strong>{" "}
-                      {funStats.roiKing?.val !== -Infinity
-                        ? funStats.roiKing.name
-                        : "N/A"}{" "}
-                      <br />
-                      <small style={{ color: "#888", fontSize: "12px" }}>
-                        Biggest profit off exactly one buy-in
-                      </small>
-                    </span>
-                    <span style={{ color: "green", fontWeight: "bold" }}>
-                      {funStats.roiKing?.val !== -Infinity
-                        ? `+$${funStats.roiKing.val.toFixed(2)}`
-                        : "-"}
-                    </span>
-                  </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "flex-start",
+                        }}
+                      >
+                        <span>
+                          💸 <strong>The Tilt Master:</strong>{" "}
+                          {funStats.tiltMaster?.val > 0
+                            ? funStats.tiltMaster.name
+                            : "N/A"}{" "}
+                          <br />
+                          <small style={{ color: "#888", fontSize: "12px" }}>
+                            Most buy-ins in a single night
+                          </small>
+                        </span>
+                        <span style={{ fontWeight: "bold" }}>
+                          {funStats.tiltMaster?.val > 0
+                            ? `${funStats.tiltMaster.val} buy-ins`
+                            : "-"}
+                        </span>
+                      </div>
 
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "flex-start",
-                    }}
-                  >
-                    <span>
-                      🎢 <strong>The Rollercoaster:</strong>{" "}
-                      {funStats.rollercoaster?.name || "N/A"} <br />
-                      <small style={{ color: "#888", fontSize: "12px" }}>
-                        Biggest gap between best and worst night
-                      </small>
-                    </span>
-                    <span style={{ fontWeight: "bold" }}>
-                      ${funStats.rollercoaster?.variance?.toFixed(2) || "0.00"}{" "}
-                      gap
-                    </span>
-                  </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "flex-start",
+                        }}
+                      >
+                        <span>
+                          📈 <strong>The ROI King:</strong>{" "}
+                          {funStats.roiKing?.val !== -Infinity
+                            ? funStats.roiKing.name
+                            : "N/A"}{" "}
+                          <br />
+                          <small style={{ color: "#888", fontSize: "12px" }}>
+                            Biggest profit off exactly one buy-in
+                          </small>
+                        </span>
+                        <span style={{ color: "green", fontWeight: "bold" }}>
+                          {funStats.roiKing?.val !== -Infinity
+                            ? `+$${funStats.roiKing.val.toFixed(2)}`
+                            : "-"}
+                        </span>
+                      </div>
 
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "flex-start",
-                    }}
-                  >
-                    <span>
-                      ⚖️ <strong>The Swiss Bank:</strong>{" "}
-                      {funStats.swissBank?.name || "N/A"} <br />
-                      <small style={{ color: "#888", fontSize: "12px" }}>
-                        Lifetime net closest to $0.00
-                      </small>
-                    </span>
-                    <span style={{ fontWeight: "bold" }}>
-                      ${funStats.swissBank?.net?.toFixed(2) || "0.00"}
-                    </span>
-                  </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "flex-start",
+                        }}
+                      >
+                        <span>
+                          🎢 <strong>The Rollercoaster:</strong>{" "}
+                          {funStats.rollercoaster?.name || "N/A"} <br />
+                          <small style={{ color: "#888", fontSize: "12px" }}>
+                            Biggest gap between best and worst night
+                          </small>
+                        </span>
+                        <span style={{ fontWeight: "bold" }}>
+                          $
+                          {funStats.rollercoaster?.variance?.toFixed(2) ||
+                            "0.00"}{" "}
+                          gap
+                        </span>
+                      </div>
 
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "flex-start",
-                    }}
-                  >
-                    <span>
-                      📅 <strong>The Iron Man:</strong>{" "}
-                      {funStats.ironMan?.name || "N/A"} <br />
-                      <small style={{ color: "#888", fontSize: "12px" }}>
-                        Most total games played
-                      </small>
-                    </span>
-                    <span style={{ fontWeight: "bold" }}>
-                      {funStats.ironMan?.games || 0} games
-                    </span>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "flex-start",
+                        }}
+                      >
+                        <span>
+                          ⚖️ <strong>The Swiss Bank:</strong>{" "}
+                          {funStats.swissBank?.name || "N/A"} <br />
+                          <small style={{ color: "#888", fontSize: "12px" }}>
+                            Lifetime net closest to $0.00
+                          </small>
+                        </span>
+                        <span style={{ fontWeight: "bold" }}>
+                          ${funStats.swissBank?.net?.toFixed(2) || "0.00"}
+                        </span>
+                      </div>
+
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "flex-start",
+                        }}
+                      >
+                        <span>
+                          📅 <strong>The Iron Man:</strong>{" "}
+                          {funStats.ironMan?.name || "N/A"} <br />
+                          <small style={{ color: "#888", fontSize: "12px" }}>
+                            Most total games played
+                          </small>
+                        </span>
+                        <span style={{ fontWeight: "bold" }}>
+                          {funStats.ironMan?.games || 0} games
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-              <GroupStatsCharts statsData={statsData} />
-              </>
-            ) : (
-              <p style={{ color: "#888", textAlign: "center" }}>
-                No qualifying stats yet!
-              </p>
-            ))}
+                  <GroupStatsCharts statsData={statsData} />
+                </>
+              ) : (
+                <p style={{ color: "#888", textAlign: "center" }}>
+                  No qualifying stats yet!
+                </p>
+              ))}
           </div>
         )}
       </div>
@@ -1280,7 +1291,10 @@ const PokerTool = () => {
           <div className="ios-modal">
             <div className="ios-modal-header">
               {settlementResults ? "Settle Up" : "Enter Final Chips"}{" "}
-              <button className="ios-modal-close" onClick={closeSettlementModal}>
+              <button
+                className="ios-modal-close"
+                onClick={closeSettlementModal}
+              >
                 ✕
               </button>
             </div>
@@ -1293,8 +1307,8 @@ const PokerTool = () => {
                     marginBottom: "16px",
                   }}
                 >
-                  Not saved to history — this is the only place you'll see
-                  these numbers, so settle up now.
+                  Not saved to history — this is the only place you'll see these
+                  numbers, so settle up now.
                 </div>
 
                 {settlementResults.length === 0 && (
@@ -1342,109 +1356,113 @@ const PokerTool = () => {
                 </button>
               </div>
             ) : (
-            <div className="ios-modal-content">
-              {Object.entries(settlingGame.players).map(([id, p]) => (
+              <div className="ios-modal-content">
+                {Object.entries(settlingGame.players).map(([id, p]) => (
+                  <div
+                    key={id}
+                    style={{
+                      marginBottom: "12px",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <span>{p.name}</span>
+                    <input
+                      type="number"
+                      className="ios-input-modal"
+                      style={{ width: "120px", margin: 0 }}
+                      placeholder="Final chips"
+                      value={p.finalChips ?? ""}
+                      onChange={(e) =>
+                        updateFinalChips(settlingGame, id, e.target.value)
+                      }
+                      onBlur={(e) =>
+                        persistFinalChips(settlingGame, id, e.target.value)
+                      }
+                    />
+                  </div>
+                ))}
+
                 <div
-                  key={id}
                   style={{
-                    marginBottom: "12px",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
+                    marginTop: "20px",
+                    padding: "12px",
+                    background: "#f4f4f0",
+                    borderRadius: "8px",
                   }}
                 >
-                  <span>{p.name}</span>
-                  <input
-                    type="number"
-                    className="ios-input-modal"
-                    style={{ width: "120px", margin: 0 }}
-                    placeholder="Final chips"
-                    value={p.finalChips ?? ""}
-                    onChange={(e) => updateFinalChips(settlingGame, id, e.target.value)}
-                    onBlur={(e) => persistFinalChips(settlingGame, id, e.target.value)}
-                  />
-                </div>
-              ))}
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      fontWeight: "600",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={saveToHistory}
+                      onChange={(e) => setSaveToHistory(e.target.checked)}
+                    />
+                    Save game to history
+                  </label>
 
-              <div
-                style={{
-                  marginTop: "20px",
-                  padding: "12px",
-                  background: "#f4f4f0",
-                  borderRadius: "8px",
-                }}
-              >
-                <label
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
-                    fontWeight: "600",
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={saveToHistory}
-                    onChange={(e) => setSaveToHistory(e.target.checked)}
-                  />
-                  Save game to history
-                </label>
+                  {hasStats && saveToHistory && (
+                    <>
+                      <label
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "10px",
+                          fontWeight: "600",
+                          marginTop: "12px",
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={includeInStats}
+                          onChange={(e) => setIncludeInStats(e.target.checked)}
+                        />
+                        Include in Stats Leaderboard
+                      </label>
+                      <div
+                        style={{
+                          fontSize: "12px",
+                          color: "#888",
+                          marginTop: "4px",
+                          marginLeft: "24px",
+                        }}
+                      >
+                        This only controls the shared Hall of Fame — it'll count
+                        toward everyone's own personal stats either way.
+                      </div>
+                    </>
+                  )}
 
-                {hasStats && saveToHistory && (
-                  <>
-                    <label
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "10px",
-                        fontWeight: "600",
-                        marginTop: "12px",
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={includeInStats}
-                        onChange={(e) => setIncludeInStats(e.target.checked)}
-                      />
-                      Include in Stats Leaderboard
-                    </label>
+                  {!saveToHistory && (
                     <div
                       style={{
                         fontSize: "12px",
                         color: "#888",
-                        marginTop: "4px",
+                        marginTop: "8px",
                         marginLeft: "24px",
                       }}
                     >
-                      This only controls the shared Hall of Fame — it'll count
-                      toward everyone's own personal stats either way.
+                      Uncheck to just work out the Venmo payouts without
+                      recording anything.
                     </div>
-                  </>
-                )}
+                  )}
+                </div>
 
-                {!saveToHistory && (
-                  <div
-                    style={{
-                      fontSize: "12px",
-                      color: "#888",
-                      marginTop: "8px",
-                      marginLeft: "24px",
-                    }}
-                  >
-                    Uncheck to just work out the Venmo payouts without recording
-                    anything.
-                  </div>
-                )}
+                <button
+                  onClick={endGame}
+                  className="ios-submit-btn full-width"
+                  style={{ marginTop: "20px" }}
+                >
+                  Calculate Settlements
+                </button>
               </div>
-
-              <button
-                onClick={endGame}
-                className="ios-submit-btn full-width"
-                style={{ marginTop: "20px" }}
-              >
-                Calculate Settlements
-              </button>
-            </div>
             )}
           </div>
         </div>

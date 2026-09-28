@@ -60,13 +60,10 @@ const FantasyTool = () => {
       // Belt-and-suspenders against any client/network-level caching (seen
       // on iOS Safari PWAs especially) silently serving a stale response
       // instead of the live score — force a real network hit every time.
-      const res = await fetch(
-        `${API_BASE}/fantasy/guide?_=${Date.now()}`,
-        {
-          headers: await getAuthHeaders(),
-          cache: "no-store",
-        },
-      );
+      const res = await fetch(`${API_BASE}/fantasy/guide?_=${Date.now()}`, {
+        headers: await getAuthHeaders(),
+        cache: "no-store",
+      });
       const json = await res.json();
       setGuide(json);
     } catch (e) {
@@ -127,7 +124,10 @@ const FantasyTool = () => {
       body.espnTeamId = form.espnTeamId.trim();
       body.season = form.espnSeason.trim();
       if (form.espnS2 && form.espnSwid) {
-        body.espnCookies = { espn_s2: form.espnS2.trim(), swid: form.espnSwid.trim() };
+        body.espnCookies = {
+          espn_s2: form.espnS2.trim(),
+          swid: form.espnSwid.trim(),
+        };
       }
     }
 
@@ -154,7 +154,8 @@ const FantasyTool = () => {
   };
 
   const handleUnlink = async (league) => {
-    if (!window.confirm(`Unlink "${league.nickname || league.leagueId}"?`)) return;
+    if (!window.confirm(`Unlink "${league.nickname || league.leagueId}"?`))
+      return;
     try {
       const res = await fetch(
         `${API_BASE}/fantasy/leagues/${encodeURIComponent(league.sk)}`,
@@ -192,7 +193,8 @@ const FantasyTool = () => {
       ? `https://sleeper.com/leagues/${m.leagueId}`
       : `https://fantasy.espn.com/football/team?leagueId=${m.leagueId}&teamId=${m.espnTeamId}&seasonId=${m.season}`;
 
-  const openInNewTab = (url) => window.open(url, "_blank", "noopener,noreferrer");
+  const openInNewTab = (url) =>
+    window.open(url, "_blank", "noopener,noreferrer");
 
   // Which columns from ESPN's public box score are actually worth showing
   // per stat group — the raw counting stats, not derived ones like AVG/QBR.
@@ -317,8 +319,8 @@ const FantasyTool = () => {
                 <div className="empty-icon">🏈</div>
                 <p>No leagues linked yet</p>
                 <small>
-                  Link a Sleeper or ESPN league in the "My Leagues" tab to
-                  build your watch-along guide.
+                  Link a Sleeper or ESPN league in the "My Leagues" tab to build
+                  your watch-along guide.
                 </small>
               </div>
             )}
@@ -423,7 +425,9 @@ const FantasyTool = () => {
                   const stakesGames = guide.games.filter(
                     (g) => g.rootFor.length > 0 || g.rootAgainst.length > 0,
                   );
-                  const liveStakesGames = stakesGames.filter((g) => !g.completed);
+                  const liveStakesGames = stakesGames.filter(
+                    (g) => !g.completed,
+                  );
                   const completedStakesGames = stakesGames.filter(
                     (g) => g.completed,
                   );
@@ -510,10 +514,7 @@ const FantasyTool = () => {
                                   .filter((r) => r.line);
                                 return rows.length > 0 ? (
                                   rows.map((r) => (
-                                    <div
-                                      key={r.name}
-                                      className="box-score-row"
-                                    >
+                                    <div key={r.name} className="box-score-row">
                                       <span className="box-score-player">
                                         {r.name}
                                       </span>
@@ -563,22 +564,26 @@ const FantasyTool = () => {
                       {completedStakesGames.length > 0 && (
                         <button
                           className="toggle-games-btn"
-                          onClick={() => setShowCompletedGames(!showCompletedGames)}
+                          onClick={() =>
+                            setShowCompletedGames(!showCompletedGames)
+                          }
                         >
                           {showCompletedGames ? "▾ Hide" : "▸ Show"}{" "}
                           {completedStakesGames.length} completed game
                           {completedStakesGames.length === 1 ? "" : "s"}
                         </button>
                       )}
-                      {showCompletedGames && completedStakesGames.map(renderStakesGameCard)}
+                      {showCompletedGames &&
+                        completedStakesGames.map(renderStakesGameCard)}
 
                       {otherGames.length > 0 && (
                         <button
                           className="toggle-games-btn"
                           onClick={() => setShowAllGames(!showAllGames)}
                         >
-                          {showAllGames ? "▾ Hide" : "▸ Show"} {otherGames.length} other
-                          game{otherGames.length === 1 ? "" : "s"} with no stake
+                          {showAllGames ? "▾ Hide" : "▸ Show"}{" "}
+                          {otherGames.length} other game
+                          {otherGames.length === 1 ? "" : "s"} with no stake
                         </button>
                       )}
 
@@ -592,14 +597,17 @@ const FantasyTool = () => {
                             >
                               <div>
                                 <div className="game-matchup">
-                                  {game.shortName} <span className="external-hint">↗</span>
+                                  {game.shortName}{" "}
+                                  <span className="external-hint">↗</span>
                                 </div>
                                 <div className="game-meta">
                                   {formatKickoff(game.date)}
                                   {game.broadcast ? ` • ${game.broadcast}` : ""}
                                 </div>
                               </div>
-                              <span className={`status-badge ${statusClass(game)}`}>
+                              <span
+                                className={`status-badge ${statusClass(game)}`}
+                              >
                                 {game.completed ? "Final" : game.status}
                               </span>
                             </div>
@@ -644,7 +652,10 @@ const FantasyTool = () => {
                         }`}
                   </div>
                 </div>
-                <button className="unlink-btn" onClick={() => handleUnlink(league)}>
+                <button
+                  className="unlink-btn"
+                  onClick={() => handleUnlink(league)}
+                >
                   Unlink
                 </button>
               </div>
@@ -679,7 +690,9 @@ const FantasyTool = () => {
                     className="ios-input-modal"
                     placeholder="e.g. Work League"
                     value={form.nickname}
-                    onChange={(e) => setForm({ ...form, nickname: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, nickname: e.target.value })
+                    }
                   />
                 </div>
 
@@ -687,9 +700,15 @@ const FantasyTool = () => {
                   <label className="field-label">League ID</label>
                   <input
                     className="ios-input-modal"
-                    placeholder={form.platform === "SLEEPER" ? "e.g. 289646328504385536" : "e.g. 1234567"}
+                    placeholder={
+                      form.platform === "SLEEPER"
+                        ? "e.g. 289646328504385536"
+                        : "e.g. 1234567"
+                    }
                     value={form.leagueId}
-                    onChange={(e) => setForm({ ...form, leagueId: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, leagueId: e.target.value })
+                    }
                   />
                 </div>
 
@@ -732,14 +751,24 @@ const FantasyTool = () => {
                     </div>
                     <div className="field-group">
                       <label className="field-label">
-                        espn_s2 cookie {leagues.some((l) => l.platform === "ESPN" && l.leagueId === form.leagueId.trim() && l.hasCookies) ? "(leave blank to keep saved)" : "(private leagues only)"}
+                        espn_s2 cookie{" "}
+                        {leagues.some(
+                          (l) =>
+                            l.platform === "ESPN" &&
+                            l.leagueId === form.leagueId.trim() &&
+                            l.hasCookies,
+                        )
+                          ? "(leave blank to keep saved)"
+                          : "(private leagues only)"}
                       </label>
                       <input
                         className="ios-input-modal"
                         type="password"
                         placeholder="Paste espn_s2 value"
                         value={form.espnS2}
-                        onChange={(e) => setForm({ ...form, espnS2: e.target.value })}
+                        onChange={(e) =>
+                          setForm({ ...form, espnS2: e.target.value })
+                        }
                       />
                     </div>
                     <div className="field-group">
@@ -749,15 +778,17 @@ const FantasyTool = () => {
                         type="password"
                         placeholder="Paste SWID value (with braces)"
                         value={form.espnSwid}
-                        onChange={(e) => setForm({ ...form, espnSwid: e.target.value })}
+                        onChange={(e) =>
+                          setForm({ ...form, espnSwid: e.target.value })
+                        }
                       />
                       <div className="field-help">
                         For a private ESPN league: log into espn.com in your
-                        browser, open dev tools → Application/Storage →
-                        Cookies, and copy the <code>espn_s2</code> and{" "}
-                        <code>SWID</code> values. They're stored encrypted and
-                        never shown again after saving — only used server-side
-                        to fetch your roster.
+                        browser, open dev tools → Application/Storage → Cookies,
+                        and copy the <code>espn_s2</code> and <code>SWID</code>{" "}
+                        values. They're stored encrypted and never shown again
+                        after saving — only used server-side to fetch your
+                        roster.
                       </div>
                     </div>
                   </>

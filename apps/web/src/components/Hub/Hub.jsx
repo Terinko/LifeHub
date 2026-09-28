@@ -160,7 +160,10 @@ const Hub = () => {
                   onClick={() => navigate(tool.path)}
                   className="hub-card"
                 >
-                  <div className="hub-card-icon" style={{ background: tool.accent }}>
+                  <div
+                    className="hub-card-icon"
+                    style={{ background: tool.accent }}
+                  >
                     <Icon size={24} color={tool.iconColor} strokeWidth={1.75} />
                   </div>
                   <div className="hub-card-label">{tool.label}</div>

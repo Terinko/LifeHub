@@ -68,14 +68,24 @@ const round = (n) => (n == null ? "--" : Math.round(n));
 
 function WeatherIcon({ code, isDay = true, size = 22, className }) {
   let Icon = isDay ? Sun : Moon;
-  if (code === 2 || code === 1) Icon = code === 1 ? (isDay ? Sun : Moon) : isDay ? CloudSun : CloudMoon;
+  if (code === 2 || code === 1)
+    Icon = code === 1 ? (isDay ? Sun : Moon) : isDay ? CloudSun : CloudMoon;
   else if (code === 3) Icon = Cloudy;
   else if (code === 45 || code === 48) Icon = CloudFog;
   else if (code >= 51 && code <= 57) Icon = CloudDrizzle;
-  else if ((code >= 61 && code <= 67) || (code >= 80 && code <= 82)) Icon = CloudRain;
-  else if ((code >= 71 && code <= 77) || code === 85 || code === 86) Icon = CloudSnow;
+  else if ((code >= 61 && code <= 67) || (code >= 80 && code <= 82))
+    Icon = CloudRain;
+  else if ((code >= 71 && code <= 77) || code === 85 || code === 86)
+    Icon = CloudSnow;
   else if (code >= 95) Icon = CloudLightning;
-  return <Icon size={size} strokeWidth={1.6} className={className} aria-hidden="true" />;
+  return (
+    <Icon
+      size={size}
+      strokeWidth={1.6}
+      className={className}
+      aria-hidden="true"
+    />
+  );
 }
 
 const hourLabel = (iso) => {
@@ -89,15 +99,44 @@ const clockLabel = (iso) => {
   return `${h % 12 === 0 ? 12 : h % 12}:${m} ${h < 12 ? "AM" : "PM"}`;
 };
 const dayLabel = (date, i) =>
-  i === 0 ? "Today" : new Date(`${date}T12:00`).toLocaleDateString("en-US", { weekday: "short" });
+  i === 0
+    ? "Today"
+    : new Date(`${date}T12:00`).toLocaleDateString("en-US", {
+        weekday: "short",
+      });
 const compass = (deg) =>
   deg == null
     ? ""
-    : ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"][
-        Math.round(deg / 22.5) % 16
-      ];
+    : [
+        "N",
+        "NNE",
+        "NE",
+        "ENE",
+        "E",
+        "ESE",
+        "SE",
+        "SSE",
+        "S",
+        "SSW",
+        "SW",
+        "WSW",
+        "W",
+        "WNW",
+        "NW",
+        "NNW",
+      ][Math.round(deg / 22.5) % 16];
 const uvLabel = (uv) =>
-  uv == null ? "" : uv < 3 ? "Low" : uv < 6 ? "Moderate" : uv < 8 ? "High" : uv < 11 ? "Very high" : "Extreme";
+  uv == null
+    ? ""
+    : uv < 3
+      ? "Low"
+      : uv < 6
+        ? "Moderate"
+        : uv < 8
+          ? "High"
+          : uv < 11
+            ? "Very high"
+            : "Extreme";
 
 // Cool-to-warm color for the 10-day range bars.
 function tempColor(t) {
@@ -127,7 +166,10 @@ function useCountUp(target) {
   const fromRef = useRef(target);
   useEffect(() => {
     if (target == null) return undefined;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || fromRef.current == null) {
+    if (
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
+      fromRef.current == null
+    ) {
       fromRef.current = target;
       const id = requestAnimationFrame(() => setShown(target));
       return () => cancelAnimationFrame(id);
@@ -148,10 +190,15 @@ function useCountUp(target) {
   return shown;
 }
 
-const SKY_KEYS = ["clear", "partly", "cloudy", "fog", "rain", "storm", "snow"].flatMap((k) => [
-  `${k}-day`,
-  `${k}-night`,
-]);
+const SKY_KEYS = [
+  "clear",
+  "partly",
+  "cloudy",
+  "fog",
+  "rain",
+  "storm",
+  "snow",
+].flatMap((k) => [`${k}-day`, `${k}-night`]);
 
 // --- component ---------------------------------------------------------------
 
@@ -180,10 +227,13 @@ const WeatherTool = () => {
       try {
         const session = await fetchAuthSession();
         const res = await fetch(`${API_BASE}/admin/users?me=true`, {
-          headers: { Authorization: `Bearer ${session.tokens.idToken.toString()}` },
+          headers: {
+            Authorization: `Bearer ${session.tokens.idToken.toString()}`,
+          },
         });
         const profile = await res.json();
-        if (profile?.role !== "ADMIN" && !profile?.permissions?.weather) navigate("/");
+        if (profile?.role !== "ADMIN" && !profile?.permissions?.weather)
+          navigate("/");
       } catch {
         /* network hiccup — don't lock the user out of public weather data */
       }
@@ -198,7 +248,8 @@ const WeatherTool = () => {
   const load = useCallback(async (p, force = false) => {
     if (!p) return;
     const existing = cacheRef.current[p.id];
-    if (!force && existing && Date.now() - existing.updatedAt < STALE_MS) return;
+    if (!force && existing && Date.now() - existing.updatedAt < STALE_MS)
+      return;
     if (inflightRef.current.has(p.id)) return;
     inflightRef.current.add(p.id);
     try {
@@ -269,11 +320,20 @@ const WeatherTool = () => {
         const lon = pos.coords.longitude;
         const { name, region } = await reverseLookup(lat, lon);
         setLocating(false);
-        addPlace({ id: `loc-${lat.toFixed(3)},${lon.toFixed(3)}`, name, region, lat, lon, isLocation: true });
+        addPlace({
+          id: `loc-${lat.toFixed(3)},${lon.toFixed(3)}`,
+          name,
+          region,
+          lat,
+          lon,
+          isLocation: true,
+        });
       },
       () => {
         setLocating(false);
-        alert("Location access was blocked. Search for a city or zip code instead.");
+        alert(
+          "Location access was blocked. Search for a city or zip code instead.",
+        );
       },
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 600000 },
     );
@@ -292,7 +352,9 @@ const WeatherTool = () => {
     const dy = t.clientY - touch.current.y;
     touch.current = null;
     if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-    setSelected((s) => Math.max(0, Math.min(places.length - 1, s + (dx < 0 ? 1 : -1))));
+    setSelected((s) =>
+      Math.max(0, Math.min(places.length - 1, s + (dx < 0 ? 1 : -1))),
+    );
   };
 
   const scene = data
@@ -305,16 +367,27 @@ const WeatherTool = () => {
   return (
     <div className="wx-root">
       {SKY_KEYS.map((k) => (
-        <div key={k} className={`wx-sky wx-sky-${k}${k === skyKey ? " on" : ""}`} />
+        <div
+          key={k}
+          className={`wx-sky wx-sky-${k}${k === skyKey ? " on" : ""}`}
+        />
       ))}
       <WeatherScene scene={scene} />
 
-      <div className="wx-content" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      <div
+        className="wx-content"
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+      >
         <header className="wx-header">
           <button className="wx-link" onClick={() => navigate("/")}>
             ‹ Hub
           </button>
-          <button className="wx-icon-btn" onClick={() => setShowPlaces(true)} aria-label="Places">
+          <button
+            className="wx-icon-btn"
+            onClick={() => setShowPlaces(true)}
+            aria-label="Places"
+          >
             <List size={22} strokeWidth={1.8} />
           </button>
         </header>
@@ -324,11 +397,18 @@ const WeatherTool = () => {
             <CloudSun size={56} strokeWidth={1.4} aria-hidden="true" />
             <h1>Add your first place</h1>
             <p>Use your location or search for a US city or zip code.</p>
-            <button className="wx-glass wx-cta" onClick={useMyLocation} disabled={locating}>
+            <button
+              className="wx-glass wx-cta"
+              onClick={useMyLocation}
+              disabled={locating}
+            >
               <LocateFixed size={18} aria-hidden="true" />
               {locating ? "Finding you…" : "Use my location"}
             </button>
-            <button className="wx-glass wx-cta" onClick={() => setShowPlaces(true)}>
+            <button
+              className="wx-glass wx-cta"
+              onClick={() => setShowPlaces(true)}
+            >
               <Search size={18} aria-hidden="true" />
               Search places
             </button>
@@ -355,10 +435,12 @@ const WeatherTool = () => {
                     className="wx-hero-icon"
                   />
                   <div className="wx-hero-temp">{round(heroTemp)}°</div>
-                  <div className="wx-hero-label">{codeLabel(data.current.code, data.current.isDay)}</div>
+                  <div className="wx-hero-label">
+                    {codeLabel(data.current.code, data.current.isDay)}
+                  </div>
                   <div className="wx-hero-sub">
-                    H {round(data.daily[0]?.hi)}° L {round(data.daily[0]?.lo)}° · Feels like{" "}
-                    {round(data.current.feels)}°
+                    H {round(data.daily[0]?.hi)}° L {round(data.daily[0]?.lo)}°
+                    · Feels like {round(data.current.feels)}°
                   </div>
                 </>
               ) : errors[place.id] ? null : (
@@ -381,10 +463,16 @@ const WeatherTool = () => {
                   <button
                     key={a.id}
                     className={`wx-glass wx-alert wx-alert-${(a.severity || "unknown").toLowerCase()}`}
-                    onClick={() => setExpandedAlert(expandedAlert === a.id ? null : a.id)}
+                    onClick={() =>
+                      setExpandedAlert(expandedAlert === a.id ? null : a.id)
+                    }
                   >
                     <div className="wx-alert-top">
-                      <TriangleAlert size={20} className="wx-pulse" aria-hidden="true" />
+                      <TriangleAlert
+                        size={20}
+                        className="wx-pulse"
+                        aria-hidden="true"
+                      />
                       <div className="wx-alert-text">
                         <div className="wx-alert-title">{a.event}</div>
                         <div className="wx-small">
@@ -423,7 +511,12 @@ const WeatherTool = () => {
                       <>
                         <div className="wx-nowcast-bars">
                           {data.nowcast.values.map((v, i) => (
-                            <i key={i} style={{ height: `${3 + Math.min(1, v / 0.08) * 30}px` }} />
+                            <i
+                              key={i}
+                              style={{
+                                height: `${3 + Math.min(1, v / 0.08) * 30}px`,
+                              }}
+                            />
                           ))}
                         </div>
                         <div className="wx-nowcast-axis">
@@ -443,9 +536,13 @@ const WeatherTool = () => {
                   <div className="wx-hourly">
                     {data.hourly.map((h, i) => (
                       <div key={h.time} className="wx-hour">
-                        <span className="wx-small">{i === 0 ? "Now" : hourLabel(h.time)}</span>
+                        <span className="wx-small">
+                          {i === 0 ? "Now" : hourLabel(h.time)}
+                        </span>
                         <WeatherIcon code={h.code} isDay={h.isDay} size={22} />
-                        <span className="wx-pop">{h.pop >= 20 ? `${h.pop}%` : " "}</span>
+                        <span className="wx-pop">
+                          {h.pop >= 20 ? `${h.pop}%` : " "}
+                        </span>
                         <b>{round(h.temp)}°</b>
                       </div>
                     ))}
@@ -459,26 +556,37 @@ const WeatherTool = () => {
                     <div className="wx-label">
                       <Wind size={13} aria-hidden="true" /> WIND
                     </div>
-                    <div className="wx-tile-value">{round(data.current.windSpeed)} mph</div>
+                    <div className="wx-tile-value">
+                      {round(data.current.windSpeed)} mph
+                    </div>
                     <div className="wx-small">
-                      Gusts {round(data.current.windGusts)} · {compass(data.current.windDir)}
+                      Gusts {round(data.current.windGusts)} ·{" "}
+                      {compass(data.current.windDir)}
                     </div>
                   </div>
                   <div className="wx-glass wx-tile">
                     <div className="wx-label">
                       <Droplets size={13} aria-hidden="true" /> HUMIDITY
                     </div>
-                    <div className="wx-tile-value">{round(data.current.humidity)}%</div>
-                    <div className="wx-small">Dew point {round(data.current.dewPoint)}°</div>
+                    <div className="wx-tile-value">
+                      {round(data.current.humidity)}%
+                    </div>
+                    <div className="wx-small">
+                      Dew point {round(data.current.dewPoint)}°
+                    </div>
                   </div>
                   <div className="wx-glass wx-tile">
                     <div className="wx-label">
                       <SunMedium size={13} aria-hidden="true" /> UV INDEX
                     </div>
-                    <div className="wx-tile-value">{round(data.current.uv)}</div>
+                    <div className="wx-tile-value">
+                      {round(data.current.uv)}
+                    </div>
                     <div className="wx-small">
                       {uvLabel(data.current.uv)}
-                      {data.daily[0]?.uv != null ? ` · peak ${round(data.daily[0].uv)}` : ""}
+                      {data.daily[0]?.uv != null
+                        ? ` · peak ${round(data.daily[0].uv)}`
+                        : ""}
                     </div>
                   </div>
                   <div className="wx-glass wx-tile">
@@ -486,7 +594,9 @@ const WeatherTool = () => {
                       <Gauge size={13} aria-hidden="true" /> PRESSURE
                     </div>
                     <div className="wx-tile-value">
-                      {data.current.pressureInHg ? data.current.pressureInHg.toFixed(2) : "--"}
+                      {data.current.pressureInHg
+                        ? data.current.pressureInHg.toFixed(2)
+                        : "--"}
                     </div>
                     <div className="wx-small">inHg</div>
                   </div>
@@ -494,16 +604,24 @@ const WeatherTool = () => {
 
                 <div className="wx-glass wx-sun">
                   <span>
-                    <Sunrise size={18} aria-hidden="true" /> {clockLabel(data.daily[0]?.sunrise)}
+                    <Sunrise size={18} aria-hidden="true" />{" "}
+                    {clockLabel(data.daily[0]?.sunrise)}
                   </span>
                   <span>
-                    <Sunset size={18} aria-hidden="true" /> {clockLabel(data.daily[0]?.sunset)}
+                    <Sunset size={18} aria-hidden="true" />{" "}
+                    {clockLabel(data.daily[0]?.sunset)}
                   </span>
                 </div>
 
                 <footer className="wx-footer">
-                  Updated {Math.max(0, Math.round((now - data.updatedAt) / 60000))} min ago ·{" "}
-                  <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">
+                  Updated{" "}
+                  {Math.max(0, Math.round((now - data.updatedAt) / 60000))} min
+                  ago ·{" "}
+                  <a
+                    href="https://open-meteo.com/"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
                     Weather data by Open-Meteo.com
                   </a>{" "}
                   (CC BY 4.0) · Alerts from the National Weather Service
@@ -563,7 +681,11 @@ function TenDay({ data }) {
               }}
             />
             {i === 0 && data.current.temp != null && (
-              <b style={{ left: `${Math.min(100, Math.max(0, pct(data.current.temp)))}%` }} />
+              <b
+                style={{
+                  left: `${Math.min(100, Math.max(0, pct(data.current.temp)))}%`,
+                }}
+              />
             )}
           </span>
           <span className="wx-day-hi">{round(d.hi)}°</span>
@@ -573,7 +695,16 @@ function TenDay({ data }) {
   );
 }
 
-function PlacesSheet({ places, selected, onSelect, onAdd, onRemove, onUseLocation, locating, onClose }) {
+function PlacesSheet({
+  places,
+  selected,
+  onSelect,
+  onAdd,
+  onRemove,
+  onUseLocation,
+  locating,
+  onClose,
+}) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
@@ -622,7 +753,11 @@ function PlacesSheet({ places, selected, onSelect, onAdd, onRemove, onUseLocatio
                 {editing ? "Done editing" : "Edit"}
               </button>
             )}
-            <button className="wx-icon-btn" onClick={onClose} aria-label="Close">
+            <button
+              className="wx-icon-btn"
+              onClick={onClose}
+              aria-label="Close"
+            >
               <X size={22} />
             </button>
           </div>
@@ -640,7 +775,9 @@ function PlacesSheet({ places, selected, onSelect, onAdd, onRemove, onUseLocatio
         {query.trim().length >= 2 ? (
           <div className="wx-glass wx-results">
             {searching && <div className="wx-small">Searching…</div>}
-            {!searching && results.length === 0 && <div className="wx-small">No US matches.</div>}
+            {!searching && results.length === 0 && (
+              <div className="wx-small">No US matches.</div>
+            )}
             {results.map((r) => (
               <button key={r.id} className="wx-result" onClick={() => onAdd(r)}>
                 <span>{r.name}</span>
@@ -650,7 +787,11 @@ function PlacesSheet({ places, selected, onSelect, onAdd, onRemove, onUseLocatio
           </div>
         ) : (
           <>
-            <button className="wx-glass wx-row" onClick={onUseLocation} disabled={locating}>
+            <button
+              className="wx-glass wx-row"
+              onClick={onUseLocation}
+              disabled={locating}
+            >
               <span className="wx-row-left">
                 <LocateFixed size={18} aria-hidden="true" />
                 {locating ? "Finding you…" : "Use my location"}
@@ -664,19 +805,26 @@ function PlacesSheet({ places, selected, onSelect, onAdd, onRemove, onUseLocatio
                 <div
                   key={p.id}
                   className={`wx-glass wx-place-card${i === selected ? " current" : ""}${
-                    pScene ? ` tint-${pScene.kind}-${pScene.isDay ? "day" : "night"}` : ""
+                    pScene
+                      ? ` tint-${pScene.kind}-${pScene.isDay ? "day" : "night"}`
+                      : ""
                   }`}
                 >
                   <button className="wx-place-main" onClick={() => onSelect(i)}>
                     <div>
                       <div className="wx-place-name">
-                        {p.isLocation && <LocateFixed size={14} aria-hidden="true" />} {p.name}
+                        {p.isLocation && (
+                          <LocateFixed size={14} aria-hidden="true" />
+                        )}{" "}
+                        {p.name}
                       </div>
                       <div className="wx-small">
                         {pv ? codeLabel(pv.code, pv.isDay) : p.region}
                       </div>
                     </div>
-                    <div className="wx-place-temp">{pv ? `${Math.round(pv.temp)}°` : ""}</div>
+                    <div className="wx-place-temp">
+                      {pv ? `${Math.round(pv.temp)}°` : ""}
+                    </div>
                   </button>
                   {editing && (
                     <button

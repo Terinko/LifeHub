@@ -11,19 +11,35 @@ function makeState(w, h) {
   const area = (w * h) / (390 * 844); // relative to an iPhone-sized screen
   return {
     drops: Array.from({ length: Math.round(320 * area) }, () => ({
-      x: rand(0, w), y: rand(0, h), l: rand(8, 20), v: rand(0.6, 1.4),
+      x: rand(0, w),
+      y: rand(0, h),
+      l: rand(8, 20),
+      v: rand(0.6, 1.4),
     })),
     flakes: Array.from({ length: Math.round(160 * area) }, () => ({
-      x: rand(0, w), y: rand(0, h), r: rand(1, 3.2), v: rand(0.3, 1.1), p: rand(0, 6.28),
+      x: rand(0, w),
+      y: rand(0, h),
+      r: rand(1, 3.2),
+      v: rand(0.3, 1.1),
+      p: rand(0, 6.28),
     })),
     stars: Array.from({ length: Math.round(90 * area) }, () => ({
-      x: rand(0, w), y: rand(0, h * 0.45), r: rand(0.4, 1.5), p: rand(0, 6.28),
+      x: rand(0, w),
+      y: rand(0, h * 0.45),
+      r: rand(0.4, 1.5),
+      p: rand(0, 6.28),
     })),
     clouds: Array.from({ length: 7 }, () => ({
-      x: rand(-100, w), y: rand(10, h * 0.28), s: rand(0.7, 1.6), v: rand(0.06, 0.22),
+      x: rand(-100, w),
+      y: rand(10, h * 0.28),
+      s: rand(0.7, 1.6),
+      v: rand(0.06, 0.22),
     })),
     fog: Array.from({ length: 5 }, (_, i) => ({
-      x: rand(-w, 0), y: h * (0.15 + i * 0.17), w: rand(w * 1.2, w * 2), v: rand(0.08, 0.25),
+      x: rand(-w, 0),
+      y: h * (0.15 + i * 0.17),
+      w: rand(w * 1.2, w * 2),
+      v: rand(0.08, 0.25),
     })),
     shoot: null,
     bolt: 0,
@@ -33,8 +49,10 @@ function makeState(w, h) {
 
 function cloudStyle(kind, isDay) {
   if (kind === "clear") return null;
-  if (kind === "partly") return isDay ? ["255,255,255", 0.38] : ["150,165,215", 0.16];
-  if (kind === "cloudy") return isDay ? ["238,242,247", 0.42] : ["95,108,135", 0.3];
+  if (kind === "partly")
+    return isDay ? ["255,255,255", 0.38] : ["150,165,215", 0.16];
+  if (kind === "cloudy")
+    return isDay ? ["238,242,247", 0.42] : ["95,108,135", 0.3];
   if (kind === "snow") return ["235,242,250", 0.36];
   if (kind === "fog") return ["225,230,235", 0.2];
   if (kind === "storm") return ["30,34,52", 0.62];
@@ -42,7 +60,13 @@ function cloudStyle(kind, isDay) {
 }
 
 function drawCloud(ctx, c, color, alpha) {
-  const puffs = [[0, 0, 46], [38, -12, 58], [86, 0, 50], [54, 14, 52], [16, 16, 42]];
+  const puffs = [
+    [0, 0, 46],
+    [38, -12, 58],
+    [86, 0, 50],
+    [54, 14, 52],
+    [16, 16, 42],
+  ];
   for (const [dx, dy, r0] of puffs) {
     const px = c.x + dx * c.s;
     const py = c.y + dy * c.s;
@@ -153,7 +177,10 @@ function drawFrame(ctx, st, w, h, scene, tick, animate) {
       }
       const g = ctx.createLinearGradient(0, f.y - 60, 0, f.y + 60);
       g.addColorStop(0, "rgba(235,238,241,0)");
-      g.addColorStop(0.5, isDay ? "rgba(235,238,241,0.22)" : "rgba(170,178,190,0.14)");
+      g.addColorStop(
+        0.5,
+        isDay ? "rgba(235,238,241,0.22)" : "rgba(170,178,190,0.14)",
+      );
       g.addColorStop(1, "rgba(235,238,241,0)");
       ctx.fillStyle = g;
       ctx.fillRect(f.x, f.y - 60, f.w, 120);
@@ -163,10 +190,14 @@ function drawFrame(ctx, st, w, h, scene, tick, animate) {
   // Rain
   if (kind === "rain" || kind === "storm") {
     const heavy = kind === "storm" ? 1.6 : intensity;
-    const n = Math.min(st.drops.length, Math.round(st.drops.length * 0.5 * heavy));
+    const n = Math.min(
+      st.drops.length,
+      Math.round(st.drops.length * 0.5 * heavy),
+    );
     const speed = kind === "storm" ? 1.5 : 0.8 + 0.25 * intensity;
     const slant = kind === "storm" ? 0.34 : 0.14;
-    ctx.strokeStyle = kind === "storm" ? "rgba(200,215,255,0.5)" : "rgba(210,228,255,0.42)";
+    ctx.strokeStyle =
+      kind === "storm" ? "rgba(200,215,255,0.5)" : "rgba(210,228,255,0.42)";
     ctx.lineWidth = 1.1;
     ctx.beginPath();
     for (let i = 0; i < n; i++) {
@@ -187,7 +218,10 @@ function drawFrame(ctx, st, w, h, scene, tick, animate) {
 
   // Snow
   if (kind === "snow") {
-    const n = Math.min(st.flakes.length, Math.round(st.flakes.length * 0.6 * intensity));
+    const n = Math.min(
+      st.flakes.length,
+      Math.round(st.flakes.length * 0.6 * intensity),
+    );
     ctx.fillStyle = "rgba(255,255,255,0.88)";
     for (let i = 0; i < n; i++) {
       const f = st.flakes[i];
@@ -242,7 +276,9 @@ export default function WeatherScene({ scene }) {
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
     let w = 0;
     let h = 0;
     let state = null;

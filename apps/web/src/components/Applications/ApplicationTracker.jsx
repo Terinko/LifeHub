@@ -139,9 +139,7 @@ const ApplicationTracker = () => {
     const now = new Date().toISOString();
     // Optimistic — this is the board's main interaction, it should feel instant.
     setApplications((prev) =>
-      prev.map((a) =>
-        a.sk === app.sk ? { ...a, status, updatedAt: now } : a,
-      ),
+      prev.map((a) => (a.sk === app.sk ? { ...a, status, updatedAt: now } : a)),
     );
     try {
       const res = await fetch(`${API_BASE}/applications`, {
@@ -153,9 +151,7 @@ const ApplicationTracker = () => {
     } catch (e) {
       console.error(e);
       setApplications((prev) =>
-        prev.map((a) =>
-          a.sk === app.sk ? { ...a, status: prevStatus } : a,
-        ),
+        prev.map((a) => (a.sk === app.sk ? { ...a, status: prevStatus } : a)),
       );
       alert("Failed to move this application. Please try again.");
     }
@@ -202,9 +198,7 @@ const ApplicationTracker = () => {
                     <div className="app-card" key={app.sk}>
                       <div className="app-card-header">
                         <div>
-                          <div className="app-card-company">
-                            {app.company}
-                          </div>
+                          <div className="app-card-company">{app.company}</div>
                           <div className="app-card-position">
                             {app.position}
                           </div>
@@ -234,7 +228,8 @@ const ApplicationTracker = () => {
 
                       {stale && (
                         <div className="app-card-stale">
-                          ⏱ No update in {formatAge(app.updatedAt || app.createdAt)}
+                          ⏱ No update in{" "}
+                          {formatAge(app.updatedAt || app.createdAt)}
                         </div>
                       )}
 
@@ -283,26 +278,20 @@ const ApplicationTracker = () => {
                 className="ios-input-modal"
                 placeholder="Position"
                 value={form.position}
-                onChange={(e) =>
-                  setForm({ ...form, position: e.target.value })
-                }
+                onChange={(e) => setForm({ ...form, position: e.target.value })}
               />
               <input
                 className="ios-input-modal"
                 placeholder="Location (e.g. Remote, NYC)"
                 value={form.location}
-                onChange={(e) =>
-                  setForm({ ...form, location: e.target.value })
-                }
+                onChange={(e) => setForm({ ...form, location: e.target.value })}
               />
 
               <div className="app-form-row">
                 <select
                   className="ios-input-modal"
                   value={form.status}
-                  onChange={(e) =>
-                    setForm({ ...form, status: e.target.value })
-                  }
+                  onChange={(e) => setForm({ ...form, status: e.target.value })}
                 >
                   {STATUSES.map((s) => (
                     <option key={s} value={s}>
@@ -332,9 +321,7 @@ const ApplicationTracker = () => {
                   className="ios-input-modal"
                   placeholder="Source (e.g. Referral, LinkedIn)"
                   value={form.source}
-                  onChange={(e) =>
-                    setForm({ ...form, source: e.target.value })
-                  }
+                  onChange={(e) => setForm({ ...form, source: e.target.value })}
                 />
                 <input
                   className="ios-input-modal"

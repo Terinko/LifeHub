@@ -49,11 +49,13 @@ export const MyStatsCharts = ({ games, playerIds }) => {
 
     (g.settlements || []).forEach((s) => {
       if (s.fromId === myId) {
-        if (!headToHead[s.toId]) headToHead[s.toId] = { name: s.to, won: 0, lost: 0 };
+        if (!headToHead[s.toId])
+          headToHead[s.toId] = { name: s.to, won: 0, lost: 0 };
         headToHead[s.toId].name = s.to;
         headToHead[s.toId].lost += s.amount;
       } else if (s.toId === myId) {
-        if (!headToHead[s.fromId]) headToHead[s.fromId] = { name: s.from, won: 0, lost: 0 };
+        if (!headToHead[s.fromId])
+          headToHead[s.fromId] = { name: s.from, won: 0, lost: 0 };
         headToHead[s.fromId].name = s.from;
         headToHead[s.fromId].won += s.amount;
       }
@@ -61,7 +63,11 @@ export const MyStatsCharts = ({ games, playerIds }) => {
   });
 
   const headToHeadList = Object.entries(headToHead)
-    .map(([id, h]) => ({ id, ...h, net: Math.round((h.won - h.lost) * 100) / 100 }))
+    .map(([id, h]) => ({
+      id,
+      ...h,
+      net: Math.round((h.won - h.lost) * 100) / 100,
+    }))
     .sort((a, b) => b.net - a.net);
 
   if (chartData.length === 0) return null;
@@ -71,15 +77,26 @@ export const MyStatsCharts = ({ games, playerIds }) => {
       <div className="recipe-card" style={cardStyle}>
         <h4 style={{ marginTop: 0 }}>📈 Bankroll Over Time</h4>
         <ResponsiveContainer width="100%" height={220}>
-          <LineChart data={chartData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+          <LineChart
+            data={chartData}
+            margin={{ top: 5, right: 10, left: -10, bottom: 5 }}
+          >
             <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
             <XAxis
               dataKey="game"
               tick={{ fontSize: 11 }}
-              label={{ value: "Game #", position: "insideBottom", offset: -3, fontSize: 11 }}
+              label={{
+                value: "Game #",
+                position: "insideBottom",
+                offset: -3,
+                fontSize: 11,
+              }}
             />
             <YAxis tick={{ fontSize: 11 }} />
-            <Tooltip formatter={(v) => currency(v)} labelFormatter={(v) => `Game ${v}`} />
+            <Tooltip
+              formatter={(v) => currency(v)}
+              labelFormatter={(v) => `Game ${v}`}
+            />
             <Line
               type="monotone"
               dataKey="cumulative"
@@ -95,11 +112,17 @@ export const MyStatsCharts = ({ games, playerIds }) => {
       <div className="recipe-card" style={cardStyle}>
         <h4 style={{ marginTop: 0 }}>📊 Per-Game Results</h4>
         <ResponsiveContainer width="100%" height={200}>
-          <BarChart data={chartData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+          <BarChart
+            data={chartData}
+            margin={{ top: 5, right: 10, left: -10, bottom: 5 }}
+          >
             <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
             <XAxis dataKey="game" tick={{ fontSize: 11 }} />
             <YAxis tick={{ fontSize: 11 }} />
-            <Tooltip formatter={(v) => currency(v)} labelFormatter={(v) => `Game ${v}`} />
+            <Tooltip
+              formatter={(v) => currency(v)}
+              labelFormatter={(v) => `Game ${v}`}
+            />
             <Bar dataKey="net">
               {chartData.map((d, i) => (
                 <Cell key={i} fill={d.net >= 0 ? "#2e7d32" : "#e64848"} />
@@ -124,7 +147,12 @@ export const MyStatsCharts = ({ games, playerIds }) => {
               }}
             >
               <span>{h.name}</span>
-              <span style={{ fontWeight: "bold", color: h.net >= 0 ? "green" : "#e64848" }}>
+              <span
+                style={{
+                  fontWeight: "bold",
+                  color: h.net >= 0 ? "green" : "#e64848",
+                }}
+              >
                 {h.net >= 0 ? "+" : ""}
                 {currency(h.net)}
               </span>
@@ -174,10 +202,13 @@ export const GroupStatsCharts = ({ statsData }) => {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([key, count]) => {
       const [y, m] = key.split("-");
-      const label = new Date(Number(y), Number(m) - 1, 1).toLocaleDateString([], {
-        year: "2-digit",
-        month: "short",
-      });
+      const label = new Date(Number(y), Number(m) - 1, 1).toLocaleDateString(
+        [],
+        {
+          year: "2-digit",
+          month: "short",
+        },
+      );
       return { month: label, count };
     });
 
@@ -186,7 +217,13 @@ export const GroupStatsCharts = ({ statsData }) => {
       <div className="recipe-card" style={cardStyle}>
         <h4 style={{ marginTop: 0 }}>🏅 Leaderboard</h4>
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+          <table
+            style={{
+              width: "100%",
+              borderCollapse: "collapse",
+              fontSize: "13px",
+            }}
+          >
             <thead>
               <tr style={{ borderBottom: "2px solid #ddd", textAlign: "left" }}>
                 <th style={{ padding: "6px" }}>Player</th>
@@ -200,7 +237,9 @@ export const GroupStatsCharts = ({ statsData }) => {
             <tbody>
               {leaderboard.map((p) => (
                 <tr key={p.id} style={{ borderBottom: "1px solid #eee" }}>
-                  <td style={{ padding: "6px", fontWeight: "600" }}>{p.name}</td>
+                  <td style={{ padding: "6px", fontWeight: "600" }}>
+                    {p.name}
+                  </td>
                   <td
                     style={{
                       padding: "6px",
@@ -211,9 +250,15 @@ export const GroupStatsCharts = ({ statsData }) => {
                   >
                     {p.net >= 0 ? "+" : ""}${p.net.toFixed(2)}
                   </td>
-                  <td style={{ padding: "6px", textAlign: "right" }}>{p.games}</td>
-                  <td style={{ padding: "6px", textAlign: "right" }}>{p.buyIns}</td>
-                  <td style={{ padding: "6px", textAlign: "right" }}>{p.winRate}%</td>
+                  <td style={{ padding: "6px", textAlign: "right" }}>
+                    {p.games}
+                  </td>
+                  <td style={{ padding: "6px", textAlign: "right" }}>
+                    {p.buyIns}
+                  </td>
+                  <td style={{ padding: "6px", textAlign: "right" }}>
+                    {p.winRate}%
+                  </td>
                   <td
                     style={{
                       padding: "6px",
@@ -232,7 +277,10 @@ export const GroupStatsCharts = ({ statsData }) => {
 
       <div className="recipe-card" style={cardStyle}>
         <h4 style={{ marginTop: 0 }}>💰 Net Winnings by Player</h4>
-        <ResponsiveContainer width="100%" height={Math.max(200, leaderboard.length * 36)}>
+        <ResponsiveContainer
+          width="100%"
+          height={Math.max(200, leaderboard.length * 36)}
+        >
           <BarChart
             data={leaderboard}
             layout="vertical"
@@ -240,7 +288,12 @@ export const GroupStatsCharts = ({ statsData }) => {
           >
             <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
             <XAxis type="number" tick={{ fontSize: 11 }} />
-            <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={80} />
+            <YAxis
+              type="category"
+              dataKey="name"
+              tick={{ fontSize: 11 }}
+              width={80}
+            />
             <Tooltip formatter={(v) => `$${Number(v).toFixed(2)}`} />
             <Bar dataKey="net">
               {leaderboard.map((p) => (
@@ -255,7 +308,10 @@ export const GroupStatsCharts = ({ statsData }) => {
         <div className="recipe-card" style={cardStyle}>
           <h4 style={{ marginTop: 0 }}>📅 Games Per Month</h4>
           <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={activityData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+            <BarChart
+              data={activityData}
+              margin={{ top: 5, right: 10, left: -10, bottom: 5 }}
+            >
               <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
               <XAxis dataKey="month" tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />

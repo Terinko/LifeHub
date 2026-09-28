@@ -9,7 +9,8 @@
   color: #fff;
   text-align: left;
   font-family:
-    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui,
+    sans-serif;
   background: #2b4056;
   z-index: 10;
 }
@@ -30,20 +31,48 @@
 .wx-sky.on {
   opacity: 1;
 }
-.wx-sky-clear-day { background: linear-gradient(180deg, #3a97e0, #6bb6ee 50%, #a9d6f5); }
-.wx-sky-clear-night { background: linear-gradient(180deg, #0c1330, #1a2757 55%, #2c3b6e); }
-.wx-sky-partly-day { background: linear-gradient(180deg, #4a8fd0, #7fb2e0 50%, #b9d4ea); }
-.wx-sky-partly-night { background: linear-gradient(180deg, #111a38, #23305c 55%, #36456f); }
-.wx-sky-cloudy-day { background: linear-gradient(180deg, #6d7f93, #8697a9 55%, #a3b1c0); }
-.wx-sky-cloudy-night { background: linear-gradient(180deg, #1c2230, #2a3242 55%, #394356); }
-.wx-sky-fog-day { background: linear-gradient(180deg, #8c98a3, #a7b1b9 55%, #c2c9ce); }
-.wx-sky-fog-night { background: linear-gradient(180deg, #2a2f38, #383e48 55%, #4a515c); }
-.wx-sky-rain-day { background: linear-gradient(180deg, #3f5b76, #2b4056 55%, #213140); }
-.wx-sky-rain-night { background: linear-gradient(180deg, #1b2635, #16202c 55%, #111822); }
-.wx-sky-storm-day { background: linear-gradient(180deg, #2d3250, #1b1e30 60%, #14161f); }
-.wx-sky-storm-night { background: linear-gradient(180deg, #161a2b, #0e1019 60%, #0a0b10); }
-.wx-sky-snow-day { background: linear-gradient(180deg, #9fb2c7, #6a7f96 60%, #55687d); }
-.wx-sky-snow-night { background: linear-gradient(180deg, #36445a, #2a3548 60%, #222b3b); }
+.wx-sky-clear-day {
+  background: linear-gradient(180deg, #3a97e0, #6bb6ee 50%, #a9d6f5);
+}
+.wx-sky-clear-night {
+  background: linear-gradient(180deg, #0c1330, #1a2757 55%, #2c3b6e);
+}
+.wx-sky-partly-day {
+  background: linear-gradient(180deg, #4a8fd0, #7fb2e0 50%, #b9d4ea);
+}
+.wx-sky-partly-night {
+  background: linear-gradient(180deg, #111a38, #23305c 55%, #36456f);
+}
+.wx-sky-cloudy-day {
+  background: linear-gradient(180deg, #6d7f93, #8697a9 55%, #a3b1c0);
+}
+.wx-sky-cloudy-night {
+  background: linear-gradient(180deg, #1c2230, #2a3242 55%, #394356);
+}
+.wx-sky-fog-day {
+  background: linear-gradient(180deg, #8c98a3, #a7b1b9 55%, #c2c9ce);
+}
+.wx-sky-fog-night {
+  background: linear-gradient(180deg, #2a2f38, #383e48 55%, #4a515c);
+}
+.wx-sky-rain-day {
+  background: linear-gradient(180deg, #3f5b76, #2b4056 55%, #213140);
+}
+.wx-sky-rain-night {
+  background: linear-gradient(180deg, #1b2635, #16202c 55%, #111822);
+}
+.wx-sky-storm-day {
+  background: linear-gradient(180deg, #2d3250, #1b1e30 60%, #14161f);
+}
+.wx-sky-storm-night {
+  background: linear-gradient(180deg, #161a2b, #0e1019 60%, #0a0b10);
+}
+.wx-sky-snow-day {
+  background: linear-gradient(180deg, #9fb2c7, #6a7f96 60%, #55687d);
+}
+.wx-sky-snow-night {
+  background: linear-gradient(180deg, #36445a, #2a3548 60%, #222b3b);
+}
 
 .wx-canvas {
   position: fixed;
@@ -57,7 +86,8 @@
   z-index: 2;
   max-width: 480px;
   margin: 0 auto;
-  padding: calc(10px + var(--safe-top, 0px)) 16px calc(28px + var(--safe-bottom, 0px));
+  padding: calc(10px + var(--safe-top, 0px)) 16px
+    calc(28px + var(--safe-bottom, 0px));
   min-height: 100%;
 }
 
@@ -88,7 +118,11 @@
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: linear-gradient(115deg, rgba(255, 255, 255, 0.26) 0%, rgba(255, 255, 255, 0) 38%);
+  background: linear-gradient(
+    115deg,
+    rgba(255, 255, 255, 0.26) 0%,
+    rgba(255, 255, 255, 0) 38%
+  );
   pointer-events: none;
 }
 
@@ -100,22 +134,40 @@
   left: -70%;
   width: 40%;
   height: 100%;
-  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  background: linear-gradient(
+    100deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
   transform: skewX(-18deg);
   animation: wx-sweep 9s ease-in-out infinite;
   pointer-events: none;
 }
-.wx-glass:nth-child(2n)::after { animation-delay: 3s; }
-.wx-glass:nth-child(3n)::after { animation-delay: 6s; }
+.wx-glass:nth-child(2n)::after {
+  animation-delay: 3s;
+}
+.wx-glass:nth-child(3n)::after {
+  animation-delay: 6s;
+}
 
 @keyframes wx-sweep {
-  0%, 60% { left: -70%; }
-  100% { left: 140%; }
+  0%,
+  60% {
+    left: -70%;
+  }
+  100% {
+    left: 140%;
+  }
 }
 
 /* Older browsers without backdrop-filter get a solid-ish tint instead. */
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .wx-glass { background: rgba(20, 30, 45, 0.55); }
+@supports not (
+  (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
+) {
+  .wx-glass {
+    background: rgba(20, 30, 45, 0.55);
+  }
 }
 
 /* --- Header + hero ----------------------------------------------------------- */
@@ -176,7 +228,9 @@
   background: rgba(255, 255, 255, 0.35);
   transition: background 0.3s;
 }
-.wx-dots span.on { background: #fff; }
+.wx-dots span.on {
+  background: #fff;
+}
 
 .wx-hero-icon {
   margin-top: 10px;
@@ -185,7 +239,9 @@
 }
 
 @keyframes wx-float {
-  50% { transform: translateY(-5px); }
+  50% {
+    transform: translateY(-5px);
+  }
 }
 
 .wx-hero-temp {
@@ -271,7 +327,9 @@
   align-items: center;
   gap: 10px;
 }
-.wx-alert-text { flex: 1; }
+.wx-alert-text {
+  flex: 1;
+}
 .wx-alert-title {
   font-weight: 600;
   font-size: 15px;
@@ -291,7 +349,9 @@
 }
 
 @keyframes wx-pulse-o {
-  50% { opacity: 0.45; }
+  50% {
+    opacity: 0.45;
+  }
 }
 
 .wx-chevron {
@@ -299,7 +359,9 @@
   flex-shrink: 0;
   opacity: 0.8;
 }
-.wx-chevron.open { transform: rotate(180deg); }
+.wx-chevron.open {
+  transform: rotate(180deg);
+}
 
 /* --- Nowcast ----------------------------------------------------------------- */
 
@@ -340,7 +402,9 @@
   margin: 0 -4px;
   padding: 0 4px 2px;
 }
-.wx-hourly::-webkit-scrollbar { display: none; }
+.wx-hourly::-webkit-scrollbar {
+  display: none;
+}
 
 .wx-hour {
   display: flex;
@@ -365,9 +429,13 @@
   border-top: 1px solid rgba(255, 255, 255, 0.12);
   font-size: 16px;
 }
-.wx-day:first-of-type { border-top: none; }
+.wx-day:first-of-type {
+  border-top: none;
+}
 
-.wx-day-name { font-weight: 500; }
+.wx-day-name {
+  font-weight: 500;
+}
 .wx-day-icon {
   display: flex;
   flex-direction: column;
@@ -378,7 +446,9 @@
   text-align: right;
   color: rgba(255, 255, 255, 0.65);
 }
-.wx-day-hi { font-weight: 600; }
+.wx-day-hi {
+  font-weight: 600;
+}
 
 .wx-range {
   position: relative;
@@ -478,7 +548,10 @@
 }
 
 @keyframes wx-sheet-in {
-  from { opacity: 0; transform: translateY(24px); }
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
 }
 
 /* Drifting color blobs give the glass something to refract. */
@@ -491,19 +564,36 @@
   opacity: 0.75;
   animation: wx-drift 12s ease-in-out infinite;
 }
-.wx-blob-a { background: #3aa0ff; top: 80px; left: -40px; }
-.wx-blob-b { background: #ff7a59; top: 320px; right: -40px; animation-delay: -4s; }
-.wx-blob-c { background: #7b5cff; bottom: 60px; left: 30px; animation-delay: -8s; }
+.wx-blob-a {
+  background: #3aa0ff;
+  top: 80px;
+  left: -40px;
+}
+.wx-blob-b {
+  background: #ff7a59;
+  top: 320px;
+  right: -40px;
+  animation-delay: -4s;
+}
+.wx-blob-c {
+  background: #7b5cff;
+  bottom: 60px;
+  left: 30px;
+  animation-delay: -8s;
+}
 
 @keyframes wx-drift {
-  50% { transform: translate(30px, -24px) scale(1.15); }
+  50% {
+    transform: translate(30px, -24px) scale(1.15);
+  }
 }
 
 .wx-sheet-inner {
   position: relative;
   max-width: 480px;
   margin: 0 auto;
-  padding: calc(14px + var(--safe-top, 0px)) 16px calc(28px + var(--safe-bottom, 0px));
+  padding: calc(14px + var(--safe-top, 0px)) 16px
+    calc(28px + var(--safe-bottom, 0px));
 }
 
 .wx-sheet-head {
@@ -538,10 +628,16 @@
   color: #fff;
   font-size: 16px; /* 16px stops iOS zooming on focus */
 }
-.wx-search input::placeholder { color: rgba(255, 255, 255, 0.6); }
+.wx-search input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
 
-.wx-results { padding: 4px 14px; }
-.wx-results > .wx-small { padding: 10px 0; }
+.wx-results {
+  padding: 4px 14px;
+}
+.wx-results > .wx-small {
+  padding: 10px 0;
+}
 .wx-result {
   display: flex;
   justify-content: space-between;
@@ -555,9 +651,13 @@
   text-align: left;
   cursor: pointer;
 }
-.wx-result:first-of-type { border-top: none; }
+.wx-result:first-of-type {
+  border-top: none;
+}
 
-.wx-row { cursor: pointer; }
+.wx-row {
+  cursor: pointer;
+}
 .wx-row-left {
   display: inline-flex;
   align-items: center;
@@ -571,7 +671,9 @@
   gap: 8px;
   padding: 0;
 }
-.wx-place-card.current { border-color: rgba(255, 255, 255, 0.55); }
+.wx-place-card.current {
+  border-color: rgba(255, 255, 255, 0.55);
+}
 .wx-place-main {
   flex: 1;
   display: flex;
@@ -600,17 +702,31 @@
 }
 
 /* Place cards pick up a tint of their current conditions. */
-.wx-place-card.tint-clear-day { background: rgba(58, 151, 224, 0.4); }
-.wx-place-card.tint-partly-day { background: rgba(74, 143, 208, 0.36); }
+.wx-place-card.tint-clear-day {
+  background: rgba(58, 151, 224, 0.4);
+}
+.wx-place-card.tint-partly-day {
+  background: rgba(74, 143, 208, 0.36);
+}
 .wx-place-card.tint-cloudy-day,
-.wx-place-card.tint-fog-day { background: rgba(120, 138, 158, 0.38); }
+.wx-place-card.tint-fog-day {
+  background: rgba(120, 138, 158, 0.38);
+}
 .wx-place-card.tint-rain-day,
-.wx-place-card.tint-rain-night { background: rgba(44, 68, 89, 0.5); }
+.wx-place-card.tint-rain-night {
+  background: rgba(44, 68, 89, 0.5);
+}
 .wx-place-card.tint-storm-day,
-.wx-place-card.tint-storm-night { background: rgba(30, 32, 52, 0.55); }
+.wx-place-card.tint-storm-night {
+  background: rgba(30, 32, 52, 0.55);
+}
 .wx-place-card.tint-snow-day,
-.wx-place-card.tint-snow-night { background: rgba(140, 160, 185, 0.4); }
-.wx-place-card[class*="-night"]:not(.tint-rain-night):not(.tint-storm-night):not(.tint-snow-night) {
+.wx-place-card.tint-snow-night {
+  background: rgba(140, 160, 185, 0.4);
+}
+.wx-place-card[class*="-night"]:not(.tint-rain-night):not(
+    .tint-storm-night
+  ):not(.tint-snow-night) {
   background: rgba(20, 30, 70, 0.5);
 }
 
