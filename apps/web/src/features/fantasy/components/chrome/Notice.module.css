@@ -1,0 +1,89 @@
+.notice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: var(--night-card);
+  border: 1px solid var(--night-line);
+}
+
+.info {
+  flex-direction: column;
+  align-items: stretch;
+  text-align: center;
+  padding: 28px 20px;
+}
+
+.warning {
+  background: var(--night-amber-wash);
+  border-color: transparent;
+}
+
+.error {
+  background: var(--night-live-wash);
+  border-color: transparent;
+}
+
+.icon {
+  flex: none;
+}
+
+.warning .icon {
+  color: var(--night-amber);
+}
+
+.error .icon {
+  color: var(--night-live-text);
+}
+
+.text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.title {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.body {
+  font-size: 13px;
+  color: var(--night-text-sec);
+}
+
+.warning .body {
+  color: var(--night-amber-text);
+}
+
+.error .body {
+  color: #ffd0d0;
+}
+
+.action {
+  flex: none;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 22px;
+  border: none;
+  background: var(--night-mint);
+  color: var(--night-mint-ink);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.info .action {
+  align-self: center;
+  margin-top: 10px;
+  padding: 0 22px;
+}
+
+.warning .action,
+.error .action {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--night-text);
+}

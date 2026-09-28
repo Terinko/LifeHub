@@ -11,4 +11,53 @@
   --ios-border: #c6c6c8;
   --safe-top: env(safe-area-inset-top);
   --safe-bottom: env(safe-area-inset-bottom);
+
+  /* Night Game Glass: the dark sports theme (Fantasy). Opaque cards for
+     content; glass only for bars, tab bars and sheets that float above it. */
+  --night-ground: #0a101c;
+  --night-card: #131b2a;
+  --night-line: #1f2a3f;
+  --night-raised: #1a2336;
+  --night-inset: #0e1522;
+  --night-field-line: #2a3a56;
+  --night-text: #f2f5fa;
+  --night-text-2: #dce3f0;
+  --night-text-sec: #9aa7bd;
+  --night-text-dim: #7f8ba3;
+  --night-mint: #3de0b0;
+  --night-mint-ink: #06231a;
+  --night-mint-wash: #10302a;
+  --night-mint-text: #cff7e8;
+  --night-amber: #ffb27a;
+  --night-amber-wash: #33200f;
+  --night-amber-text: #ffe2cc;
+  --night-live: #ff6b6b;
+  --night-live-wash: #3a1616;
+  --night-live-text: #ff9c9c;
+  --night-glass: rgba(28, 38, 58, 0.55);
+  --night-glass-heavy: rgba(24, 33, 51, 0.8);
+  --night-glass-line: rgba(255, 255, 255, 0.14);
+  --night-glass-lens: rgba(255, 255, 255, 0.14);
+  --night-glass-blur: blur(22px) saturate(180%);
+  --night-glass-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06), 0 10px 30px rgba(0, 0, 0, 0.45);
+  --night-font-ui: "Manrope", system-ui, sans-serif;
+  --night-font-score: "Barlow Condensed", "Arial Narrow", sans-serif;
+
+  /* Position chips (Sleeper's convention), fill and text */
+  --pos-qb: #ff5c8a;
+  --pos-qb-ink: #1a0710;
+  --pos-rb: #2fd5c6;
+  --pos-rb-ink: #04201d;
+  --pos-wr: #5aa9ff;
+  --pos-wr-ink: #06162a;
+  --pos-te: #ffa24c;
+  --pos-te-ink: #2a1403;
+  --pos-k: #b18cff;
+  --pos-k-ink: #170a33;
+  --pos-def: #c49a74;
+  --pos-def-ink: #22140a;
+  --pos-other: #8fa0ba;
+  --pos-other-ink: #0a101c;
 }

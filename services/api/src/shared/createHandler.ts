@@ -3,7 +3,13 @@ import type {
   APIGatewayProxyStructuredResultV2,
 } from "aws-lambda";
 import { badRequest, HttpError, json, type HttpResponse } from "./http";
-import { getProfile, isAdmin, type UserProfile } from "./users";
+import {
+  getProfile,
+  hasPermission,
+  isAdmin,
+  recordToolUse,
+  type UserProfile,
+} from "./users";
 
 export type RouteContext = {
   userId: string;
@@ -11,6 +17,7 @@ export type RouteContext = {
   /** Parsed JSON body (undefined when there is none). */
   body: unknown;
   pathParameters: Record<string, string | undefined>;
+  query: Record<string, string | undefined>;
   event: APIGatewayProxyEventV2WithJWTAuthorizer;
 };
 
@@ -19,8 +26,13 @@ export type Route = (ctx: RouteContext) => Promise<HttpResponse>;
 type Options = {
   /** Log prefix, e.g. "Applications". */
   name: string;
-  /** "admin" re-checks the caller's role on every request. */
-  access: "user" | "admin";
+  /**
+   * "admin" re-checks the caller's role on every request; `{ permission }`
+   * requires that tool permission on the profile (admins always pass).
+   */
+  access: "user" | "admin" | { permission: string };
+  /** Profile attribute stamped on each request, e.g. "lastUsedFantasy". */
+  usageAttribute?: string;
   /** Keyed by the API Gateway route key, e.g. "DELETE /applications/{id}". */
   routes: Record<string, Route>;
 };
@@ -34,12 +46,30 @@ function parseBody(raw: string | undefined): unknown {
   }
 }
 
+function isAllowed(
+  access: Options["access"],
+  profile: UserProfile | undefined,
+) {
+  if (access === "user") return true;
+  if (access === "admin") return isAdmin(profile);
+  return hasPermission(profile, access.permission);
+}
+
+function deniedMessage(access: Options["access"], name: string) {
+  return access === "admin" ? "Admin only" : `${name} access required`;
+}
+
 /**
  * Wraps a tool's routes with what every LifeHub Lambda needs: the caller's
  * identity and profile, the access check, routing, JSON parsing, CORS
  * headers and one consistent error format.
  */
-export function createHandler({ name, access, routes }: Options) {
+export function createHandler({
+  name,
+  access,
+  usageAttribute,
+  routes,
+}: Options) {
   return async (
     event: APIGatewayProxyEventV2WithJWTAuthorizer,
   ): Promise<APIGatewayProxyStructuredResultV2> => {
@@ -50,9 +80,10 @@ export function createHandler({ name, access, routes }: Options) {
 
     try {
       const profile = await getProfile(userId);
-      if (access === "admin" && !isAdmin(profile)) {
-        return json(403, { error: "Admin only" });
+      if (!isAllowed(access, profile)) {
+        return json(403, { error: deniedMessage(access, name) });
       }
+      if (usageAttribute) await recordToolUse(userId, usageAttribute);
 
       const route = routes[event.routeKey];
       if (!route) return json(404, { error: "Not found" });
@@ -62,6 +93,7 @@ export function createHandler({ name, access, routes }: Options) {
         profile,
         body: parseBody(event.body),
         pathParameters: event.pathParameters ?? {},
+        query: event.queryStringParameters ?? {},
         event,
       });
     } catch (error) {

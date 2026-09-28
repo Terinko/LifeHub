@@ -1,0 +1,33 @@
+/* The opaque content card. */
+.card {
+  background: var(--night-card);
+  border: 1px solid var(--night-line);
+  border-radius: 22px;
+}
+
+.platform {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  padding: 3px 7px;
+  border-radius: 6px;
+}
+
+.sleeper {
+  composes: platform;
+  background: #12352c;
+  color: var(--night-mint);
+}
+
+.espn {
+  composes: platform;
+  background: #3a1e14;
+  color: var(--night-amber);
+}
+
+.score {
+  font-family: var(--night-font-score);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}

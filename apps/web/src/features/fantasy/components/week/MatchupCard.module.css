@@ -1,0 +1,50 @@
+.card {
+  width: 100%;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.card:active {
+  transform: scale(0.99);
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.league {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chevron {
+  color: var(--night-text-sec);
+}
+
+.solo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.team {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.note {
+  font-size: 13px;
+  color: var(--night-text-sec);
+}

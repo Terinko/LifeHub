@@ -1,0 +1,33 @@
+.line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  font-size: 13px;
+  line-height: 1.35;
+  background: var(--night-raised);
+  color: var(--night-text-2);
+}
+
+.icon {
+  flex: none;
+}
+
+.line[data-tone="ahead"] {
+  background: var(--night-mint-wash);
+  color: var(--night-mint-text);
+}
+
+.line[data-tone="ahead"] .icon {
+  color: var(--night-mint);
+}
+
+.line[data-tone="behind"] {
+  background: var(--night-amber-wash);
+  color: var(--night-amber-text);
+}
+
+.line[data-tone="behind"] .icon {
+  color: var(--night-amber);
+}

@@ -1,0 +1,53 @@
+@import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap");
+
+.page {
+  flex: 1;
+  min-height: 100svh;
+  position: relative;
+  background: var(--night-ground);
+  color: var(--night-text);
+  font-family: var(--night-font-ui);
+  font-size: 15px;
+  line-height: 1.35;
+  letter-spacing: normal;
+  text-align: left;
+}
+
+.content {
+  max-width: 560px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  padding: calc(84px + var(--safe-top)) 16px calc(120px + var(--safe-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.refresh {
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--night-text);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.refresh[data-spinning] svg {
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .refresh[data-spinning] svg {
+    animation: none;
+    opacity: 0.6;
+  }
+}

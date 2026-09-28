@@ -1,0 +1,21 @@
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 8px 4px 0;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--night-font-ui);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--night-text-sec);
+}
+
+.aside {
+  font-size: 13px;
+  color: var(--night-text-sec);
+}

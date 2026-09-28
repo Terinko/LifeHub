@@ -1,0 +1,10 @@
+.unlink {
+  min-height: 44px;
+  border: none;
+  background: transparent;
+  color: var(--night-live-text);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}

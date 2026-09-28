@@ -5,6 +5,8 @@ export type HttpResponse = APIGatewayProxyStructuredResultV2;
 const HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Content-Type": "application/json",
+  // API responses are per-user and often live (scores), so never cache them.
+  "Cache-Control": "no-store",
 };
 
 export function json(statusCode: number, body: unknown): HttpResponse {
@@ -23,3 +25,4 @@ export class HttpError extends Error {
 }
 
 export const badRequest = (message: string) => new HttpError(400, message);
+export const notFound = (message: string) => new HttpError(404, message);

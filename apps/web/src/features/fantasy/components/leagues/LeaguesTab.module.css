@@ -1,0 +1,15 @@
+.link {
+  height: 52px;
+  border-radius: 26px;
+  border: 1px solid var(--night-field-line);
+  background: #101725;
+  color: var(--night-mint);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+}
