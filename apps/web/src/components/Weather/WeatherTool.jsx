@@ -31,11 +31,16 @@ import {
 } from "lucide-react";
 import WeatherScene from "./WeatherScene";
 import {
+  isAutoLocateOn,
+  locate,
+  setAutoLocate,
+  upsertCurrentLocation,
+} from "./currentLocation";
+import {
   codeLabel,
   fetchAlerts,
   fetchForecast,
   fetchPlacePreviews,
-  reverseLookup,
   sceneFor,
   searchPlaces,
 } from "./weatherApi";
@@ -214,6 +219,37 @@ const WeatherTool = () => {
   const [now, setNow] = useState(() => Date.now());
 
   const place = places[Math.min(selected, places.length - 1)] || null;
+
+  // Latest places for async callbacks (the location fix arrives later).
+  const placesRef = useRef(places);
+  useEffect(() => {
+    placesRef.current = places;
+  }, [places]);
+
+  const applyLocation = useCallback((location) => {
+    const { places: next, selectIndex } = upsertCurrentLocation(
+      placesRef.current,
+      location,
+    );
+    placesRef.current = next;
+    setPlaces(next);
+    if (selectIndex != null) setSelected(selectIndex);
+  }, []);
+
+  // Default to where the user is: refresh the current-location place on
+  // every open, no tap needed. Fails quietly (denied, unsupported) and
+  // leaves whatever places are already saved.
+  const autoLocatedRef = useRef(false);
+  useEffect(() => {
+    if (autoLocatedRef.current || !isAutoLocateOn()) return;
+    autoLocatedRef.current = true;
+    setLocating(true);
+    locate()
+      .then(applyLocation)
+      .catch(() => {})
+      .finally(() => setLocating(false));
+  }, [applyLocation]);
+
   const data = place ? forecasts[place.id] : null;
 
   useEffect(() => saveJson(PLACES_KEY, places), [places]);
@@ -305,37 +341,28 @@ const WeatherTool = () => {
   };
 
   const removePlace = (id) => {
+    // Removing the current-location place stops it coming back on open.
+    if (places.find((p) => p.id === id)?.isLocation) setAutoLocate(false);
     const next = places.filter((p) => p.id !== id);
     setPlaces(next);
     setSelected((s) => Math.max(0, Math.min(s, next.length - 1)));
   };
 
   const useMyLocation = () => {
-    if (!navigator.geolocation) return;
+    setAutoLocate(true);
     setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const lat = pos.coords.latitude;
-        const lon = pos.coords.longitude;
-        const { name, region } = await reverseLookup(lat, lon);
-        setLocating(false);
-        addPlace({
-          id: `loc-${lat.toFixed(3)},${lon.toFixed(3)}`,
-          name,
-          region,
-          lat,
-          lon,
-          isLocation: true,
-        });
-      },
-      () => {
-        setLocating(false);
+    locate()
+      .then((location) => {
+        applyLocation(location);
+        setSelected(placesRef.current.findIndex((p) => p.isLocation));
+        setShowPlaces(false);
+      })
+      .catch(() =>
         alert(
           "Location access was blocked. Search for a city or zip code instead.",
-        );
-      },
-      { enableHighAccuracy: false, timeout: 10000, maximumAge: 600000 },
-    );
+        ),
+      )
+      .finally(() => setLocating(false));
   };
 
   // Swipe between saved places.
