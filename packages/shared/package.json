@@ -1,0 +1,16 @@
+{
+  "name": "@lifehub/shared",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Types and validation schemas shared by apps/web and services/api",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  }
+}
