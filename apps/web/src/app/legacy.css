@@ -8,5 +8,5 @@
 @import "../components/Hub/Hub.css";
 @import "../components/Bills/BillsTool.css";
 @import "../components/Kitchen/KitchenTool.css";
-@import "../components/Poker/PokerTool.css";
+@import "./legacy-shared.css";
 @import "../components/Weather/WeatherTool.css";

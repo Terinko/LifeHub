@@ -1,0 +1,91 @@
+.layer {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  background: var(--vegas-backdrop);
+}
+
+.sheet {
+  composes: glass from "./glass.module.css";
+  position: relative;
+  width: min(560px, calc(100% - 16px));
+  max-height: calc(100svh - 64px - var(--safe-top));
+  margin-bottom: calc(8px + var(--safe-bottom));
+  box-sizing: border-box;
+  padding: 10px 20px 24px;
+  border-radius: 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: var(--vegas-glass-heavy);
+  color: var(--vegas-text);
+  font-family: var(--vegas-font-ui);
+  outline: none;
+  animation: rise 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+}
+
+@keyframes rise {
+  from {
+    transform: translateY(40px);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet {
+    animation: none;
+  }
+}
+
+.grabber {
+  align-self: center;
+  width: 40px;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--vegas-font-ui);
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: normal;
+  color: var(--vegas-text);
+}
+
+.close {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--vegas-text);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.body {
+  overflow-x: hidden;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}

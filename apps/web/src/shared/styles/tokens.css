@@ -60,4 +60,49 @@
   --pos-def-ink: #22140a;
   --pos-other: #8fa0ba;
   --pos-other-ink: #0a101c;
+
+  /* Vegas Sunset: the late-night card-room theme (Poker). Same rules as
+     Night Game Glass: opaque cards, glass only on bars and sheets. */
+  --vegas-ground: #120d2a;
+  --vegas-card: #1d1640;
+  --vegas-line: #2c2358;
+  --vegas-field-line: #40347a;
+  --vegas-inset: #150f33;
+  --vegas-raised: #191238;
+  --vegas-text: #fbf4ff;
+  --vegas-text-2: #d8cff2;
+  --vegas-text-sec: #b3a8d9;
+  --vegas-text-dim: #7e73a8;
+  --vegas-disabled: #4c4280;
+  --vegas-coral: #ff6b5b;
+  --vegas-coral-ink: #2a0602;
+  --vegas-coral-wash: rgba(255, 107, 91, 0.16);
+  --vegas-up: #37e2e6;
+  --vegas-down: #ffc34d;
+  --vegas-danger: #ff8fb1;
+  --vegas-danger-wash: #3a1430;
+  --vegas-danger-text: #ffd6e3;
+  --vegas-warn-wash: #3a2a10;
+  --vegas-warn-text: #ffe8b8;
+  --vegas-glass: rgba(40, 28, 84, 0.58);
+  --vegas-glass-heavy: rgba(30, 21, 64, 0.95);
+  --vegas-glass-line: rgba(255, 255, 255, 0.14);
+  --vegas-glass-lens: rgba(255, 255, 255, 0.14);
+  --vegas-glass-blur: blur(22px) saturate(180%);
+  --vegas-glass-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06), 0 10px 30px rgba(0, 0, 0, 0.45);
+  --vegas-backdrop: rgba(6, 3, 18, 0.6);
+  --vegas-font-ui: "Manrope", system-ui, sans-serif;
+  --vegas-font-money: "Bebas Neue", "Arial Narrow", sans-serif;
+
+  /* Poker chip colors for player avatars, picked per player id */
+  --chip-red: #d93a3a;
+  --chip-blue: #2f6fe0;
+  --chip-green: #1f9d55;
+  --chip-black: #1b1b1f;
+  --chip-purple: #7a4bd8;
+  --chip-orange: #e0741f;
+  --chip-teal: #12908e;
+  --chip-pink: #d23f86;
 }

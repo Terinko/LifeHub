@@ -1,0 +1,9 @@
+.tab {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.heading {
+  padding: 12px 4px 0;
+}
