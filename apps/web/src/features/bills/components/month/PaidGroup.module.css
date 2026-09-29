@@ -1,0 +1,61 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.toggle {
+  composes: card from "../chrome/card.module.css";
+  width: 100%;
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  color: var(--bills-text);
+  font-family: var(--bills-font-ui);
+  text-align: left;
+  cursor: pointer;
+}
+
+.dot {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 15px;
+  display: grid;
+  place-items: center;
+  background: var(--bills-lime);
+  color: var(--bills-lime-ink);
+}
+
+.label {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.names {
+  font-weight: 500;
+  color: var(--bills-text-sec);
+}
+
+.total {
+  flex: none;
+  font-size: 14px;
+  color: var(--bills-text-2);
+}
+
+.chev {
+  flex: none;
+  color: var(--bills-text-sec);
+  transition: transform 0.2s;
+}
+
+.up {
+  transform: rotate(180deg);
+}

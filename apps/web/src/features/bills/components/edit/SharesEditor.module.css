@@ -1,0 +1,95 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0 14px;
+}
+
+.person {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.name,
+.share {
+  height: 48px;
+  box-sizing: border-box;
+  border-radius: 12px;
+  border: 1px solid var(--bills-field-line);
+  background: var(--bills-inset);
+  color: var(--bills-text);
+  font-family: var(--bills-font-ui);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.name {
+  flex: 1;
+  min-width: 0;
+  padding: 0 12px;
+}
+
+.share {
+  flex: none;
+  width: 104px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 10px;
+  font-family: var(--bills-font-money);
+  color: var(--bills-text-sec);
+}
+
+.share input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--bills-text);
+  font-family: var(--bills-font-money);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.name:focus,
+.share:focus-within {
+  outline: none;
+  border-color: var(--bills-lime);
+}
+
+.remove {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
+  border: none;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--bills-text-2);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.add {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 22px;
+  border: 1px dashed var(--bills-field-line);
+  background: transparent;
+  color: var(--bills-text);
+  font-family: var(--bills-font-ui);
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.preview {
+  font-size: 12px;
+  color: var(--bills-text-sec);
+}

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { API_BASE } from "../../config";
 import { getAuthHeaders } from "../../shared/api/client";
+import { BillsHubSummary } from "../../features/bills/HubSummary";
 
 const TOOLS = [
   {
@@ -166,7 +167,11 @@ const Hub = () => {
                     <Icon size={24} color={tool.iconColor} strokeWidth={1.75} />
                   </div>
                   <div className="hub-card-label">{tool.label}</div>
-                  <div className="hub-card-subtitle">{tool.subtitle}</div>
+                  {tool.key === "bills" ? (
+                    <BillsHubSummary fallback={tool.subtitle} />
+                  ) : (
+                    <div className="hub-card-subtitle">{tool.subtitle}</div>
+                  )}
                 </div>
               );
             })}

@@ -1,0 +1,20 @@
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rose {
+  color: var(--bills-rose);
+}
+
+.sky {
+  color: var(--bills-sky);
+}
+
+.empty {
+  margin: 0;
+  padding: 8px 6px;
+  font-size: 14px;
+  color: var(--bills-text-sec);
+}

@@ -1,0 +1,134 @@
+.receipt {
+  background: var(--bills-paper);
+  color: var(--bills-paper-ink);
+  border-radius: 20px 20px 0 0;
+  padding: 8px 8px 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  /* The torn bottom edge. */
+  -webkit-mask: conic-gradient(
+      from -45deg at bottom,
+      #0000,
+      #000 1deg 89deg,
+      #0000 90deg
+    )
+    50% / 18px 100%;
+  mask: conic-gradient(
+      from -45deg at bottom,
+      #0000,
+      #000 1deg 89deg,
+      #0000 90deg
+    )
+    50% / 18px 100%;
+}
+
+.monthRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.arrow {
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.arrow:hover {
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+
+.monthName {
+  font-family: var(--bills-font-money);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.switch .arrow {
+  color: var(--bills-paper-ink);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 10px;
+}
+
+.lead {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--bills-paper-sec);
+}
+
+.big {
+  font-size: 44px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+.track {
+  height: 8px;
+  border-radius: 4px;
+  background: #dcd5c4;
+  overflow: hidden;
+}
+
+.fill {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--bills-paper-ink);
+  transition: width 0.3s ease;
+}
+
+.totals {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 500;
+  color: #3f3c35;
+}
+
+.rule {
+  border-top: 1.5px dashed var(--bills-paper-line);
+}
+
+.chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.chip {
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: #e6dfcf;
+  color: #3f3c35;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.late {
+  background: #ffdde3;
+  color: #9e1733;
+}
+
+.owed {
+  background: #d9ecff;
+  color: #0e4f86;
+}

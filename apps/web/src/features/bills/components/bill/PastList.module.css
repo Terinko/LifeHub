@@ -1,0 +1,48 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  padding: 0 4px;
+}
+
+.title {
+  padding-bottom: 4px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--bills-text-sec);
+}
+
+.row {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.row + .row {
+  border-top: 1px solid var(--bills-line);
+}
+
+.when {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.sec {
+  font-weight: 500;
+  color: var(--bills-text-sec);
+}
+
+.late {
+  font-weight: 700;
+  color: var(--bills-rose);
+}
+
+.amount {
+  flex: none;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--bills-text-2);
+}

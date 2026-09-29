@@ -8,7 +8,7 @@ import { LoadingScreen } from "./LoadingScreen";
 const Login = lazy(() => import("../components/Auth/Login"));
 const Admin = lazy(() => import("../components/Auth/Admin"));
 const Hub = lazy(() => import("../components/Hub/Hub"));
-const BillsTool = lazy(() => import("../components/Bills/BillsTool"));
+const BillsPage = lazy(() => import("../features/bills"));
 const KitchenTool = lazy(() => import("../components/Kitchen/KitchenTool"));
 const PokerPage = lazy(() => import("../features/poker"));
 const FantasyPage = lazy(() => import("../features/fantasy"));
@@ -31,7 +31,7 @@ export function App() {
           <Route element={<RequireAuth />}>
             <Route path="/" element={<Hub />} />
             <Route path="/admin" element={<Admin />} />
-            <Route path="/bills" element={<BillsTool />} />
+            <Route path="/bills" element={<BillsPage />} />
             <Route path="/poker" element={<PokerPage />} />
             <Route path="/kitchen" element={<KitchenTool />} />
             <Route path="/fantasy" element={<FantasyPage />} />

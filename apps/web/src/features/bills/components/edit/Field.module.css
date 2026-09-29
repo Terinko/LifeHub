@@ -1,0 +1,37 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.prefix {
+  font-family: var(--bills-font-money);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--bills-text-sec);
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--bills-text);
+  font-family: var(--bills-font-ui);
+  font-size: 16px;
+  font-weight: 600;
+  color-scheme: dark;
+}
+
+.mono {
+  font-family: var(--bills-font-money);
+}

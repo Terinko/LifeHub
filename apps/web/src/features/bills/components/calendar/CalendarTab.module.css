@@ -1,0 +1,109 @@
+.card {
+  composes: card from "../chrome/card.module.css";
+  padding: 6px 10px 14px;
+}
+
+.switch {
+  color: var(--bills-text);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.weekday {
+  height: 24px;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--bills-text-sec);
+}
+
+.day {
+  height: 48px;
+  padding: 0;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--bills-text);
+  font-family: var(--bills-font-money);
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.today {
+  border-color: var(--bills-text-2);
+  font-weight: 800;
+}
+
+.day[aria-pressed="true"] {
+  border: 2px solid var(--bills-lime);
+  background: rgba(210, 243, 75, 0.1);
+  font-weight: 800;
+}
+
+.dots {
+  height: 6px;
+  display: flex;
+  gap: 3px;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 3px;
+}
+
+.overdue {
+  background: var(--bills-rose);
+}
+
+.due {
+  background: var(--bills-amber);
+}
+
+.waiting {
+  background: var(--bills-sky);
+}
+
+.paid {
+  background: var(--bills-lime);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  padding: 0 6px;
+}
+
+.key {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--bills-text-2);
+}
+
+.key .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+}
+
+.empty {
+  margin: 0;
+  padding: 4px 6px;
+  font-size: 14px;
+  color: var(--bills-text-sec);
+}

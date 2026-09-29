@@ -1,0 +1,76 @@
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--bills-text-2);
+}
+
+.field {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  border-radius: 16px;
+  background: var(--bills-inset);
+  border: 1.5px solid var(--bills-field-line);
+}
+
+.field:focus-within {
+  border-color: var(--bills-lime);
+  box-shadow: 0 0 0 3px rgba(210, 243, 75, 0.14);
+}
+
+.bad,
+.bad:focus-within {
+  border-color: var(--bills-rose);
+  box-shadow: none;
+}
+
+.dollar {
+  font-family: var(--bills-font-money);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--bills-text-sec);
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--bills-text);
+  font-family: var(--bills-font-money);
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.input::placeholder {
+  color: #5c5f68;
+}
+
+.error {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--bills-rose);
+}
+
+.reuse {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 22px;
+  border: 1px solid var(--bills-line);
+  background: var(--bills-card);
+  color: var(--bills-text-2);
+  font-family: var(--bills-font-ui);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
