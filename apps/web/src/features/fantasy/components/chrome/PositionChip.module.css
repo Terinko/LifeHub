@@ -1,0 +1,41 @@
+.chip {
+  flex: none;
+  min-width: 30px;
+  box-sizing: border-box;
+  padding: 3px 5px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.qb {
+  background: var(--pos-qb);
+  color: var(--pos-qb-ink);
+}
+.rb {
+  background: var(--pos-rb);
+  color: var(--pos-rb-ink);
+}
+.wr {
+  background: var(--pos-wr);
+  color: var(--pos-wr-ink);
+}
+.te {
+  background: var(--pos-te);
+  color: var(--pos-te-ink);
+}
+.k {
+  background: var(--pos-k);
+  color: var(--pos-k-ink);
+}
+.def {
+  background: var(--pos-def);
+  color: var(--pos-def-ink);
+}
+.other {
+  background: var(--pos-other);
+  color: var(--pos-other-ink);
+}

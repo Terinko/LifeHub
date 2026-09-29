@@ -1,0 +1,18 @@
+.toggle {
+  min-height: 44px;
+  border-radius: 22px;
+  border: 1px solid var(--night-line);
+  background: transparent;
+  color: var(--night-text-2);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.empty {
+  margin: 8px 0;
+  text-align: center;
+  font-size: 14px;
+  color: var(--night-text-sec);
+}

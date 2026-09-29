@@ -1,0 +1,104 @@
+.summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.right {
+  text-align: right;
+}
+
+.teamName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--night-text-sec);
+}
+
+.total {
+  font-size: 40px;
+  color: var(--night-text-2);
+}
+
+.total[data-tone="ahead"] {
+  color: var(--night-mint);
+}
+
+.total[data-tone="behind"] {
+  color: var(--night-amber);
+}
+
+.lineup {
+  display: flex;
+  flex-direction: column;
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--night-inset);
+  border: 1px solid var(--night-line);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.row + .row {
+  border-top: 1px solid var(--night-line);
+}
+
+.cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 8px;
+  min-width: 0;
+}
+
+.theirs {
+  flex-direction: row-reverse;
+  text-align: right;
+  border-left: 1px solid var(--night-line);
+}
+
+.who {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.player {
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.state {
+  font-size: 11px;
+  color: var(--night-text-dim);
+}
+
+.state[data-state="in"] {
+  color: var(--night-live-text);
+}
+
+.points {
+  flex: none;
+  font-size: 18px;
+}
+
+.external {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--night-text);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}

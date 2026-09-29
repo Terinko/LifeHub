@@ -1,0 +1,113 @@
+.board {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 32px minmax(0, 1fr);
+  align-items: end;
+}
+
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.right {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.right .name {
+  flex-direction: row-reverse;
+}
+
+.avatar,
+.avatarMine {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 800;
+  background: #2a3550;
+  color: var(--night-text-2);
+}
+
+.avatarMine {
+  background: #1e5b4a;
+  color: #e6fff6;
+}
+
+.teamName {
+  font-size: 14px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.record {
+  font-size: 12px;
+  color: var(--night-text-sec);
+}
+
+.score {
+  font-size: 46px;
+  color: var(--night-text-2);
+}
+
+.score[data-tone="ahead"] {
+  color: var(--night-mint);
+}
+
+.score[data-tone="behind"] {
+  color: var(--night-amber);
+}
+
+.score[data-tone="even"] {
+  color: var(--night-text);
+}
+
+.vs {
+  font-family: var(--night-font-score);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--night-text-dim);
+  text-align: center;
+  padding-bottom: 10px;
+}
+
+.bar {
+  display: flex;
+  gap: 3px;
+  height: 6px;
+}
+
+.mine,
+.theirs {
+  border-radius: 3px;
+  background: #2a3550;
+  transition: flex-grow 0.4s ease;
+}
+
+.mine[data-tone="ahead"] {
+  background: var(--night-mint);
+}
+
+.mine[data-tone="behind"] {
+  background: var(--night-amber);
+}
+
+.mine[data-tone="even"],
+.mine[data-tone="neutral"] {
+  background: var(--night-text-dim);
+}

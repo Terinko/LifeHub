@@ -98,10 +98,15 @@ export class BackendStack extends cdk.Stack {
       },
     });
 
-    const fantasyLambda = new lambda.Function(this, "FantasyHandler", {
-      runtime: lambda.Runtime.NODEJS_20_X,
-      code: lambda.Code.fromAsset("lambda/fantasy"),
-      handler: "index.handler",
+    // Bundled from services/api like Applications; same construct id so the
+    // function is updated in place.
+    const fantasyLambda = new NodejsFunction(this, "FantasyHandler", {
+      runtime: lambda.Runtime.NODEJS_24_X,
+      entry: path.join(repoRoot, "services/api/src/fantasy/handler.ts"),
+      handler: "handler",
+      projectRoot: repoRoot,
+      depsLockFilePath: path.join(repoRoot, "package-lock.json"),
+      bundling: { minify: true },
       environment: {
         TABLE_NAME: fantasyTable.tableName,
         USERS_TABLE: usersTable.tableName,
@@ -349,7 +354,14 @@ export class BackendStack extends cdk.Stack {
 
     httpApi.addRoutes({
       path: "/fantasy/leagues/{id}",
-      methods: [apigw.HttpMethod.DELETE],
+      methods: [apigw.HttpMethod.PUT, apigw.HttpMethod.DELETE],
+      integration: fantasyIntegration,
+      authorizer,
+    });
+
+    httpApi.addRoutes({
+      path: "/fantasy/sleeper-leagues",
+      methods: [apigw.HttpMethod.GET],
       integration: fantasyIntegration,
       authorizer,
     });

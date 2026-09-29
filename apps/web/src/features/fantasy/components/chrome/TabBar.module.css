@@ -1,0 +1,37 @@
+.bar {
+  composes: glass from "./glass.module.css";
+  position: fixed;
+  z-index: 20;
+  left: 50%;
+  bottom: calc(20px + var(--safe-bottom));
+  transform: translateX(-50%);
+  display: flex;
+  gap: 4px;
+  padding: 5px;
+  border-radius: 30px;
+}
+
+.tab {
+  min-width: 128px;
+  height: 48px;
+  border-radius: 24px;
+  border: none;
+  background: transparent;
+  color: var(--night-text-2);
+  font-family: var(--night-font-ui);
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.tab[aria-current="page"] {
+  color: var(--night-mint);
+  font-weight: 700;
+  background: var(--night-glass-lens);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}

@@ -1,0 +1,9 @@
+/* The Liquid Glass surface, composed by the bars and sheets that float
+   over content. Never used on cards. */
+.glass {
+  background: var(--night-glass);
+  -webkit-backdrop-filter: var(--night-glass-blur);
+  backdrop-filter: var(--night-glass-blur);
+  border: 1px solid var(--night-glass-line);
+  box-shadow: var(--night-glass-shadow);
+}
