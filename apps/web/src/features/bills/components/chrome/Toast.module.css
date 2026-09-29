@@ -1,0 +1,58 @@
+.toast {
+  position: fixed;
+  z-index: 30;
+  left: 50%;
+  bottom: calc(96px + var(--safe-bottom));
+  transform: translateX(-50%);
+  width: min(528px, calc(100% - 32px));
+  box-sizing: border-box;
+  min-height: 54px;
+  padding: 5px 6px 5px 18px;
+  border-radius: 18px;
+  background: var(--bills-paper);
+  color: var(--bills-paper-ink);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: var(--bills-font-ui);
+  animation: pop 0.2s ease-out;
+}
+
+.error {
+  background: #ffdde3;
+  color: #5c0718;
+}
+
+.text {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.undo {
+  flex: none;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 14px;
+  border: none;
+  background: var(--bills-paper-ink);
+  color: var(--bills-paper);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 12px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
+}

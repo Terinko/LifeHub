@@ -6,7 +6,6 @@
 @import "./index.css";
 @import "./App.css";
 @import "../components/Hub/Hub.css";
-@import "../components/Bills/BillsTool.css";
 @import "../components/Kitchen/KitchenTool.css";
 @import "./legacy-shared.css";
 @import "../components/Weather/WeatherTool.css";

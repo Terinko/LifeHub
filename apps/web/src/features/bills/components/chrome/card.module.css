@@ -1,0 +1,136 @@
+/* Shared Bills surfaces, type and buttons. */
+.card {
+  background: var(--bills-card);
+  border: 1px solid var(--bills-line);
+  border-radius: 22px;
+}
+
+.money {
+  font-family: var(--bills-font-money);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.eyebrow {
+  margin: 6px 0 0 6px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--bills-text-sec);
+}
+
+.primary,
+.quiet {
+  min-height: 52px;
+  border-radius: 26px;
+  font-family: var(--bills-font-ui);
+  font-size: 16px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 20px;
+  cursor: pointer;
+}
+
+.primary {
+  border: none;
+  background: var(--bills-lime);
+  color: var(--bills-lime-ink);
+}
+
+.primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.quiet {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--bills-text);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.danger {
+  min-height: 44px;
+  border: none;
+  background: transparent;
+  color: var(--bills-rose);
+  font-family: var(--bills-font-ui);
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.round {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--bills-text);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.field {
+  height: 52px;
+  box-sizing: border-box;
+  padding: 0 14px;
+  border-radius: 14px;
+  border: 1px solid var(--bills-field-line);
+  background: var(--bills-inset);
+  color: var(--bills-text);
+  font-family: var(--bills-font-ui);
+  font-size: 16px;
+  font-weight: 600;
+  min-width: 0;
+  width: 100%;
+}
+
+.field:focus,
+.field:focus-within {
+  outline: none;
+  border-color: var(--bills-lime);
+  box-shadow: 0 0 0 3px rgba(210, 243, 75, 0.14);
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--bills-text-2);
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--bills-text-sec);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  border-radius: 7px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--bills-text-2);
+}
+
+.pillLime {
+  background: var(--bills-lime-wash);
+  color: var(--bills-lime);
+}
+
+.pillSky {
+  background: var(--bills-sky-wash);
+  color: var(--bills-sky);
+}

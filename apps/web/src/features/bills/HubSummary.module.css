@@ -1,0 +1,10 @@
+.late {
+  align-self: flex-start;
+  margin-top: -6px;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: #fde2e2;
+  color: #a12a2a;
+  font-size: 12px;
+  font-weight: 800;
+}

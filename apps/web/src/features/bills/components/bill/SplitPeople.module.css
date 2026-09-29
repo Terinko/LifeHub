@@ -1,0 +1,135 @@
+.card {
+  composes: card from "../chrome/card.module.css";
+  padding: 10px 12px 4px 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 4px;
+}
+
+.title {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--bills-text-sec);
+}
+
+.link {
+  min-height: 44px;
+  padding: 0 4px;
+  border: none;
+  background: transparent;
+  color: var(--bills-lime);
+  font-family: var(--bills-font-ui);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.person {
+  min-height: 68px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.person + .person {
+  border-top: 1px solid var(--bills-line);
+}
+
+.avatar {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  background: var(--bills-inset);
+  border: 1px solid var(--bills-line);
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--bills-text-2);
+}
+
+.who {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.name {
+  font-size: 16px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.note {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.sec {
+  color: var(--bills-text-sec);
+}
+
+.lime {
+  color: var(--bills-lime);
+}
+
+.sky {
+  color: var(--bills-sky);
+}
+
+.amber {
+  color: var(--bills-amber);
+}
+
+.amount {
+  flex: none;
+  font-size: 15px;
+}
+
+.slot {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.dot {
+  width: 30px;
+  height: 30px;
+  border-radius: 15px;
+  display: grid;
+  place-items: center;
+  background: var(--bills-lime);
+  color: var(--bills-lime-ink);
+}
+
+.paidMe {
+  flex: none;
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 22px;
+  border: 1.5px solid var(--bills-sky);
+  background: transparent;
+  color: var(--bills-sky);
+  font-family: var(--bills-font-ui);
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}

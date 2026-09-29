@@ -1,0 +1,37 @@
+.block {
+  flex: none;
+  width: 46px;
+  height: 50px;
+  box-sizing: border-box;
+  border-radius: 12px;
+  background: var(--bills-inset);
+  border: 1px solid var(--bills-line);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  font-family: var(--bills-font-money);
+}
+
+.month {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--bills-text-sec);
+}
+
+.day {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--bills-text);
+}
+
+.late {
+  border-color: var(--bills-rose);
+}
+
+.late .day {
+  color: var(--bills-rose);
+}

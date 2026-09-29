@@ -1,0 +1,51 @@
+.switches {
+  composes: card from "../chrome/card.module.css";
+  border-radius: 20px;
+  padding: 0 14px;
+}
+
+.rule {
+  height: 1px;
+  background: var(--bills-line);
+}
+
+.notes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.textarea {
+  min-height: 76px;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--bills-field-line);
+  background: var(--bills-inset);
+  color: var(--bills-text);
+  font-family: var(--bills-font-ui);
+  font-size: 16px;
+  resize: vertical;
+}
+
+.textarea:focus {
+  outline: none;
+  border-color: var(--bills-lime);
+}
+
+.error {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--bills-rose-wash);
+  color: var(--bills-rose);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.fine {
+  margin-top: -14px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--bills-text-sec);
+}
