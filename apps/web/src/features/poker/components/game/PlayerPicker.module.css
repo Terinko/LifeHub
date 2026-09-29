@@ -1,0 +1,50 @@
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pill {
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 22px;
+  border: 1px solid var(--vegas-field-line);
+  background: transparent;
+  color: var(--vegas-text-2);
+  font-family: var(--vegas-font-ui);
+  font-size: 15px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.pill[aria-pressed="true"] {
+  padding-left: 12px;
+  border-color: var(--vegas-coral);
+  background: var(--vegas-coral-wash);
+  color: var(--vegas-text);
+  font-weight: 700;
+}
+
+.pill[aria-pressed="true"] svg {
+  color: var(--vegas-coral);
+}
+
+.pill:disabled {
+  border-style: dashed;
+  border-color: var(--vegas-line);
+  color: var(--vegas-text-dim);
+  cursor: default;
+}
+
+.busy {
+  font-weight: 500;
+}
+
+.empty {
+  margin: 0;
+  font-size: 14px;
+  color: var(--vegas-text-sec);
+}

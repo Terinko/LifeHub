@@ -1,0 +1,29 @@
+.body {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--vegas-text-2);
+}
+
+.error {
+  margin: 0;
+  font-size: 14px;
+  color: var(--vegas-danger);
+}
+
+.confirm {
+  min-height: 52px;
+  border-radius: 26px;
+  border: none;
+  background: var(--vegas-danger);
+  color: #2a0612;
+  font-family: var(--vegas-font-ui);
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.confirm:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}

@@ -1,0 +1,136 @@
+/* The opaque content card. */
+.card {
+  background: var(--vegas-card);
+  border: 1px solid var(--vegas-line);
+  border-radius: 22px;
+}
+
+/* Money and chip counts: tall marquee digits that line up in columns. */
+.money {
+  font-family: var(--vegas-font-money);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.up {
+  color: var(--vegas-up);
+}
+
+.down {
+  color: var(--vegas-down);
+}
+
+.even {
+  color: var(--vegas-text-sec);
+}
+
+.eyebrow {
+  margin: 0;
+  font-family: var(--vegas-font-ui);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--vegas-text-sec);
+}
+
+/* Buttons */
+.primary,
+.secondary,
+.quiet,
+.danger {
+  min-height: 52px;
+  border-radius: 26px;
+  font-family: var(--vegas-font-ui);
+  font-size: 16px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 0 20px;
+}
+
+.primary {
+  border: none;
+  background: var(--vegas-coral);
+  color: var(--vegas-coral-ink);
+  box-shadow: 0 8px 24px rgba(255, 107, 91, 0.25);
+}
+
+.secondary {
+  border: none;
+  background: var(--vegas-text);
+  color: var(--vegas-ground);
+}
+
+.quiet {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--vegas-text);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.danger {
+  min-height: 44px;
+  border: none;
+  background: transparent;
+  color: var(--vegas-danger);
+  font-size: 15px;
+}
+
+.primary:disabled,
+.secondary:disabled {
+  background: rgba(255, 107, 91, 0.26);
+  color: rgba(251, 244, 255, 0.7);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.field {
+  height: 48px;
+  box-sizing: border-box;
+  padding: 0 14px;
+  border-radius: 14px;
+  border: 1px solid var(--vegas-field-line);
+  background: var(--vegas-inset);
+  color: var(--vegas-text);
+  font-family: var(--vegas-font-ui);
+  font-size: 16px;
+  font-weight: 600;
+  min-width: 0;
+}
+
+.field:focus {
+  outline: none;
+  border-color: var(--vegas-coral);
+  box-shadow: 0 0 0 3px rgba(255, 107, 91, 0.2);
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--vegas-text-2);
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--vegas-text-sec);
+}
+
+.round {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
+  border: none;
+  background: transparent;
+  color: var(--vegas-text-2);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}

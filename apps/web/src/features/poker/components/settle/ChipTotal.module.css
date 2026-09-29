@@ -1,0 +1,59 @@
+.total {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.line {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.count {
+  color: var(--vegas-text-sec);
+  font-weight: 600;
+}
+
+.number {
+  font-family: var(--vegas-font-money);
+  font-weight: 400;
+  font-size: 26px;
+  letter-spacing: 0.02em;
+  color: var(--vegas-text);
+}
+
+.ok {
+  font-weight: 800;
+  color: var(--vegas-up);
+}
+
+.off {
+  font-weight: 800;
+  color: var(--vegas-down);
+}
+
+.track {
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.fill,
+.over {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--vegas-coral);
+  transition: width 0.2s ease;
+}
+
+.over {
+  background: var(--vegas-down);
+}

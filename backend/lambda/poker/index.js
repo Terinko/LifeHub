@@ -548,6 +548,7 @@ exports.handler = async (event) => {
             statusCode: 200,
             headers,
             body: JSON.stringify({
+              players: result.players,
               settlements: result.settlements,
               saved: false,
             }),

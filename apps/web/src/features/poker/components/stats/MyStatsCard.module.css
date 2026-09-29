@@ -1,0 +1,47 @@
+.card {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.total {
+  font-size: 56px;
+}
+
+.tiles {
+  margin: 4px 0 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.tile {
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--vegas-inset);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--vegas-text-sec);
+}
+
+.value {
+  margin: 0;
+  font-size: 22px;
+}
+
+.streak {
+  margin: 4px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--vegas-text-2);
+}

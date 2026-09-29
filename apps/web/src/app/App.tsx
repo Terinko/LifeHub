@@ -10,7 +10,7 @@ const Admin = lazy(() => import("../components/Auth/Admin"));
 const Hub = lazy(() => import("../components/Hub/Hub"));
 const BillsTool = lazy(() => import("../components/Bills/BillsTool"));
 const KitchenTool = lazy(() => import("../components/Kitchen/KitchenTool"));
-const PokerTool = lazy(() => import("../components/Poker/PokerTool"));
+const PokerPage = lazy(() => import("../features/poker"));
 const FantasyPage = lazy(() => import("../features/fantasy"));
 const ApplicationsPage = lazy(() => import("../features/applications"));
 const WeatherTool = lazy(() => import("../components/Weather/WeatherTool"));
@@ -32,7 +32,7 @@ export function App() {
             <Route path="/" element={<Hub />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/bills" element={<BillsTool />} />
-            <Route path="/poker" element={<PokerTool />} />
+            <Route path="/poker" element={<PokerPage />} />
             <Route path="/kitchen" element={<KitchenTool />} />
             <Route path="/fantasy" element={<FantasyPage />} />
             <Route path="/weather" element={<WeatherTool />} />

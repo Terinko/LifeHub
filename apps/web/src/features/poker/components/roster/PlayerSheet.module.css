@@ -1,0 +1,37 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.warn {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--vegas-down);
+}
+
+.error {
+  margin: 0;
+  font-size: 14px;
+  color: var(--vegas-danger);
+}
+
+.note {
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: center;
+  color: var(--vegas-text-sec);
+}
+
+.confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}

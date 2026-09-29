@@ -1,0 +1,19 @@
+.tab {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.section {
+  margin: 12px 0 0 4px;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--vegas-text);
+}
+
+.loading {
+  margin: 0;
+  padding: 16px 4px;
+  font-size: 14px;
+  color: var(--vegas-text-sec);
+}

@@ -1,0 +1,9 @@
+.game {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.seats {
+  padding: 4px 14px;
+}
