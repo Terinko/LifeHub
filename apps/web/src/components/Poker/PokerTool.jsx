@@ -18,6 +18,26 @@ const formatGameAge = (dateStr) => {
 const isStaleGame = (dateStr) =>
   Date.now() - new Date(dateStr).getTime() > 24 * 60 * 60 * 1000;
 
+// Fetches JSON and throws with the API's own error message on failure, so
+// callers can show it instead of silently carrying on.
+const requestJson = async (path, options = {}) => {
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers: await getAuthHeaders(),
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(body?.error || `Request failed (${res.status})`);
+  }
+  return body;
+};
+
+const postPoker = (payload) =>
+  requestJson("/poker", { method: "POST", body: JSON.stringify(payload) });
+
+// Blank or unreadable counts are 0 chips.
+const chipCount = (p) => (Number.isFinite(p.finalChips) ? p.finalChips : 0);
+
 const PokerTool = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("game");
@@ -26,8 +46,12 @@ const PokerTool = () => {
   const [myStatsData, setMyStatsData] = useState({ playerIds: [], games: [] });
   const [newPlayerName, setNewPlayerName] = useState("");
   const [userProfile, setUserProfile] = useState(null);
+  const [loadError, setLoadError] = useState(null);
 
-  const [gameSetup, setGameSetup] = useState({ buyIn: 10, chips: 10000 });
+  // Kept as the raw text from the inputs so clearing a box doesn't turn it
+  // into 0; parsed and checked when the game starts.
+  const [gameSetup, setGameSetup] = useState({ buyIn: "10", chips: "10000" });
+  const [startingGame, setStartingGame] = useState(false);
   const [selectedPlayers, setSelectedPlayers] = useState([]);
   // Holds the sk of whichever active game the settle modal is open for
   // (not the game object itself) so it always reflects the latest data —
@@ -37,51 +61,76 @@ const PokerTool = () => {
   const [saveToHistory, setSaveToHistory] = useState(true);
   const [includeInStats, setIncludeInStats] = useState(true);
   const [settlementResults, setSettlementResults] = useState(null);
+  const [settling, setSettling] = useState(false);
+  const [settleError, setSettleError] = useState(null);
 
   useEffect(() => {
     loadProfileAndData();
   }, []);
 
+  // Each part loads on its own, so one failed request doesn't leave the
+  // rest of the page empty, and any failure is shown at the top.
   const loadProfileAndData = async () => {
-    try {
-      const headers = await getAuthHeaders();
+    const failed = [];
+    const [profileResult, dataResult, myStatsResult] = await Promise.allSettled(
+      [
+        requestJson("/admin/users?me=true"),
+        requestJson("/poker"),
+        requestJson("/poker/mystats"),
+      ],
+    );
 
-      const profileRes = await fetch(`${API_BASE}/admin/users?me=true`, {
-        headers,
-      });
-      const profile = await profileRes.json();
+    let profile = null;
+    if (profileResult.status === "fulfilled") {
+      profile = profileResult.value;
       setUserProfile(profile);
+    } else failed.push("your profile");
 
-      const dataRes = await fetch(`${API_BASE}/poker`, { headers });
-      const items = await dataRes.json();
-      setData(Array.isArray(items) ? items : []);
+    if (dataResult.status === "fulfilled") {
+      setData(Array.isArray(dataResult.value) ? dataResult.value : []);
+    } else failed.push("games and players");
 
-      const myStatsRes = await fetch(`${API_BASE}/poker/mystats`, {
-        headers,
-      });
-      const myStatsJson = await myStatsRes.json();
+    if (myStatsResult.status === "fulfilled") {
+      const myStatsJson = myStatsResult.value;
       setMyStatsData(
         myStatsJson && Array.isArray(myStatsJson.games)
           ? myStatsJson
           : { playerIds: [], games: [] },
       );
+    } else failed.push("your stats");
 
-      const hasStatsAccess =
-        profile.role === "ADMIN" || profile.permissions?.pokerStats;
-      if (hasStatsAccess) {
-        const statsRes = await fetch(`${API_BASE}/poker/stats`, { headers });
-        const sItems = await statsRes.json();
+    const hasStatsAccess =
+      profile?.role === "ADMIN" || profile?.permissions?.pokerStats;
+    if (hasStatsAccess) {
+      try {
+        const sItems = await requestJson("/poker/stats");
         setStatsData(Array.isArray(sItems) ? sItems : []);
+      } catch {
+        failed.push("the Hall of Fame");
       }
-    } catch (e) {
-      console.error(e);
     }
+
+    setLoadError(
+      failed.length > 0 ? `Couldn't load ${failed.join(", ")}.` : null,
+    );
   };
 
   const players = data.filter((d) => d.sk?.startsWith("PLAYER#"));
   const games = data.filter((d) => d.sk?.startsWith("GAME#"));
   const activeGames = games.filter((g) => g.status === "ACTIVE");
   const settlingGame = activeGames.find((g) => g.sk === settlingGameSk) || null;
+  // Chips handed out versus chips counted on the settle screen. Settling is
+  // blocked until they match, so no one's money quietly goes missing.
+  const chipCheck = settlingGame
+    ? Object.values(settlingGame.players).reduce(
+        (acc, p) => ({
+          expected: acc.expected + p.buyIns * settlingGame.chipsPerBuyIn,
+          counted: acc.counted + chipCount(p),
+        }),
+        { expected: 0, counted: 0 },
+      )
+    : null;
+  const chipsBalance = chipCheck && chipCheck.counted === chipCheck.expected;
   // Someone can only be seated at one table at a time — used both to grey
   // out the roster delete button and to keep a player out of a second
   // game's "Select Players" list while their other game is still running.
@@ -229,7 +278,30 @@ const PokerTool = () => {
   };
 
   const startGame = async () => {
-    if (selectedPlayers.length < 2) return alert("Select at least 2 players");
+    if (startingGame) return;
+    // Players who are already seated in another game can't be picked again,
+    // even if their box was ticked before that game started.
+    const seats = selectedPlayers.filter(
+      (id) => !playersInActiveGames.has(id) && players.some((p) => p.sk === id),
+    );
+    if (seats.length < 2) return alert("Select at least 2 players");
+
+    const buyInAmount = Number(gameSetup.buyIn);
+    const chipsPerBuyIn = Number(gameSetup.chips);
+    if (
+      gameSetup.buyIn === "" ||
+      !Number.isFinite(buyInAmount) ||
+      buyInAmount <= 0
+    )
+      return alert("Enter a buy-in amount above $0");
+    if (
+      gameSetup.chips === "" ||
+      !Number.isInteger(chipsPerBuyIn) ||
+      chipsPerBuyIn <= 0
+    )
+      return alert(
+        "Enter how many chips each buy-in gets (a whole number above 0)",
+      );
 
     if (activeGames.length > 0) {
       const proceed = window.confirm(
@@ -239,7 +311,7 @@ const PokerTool = () => {
     }
 
     const initialPlayers = {};
-    selectedPlayers.forEach((id) => {
+    seats.forEach((id) => {
       initialPlayers[id] = {
         name: players.find((p) => p.sk === id).name,
         buyIns: 1,
@@ -247,19 +319,23 @@ const PokerTool = () => {
       };
     });
 
-    await fetch(`${API_BASE}/poker`, {
-      method: "POST",
-      headers: await getAuthHeaders(),
-      body: JSON.stringify({
+    setStartingGame(true);
+    try {
+      await postPoker({
         pk: "GAME",
         status: "ACTIVE",
-        buyInAmount: gameSetup.buyIn,
-        chipsPerBuyIn: gameSetup.chips,
+        buyInAmount,
+        chipsPerBuyIn,
         players: initialPlayers,
         date: new Date().toISOString(),
-      }),
-    });
-    loadProfileAndData();
+      });
+      setSelectedPlayers([]);
+    } catch (e) {
+      alert(`Couldn't start the game. ${e.message}`);
+    } finally {
+      setStartingGame(false);
+      loadProfileAndData();
+    }
   };
 
   // Buy-ins and final chips are persisted as small, atomic per-field
@@ -314,7 +390,9 @@ const PokerTool = () => {
 
   const updateFinalChips = (game, playerId, chips) => {
     const gameSk = game.sk;
-    const numChips = chips === "" ? null : Number(chips);
+    const parsed = Number(chips);
+    const numChips =
+      chips === "" || !Number.isFinite(parsed) || parsed < 0 ? null : parsed;
     setData((prev) =>
       prev.map((item) =>
         item.sk === gameSk
@@ -339,7 +417,8 @@ const PokerTool = () => {
           action: "UPDATE_FINAL_CHIPS",
           gameSk: game.sk,
           playerId,
-          finalChips: chips === "" ? null : Number(chips),
+          finalChips:
+            chips === "" || !(Number(chips) >= 0) ? null : Number(chips),
         }),
       });
       if (!res.ok) console.error("Failed to save final chips");
@@ -349,35 +428,44 @@ const PokerTool = () => {
   };
 
   const endGame = async () => {
-    const res = await fetch(`${API_BASE}/poker`, {
-      method: "POST",
-      headers: await getAuthHeaders(),
-      body: JSON.stringify({
+    if (settling || !settlingGame) return;
+    // Send the counts on this screen with the request: each box also saves
+    // when you leave it, but that save can still be on its way when
+    // Calculate is tapped.
+    const finalChips = {};
+    Object.entries(settlingGame.players).forEach(([id, p]) => {
+      if (p.finalChips !== null && p.finalChips !== undefined)
+        finalChips[id] = p.finalChips;
+    });
+
+    setSettling(true);
+    setSettleError(null);
+    try {
+      const result = await postPoker({
         action: "END_GAME",
-        game: settlingGame,
+        game: { sk: settlingGame.sk },
+        finalChips,
         saveToHistory,
         includeInStats,
-      }),
-    });
-    const result = await res.json();
+      });
 
-    if (!res.ok) {
-      alert(result.error || "Failed to end the game. Try again.");
-      return;
+      if (!saveToHistory) {
+        // Nothing gets saved anywhere else, so this modal is the only place
+        // these numbers will ever be shown — keep it open with the results.
+        setSettlementResults(result.settlements || []);
+      } else {
+        setSettlingGameSk(null);
+      }
+      // Reset for next time — otherwise a "just calculate, don't save" game
+      // leaves these unchecked for the next real game too.
+      setSaveToHistory(true);
+      setIncludeInStats(true);
+      loadProfileAndData();
+    } catch (e) {
+      setSettleError(e.message || "Failed to end the game. Try again.");
+    } finally {
+      setSettling(false);
     }
-
-    if (!saveToHistory) {
-      // Nothing gets saved anywhere else, so this modal is the only place
-      // these numbers will ever be shown — keep it open with the results.
-      setSettlementResults(result.settlements || []);
-    } else {
-      setSettlingGameSk(null);
-    }
-    // Reset for next time — otherwise a "just calculate, don't save" game
-    // leaves these unchecked for the next real game too.
-    setSaveToHistory(true);
-    setIncludeInStats(true);
-    loadProfileAndData();
   };
 
   const cancelGame = async (game) => {
@@ -427,6 +515,7 @@ const PokerTool = () => {
   const closeSettlementModal = () => {
     setSettlingGameSk(null);
     setSettlementResults(null);
+    setSettleError(null);
   };
 
   const getFunStats = () => {
@@ -435,7 +524,7 @@ const PokerTool = () => {
     const stats = {};
     let houdini = { name: "-", val: 0 };
     let tiltMaster = { name: "-", val: 0 };
-    let roiKing = { name: "-", val: -Infinity };
+    let roiKing = { name: "-", val: 0 };
 
     // Keyed by player id, not name — two different roster entries that
     // happen to share a display name (a typo'd duplicate, or two different
@@ -590,6 +679,35 @@ const PokerTool = () => {
       </div>
 
       <div className="tool-content">
+        {loadError && (
+          <div
+            role="alert"
+            style={{
+              margin: "0 0 12px",
+              padding: "10px 12px",
+              borderRadius: "8px",
+              background: "#fdecec",
+              color: "#b3261e",
+              fontSize: "14px",
+            }}
+          >
+            {loadError}{" "}
+            <button
+              onClick={loadProfileAndData}
+              style={{
+                background: "none",
+                border: "none",
+                color: "#b3261e",
+                fontWeight: "700",
+                textDecoration: "underline",
+                cursor: "pointer",
+                padding: 0,
+              }}
+            >
+              Try again
+            </button>
+          </div>
+        )}
         {activeTab === "roster" && (
           <div className="list-container">
             {players.map((p) => {
@@ -785,7 +903,7 @@ const PokerTool = () => {
                   onChange={(e) =>
                     setGameSetup({
                       ...gameSetup,
-                      buyIn: Number(e.target.value),
+                      buyIn: e.target.value,
                     })
                   }
                 />
@@ -799,7 +917,7 @@ const PokerTool = () => {
                   onChange={(e) =>
                     setGameSetup({
                       ...gameSetup,
-                      chips: Number(e.target.value),
+                      chips: e.target.value,
                     })
                   }
                 />
@@ -823,7 +941,7 @@ const PokerTool = () => {
                   <input
                     type="checkbox"
                     disabled={busyElsewhere}
-                    checked={selectedPlayers.includes(p.sk)}
+                    checked={!busyElsewhere && selectedPlayers.includes(p.sk)}
                     onChange={(e) => {
                       if (e.target.checked)
                         setSelectedPlayers([...selectedPlayers, p.sk]);
@@ -840,10 +958,11 @@ const PokerTool = () => {
             })}
             <button
               onClick={startGame}
+              disabled={startingGame}
               className="ios-submit-btn full-width"
-              style={{ marginTop: "20px" }}
+              style={{ marginTop: "20px", opacity: startingGame ? 0.6 : 1 }}
             >
-              Start Game
+              {startingGame ? "Starting…" : "Start Game"}
             </button>
           </div>
         )}
@@ -1198,7 +1317,7 @@ const PokerTool = () => {
                       >
                         <span>
                           📈 <strong>The ROI King:</strong>{" "}
-                          {funStats.roiKing?.val !== -Infinity
+                          {funStats.roiKing?.val > 0
                             ? funStats.roiKing.name
                             : "N/A"}{" "}
                           <br />
@@ -1207,7 +1326,7 @@ const PokerTool = () => {
                           </small>
                         </span>
                         <span style={{ color: "green", fontWeight: "bold" }}>
-                          {funStats.roiKing?.val !== -Infinity
+                          {funStats.roiKing?.val > 0
                             ? `+$${funStats.roiKing.val.toFixed(2)}`
                             : "-"}
                         </span>
@@ -1369,6 +1488,9 @@ const PokerTool = () => {
                     <span>{p.name}</span>
                     <input
                       type="number"
+                      min="0"
+                      inputMode="numeric"
+                      aria-label={`${p.name} final chips`}
                       className="ios-input-modal"
                       style={{ width: "120px", margin: 0 }}
                       placeholder="Final chips"
@@ -1382,6 +1504,21 @@ const PokerTool = () => {
                     />
                   </div>
                 ))}
+
+                <div
+                  aria-live="polite"
+                  style={{
+                    marginTop: "8px",
+                    fontSize: "14px",
+                    fontWeight: "600",
+                    color: chipsBalance ? "#2e7d32" : "#b3261e",
+                  }}
+                >
+                  {chipCheck.counted.toLocaleString()} of{" "}
+                  {chipCheck.expected.toLocaleString()} chips counted
+                  {!chipsBalance &&
+                    ` (${Math.abs(chipCheck.expected - chipCheck.counted).toLocaleString()} ${chipCheck.counted < chipCheck.expected ? "missing" : "extra"})`}
+                </div>
 
                 <div
                   style={{
@@ -1454,12 +1591,44 @@ const PokerTool = () => {
                   )}
                 </div>
 
+                {settleError && (
+                  <div
+                    role="alert"
+                    style={{
+                      marginTop: "16px",
+                      color: "#b3261e",
+                      fontSize: "14px",
+                    }}
+                  >
+                    {settleError}
+                  </div>
+                )}
+
+                {!chipsBalance && (
+                  <div
+                    style={{
+                      marginTop: "16px",
+                      color: "#888",
+                      fontSize: "13px",
+                    }}
+                  >
+                    The chip counts need to add up to what was bought in before
+                    you can settle.
+                  </div>
+                )}
+
                 <button
                   onClick={endGame}
+                  disabled={settling || !chipsBalance}
                   className="ios-submit-btn full-width"
-                  style={{ marginTop: "20px" }}
+                  style={{
+                    marginTop: "20px",
+                    opacity: settling || !chipsBalance ? 0.5 : 1,
+                    cursor:
+                      settling || !chipsBalance ? "not-allowed" : "pointer",
+                  }}
                 >
-                  Calculate Settlements
+                  {settling ? "Settling…" : "Calculate Settlements"}
                 </button>
               </div>
             )}
