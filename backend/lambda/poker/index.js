@@ -15,15 +15,31 @@ const dynamo = DynamoDBDocumentClient.from(client);
 const TABLE_NAME = process.env.TABLE_NAME;
 const USERS_TABLE = process.env.USERS_TABLE;
 
+const round2 = (n) => Math.round(n * 100) / 100;
+
+const isPositiveNumber = (n) => typeof n === "number" && Number.isFinite(n) && n > 0;
+
+// Chips handed out (every buy-in) versus chips counted at the end. A blank
+// count is treated as 0 chips.
+function chipTotals(players, chipsPerBuyIn) {
+  let expected = 0;
+  let counted = 0;
+  for (const p of Object.values(players)) {
+    expected += p.buyIns * chipsPerBuyIn;
+    counted += p.finalChips ?? 0;
+  }
+  return { expected, counted };
+}
+
 function calculateSettlements(players, buyInAmount, chipsPerBuyIn) {
   let debtors = [];
   let creditors = [];
   let processedPlayers = {};
 
   for (const [id, p] of Object.entries(players)) {
-    const chipValue = (p.finalChips / chipsPerBuyIn) * buyInAmount;
+    const chipValue = ((p.finalChips ?? 0) / chipsPerBuyIn) * buyInAmount;
     const totalSpent = p.buyIns * buyInAmount;
-    const net = Math.round((chipValue - totalSpent) * 100) / 100;
+    const net = round2(chipValue - totalSpent);
 
     processedPlayers[id] = { ...p, net };
 
@@ -39,9 +55,9 @@ function calculateSettlements(players, buyInAmount, chipsPerBuyIn) {
     c = 0;
 
   while (d < debtors.length && c < creditors.length) {
-    const debt = debtors[d].amount;
-    const credit = creditors[c].amount;
-    const payment = Math.min(debt, credit);
+    // Work in whole cents so repeated subtraction can't leave float dust
+    // like 0.30000000000000004 in a payment.
+    const payment = round2(Math.min(debtors[d].amount, creditors[c].amount));
 
     if (payment > 0) {
       settlements.push({
@@ -53,8 +69,8 @@ function calculateSettlements(players, buyInAmount, chipsPerBuyIn) {
       });
     }
 
-    debtors[d].amount -= payment;
-    creditors[c].amount -= payment;
+    debtors[d].amount = round2(debtors[d].amount - payment);
+    creditors[c].amount = round2(creditors[c].amount - payment);
 
     if (debtors[d].amount < 0.01) d++;
     if (creditors[c].amount < 0.01) c++;
@@ -62,6 +78,9 @@ function calculateSettlements(players, buyInAmount, chipsPerBuyIn) {
 
   return { players: processedPlayers, settlements };
 }
+
+exports.calculateSettlements = calculateSettlements;
+exports.chipTotals = chipTotals;
 
 exports.handler = async (event) => {
   const headers = {
@@ -377,30 +396,52 @@ exports.handler = async (event) => {
             body: JSON.stringify({ error: "gameSk and playerId required" }),
           };
         }
+        const chips =
+          finalChips === null || finalChips === undefined ? null : Number(finalChips);
+        if (chips !== null && !(Number.isFinite(chips) && chips >= 0)) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: "Final chips must be 0 or more" }),
+          };
+        }
 
-        await dynamo.send(
-          new UpdateCommand({
-            TableName: TABLE_NAME,
-            Key: { pk: GROUP_PK, sk: gameSk },
-            UpdateExpression: "SET players.#pid.finalChips = :chips",
-            ExpressionAttributeNames: { "#pid": playerId },
-            ExpressionAttributeValues: {
-              ":chips": finalChips === null || finalChips === undefined
-                ? null
-                : Number(finalChips),
-            },
-          }),
-        );
+        try {
+          await dynamo.send(
+            new UpdateCommand({
+              TableName: TABLE_NAME,
+              Key: { pk: GROUP_PK, sk: gameSk },
+              UpdateExpression: "SET players.#pid.finalChips = :chips",
+              // Only while the game is running: a settled game's nets and
+              // payouts were worked out from the chips it had at the time.
+              ConditionExpression:
+                "#status = :active AND attribute_exists(players.#pid)",
+              ExpressionAttributeNames: { "#pid": playerId, "#status": "status" },
+              ExpressionAttributeValues: { ":chips": chips, ":active": "ACTIVE" },
+            }),
+          );
+        } catch (err) {
+          if (err.name !== "ConditionalCheckFailedException") throw err;
+          return {
+            statusCode: 409,
+            headers,
+            body: JSON.stringify({ error: "That game isn't active anymore." }),
+          };
+        }
 
         return { statusCode: 200, headers, body: JSON.stringify({ updated: true }) };
       }
 
       if (body.action === "END_GAME") {
         // Read the game fresh from the table rather than trusting whatever
-        // snapshot the client had lying around — buy-ins/chips may have
-        // been updated (by this user or someone else) since they loaded
-        // the page.
-        const { game: clientGame, saveToHistory = true, includeInStats = true } = body;
+        // snapshot the client had lying around — buy-ins may have been
+        // updated (by this user or someone else) since they loaded the page.
+        const {
+          game: clientGame,
+          finalChips: clientChips = {},
+          saveToHistory = true,
+          includeInStats = true,
+        } = body;
         if (!clientGame?.sk) {
           return {
             statusCode: 400,
@@ -412,30 +453,96 @@ exports.handler = async (event) => {
           new GetCommand({ TableName: TABLE_NAME, Key: { pk: GROUP_PK, sk: clientGame.sk } }),
         );
         const game = gameRes.Item;
-        if (!game) {
+        if (!game || game.status !== "ACTIVE") {
           return {
-            statusCode: 404,
+            statusCode: 409,
             headers,
-            body: JSON.stringify({ error: "Active game not found — it may have already been ended." }),
+            body: JSON.stringify({
+              error: "This game isn't active anymore. It may have already been settled.",
+            }),
+          };
+        }
+        if (!isPositiveNumber(game.buyInAmount) || !isPositiveNumber(game.chipsPerBuyIn)) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({
+              error: "This game has no buy-in amount or chips per buy-in, so it can't be settled.",
+            }),
+          };
+        }
+
+        // The chip counts typed into the settle screen come with this
+        // request. Each box also saves on its own when you leave it, but
+        // that save can still be in flight when Calculate is tapped, so it
+        // can't be relied on here. A count this device doesn't have (null)
+        // keeps whatever is saved, which may have come from someone else.
+        const players = {};
+        for (const [id, p] of Object.entries(game.players || {})) {
+          const sent = clientChips[id];
+          if (sent === null || sent === undefined) {
+            players[id] = p;
+            continue;
+          }
+          const chips = Number(sent);
+          if (!Number.isFinite(chips) || chips < 0) {
+            return {
+              statusCode: 400,
+              headers,
+              body: JSON.stringify({ error: `${p.name}'s final chips must be 0 or more` }),
+            };
+          }
+          players[id] = { ...p, finalChips: chips };
+        }
+
+        const { expected, counted } = chipTotals(players, game.chipsPerBuyIn);
+        if (counted !== expected) {
+          const diff = Math.abs(expected - counted).toLocaleString("en-US");
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({
+              error: `The chips don't add up: ${counted.toLocaleString("en-US")} counted but ${expected.toLocaleString("en-US")} were bought in (${diff} ${counted < expected ? "missing" : "extra"}). Recount before settling.`,
+            }),
           };
         }
 
         const result = calculateSettlements(
-          game.players,
+          players,
           game.buyInAmount,
           game.chipsPerBuyIn,
         );
 
+        // Both writes only go through if the game is still active, so a
+        // double tap or a second person settling at the same moment can't
+        // record it twice or delete a game someone else just saved.
+        const stillActive = {
+          ConditionExpression: "#status = :active",
+          ExpressionAttributeNames: { "#status": "status" },
+          ExpressionAttributeValues: { ":active": "ACTIVE" },
+        };
+        const alreadySettled = {
+          statusCode: 409,
+          headers,
+          body: JSON.stringify({
+            error: "This game was just settled by someone else.",
+          }),
+        };
+
         if (!saveToHistory) {
           // Not saving to history — still clear the active game so the
           // group isn't stuck unable to start a new one.
-          if (game.sk) {
+          try {
             await dynamo.send(
               new DeleteCommand({
                 TableName: TABLE_NAME,
                 Key: { pk: GROUP_PK, sk: game.sk },
+                ...stillActive,
               }),
             );
+          } catch (err) {
+            if (err.name !== "ConditionalCheckFailedException") throw err;
+            return alreadySettled;
           }
           return {
             statusCode: 200,
@@ -461,9 +568,14 @@ exports.handler = async (event) => {
           completedAt: new Date().toISOString(),
         };
 
-        await dynamo.send(
-          new PutCommand({ TableName: TABLE_NAME, Item: completedGame }),
-        );
+        try {
+          await dynamo.send(
+            new PutCommand({ TableName: TABLE_NAME, Item: completedGame, ...stillActive }),
+          );
+        } catch (err) {
+          if (err.name !== "ConditionalCheckFailedException") throw err;
+          return alreadySettled;
+        }
         return {
           statusCode: 200,
           headers,
@@ -472,6 +584,51 @@ exports.handler = async (event) => {
             saved: true,
           }),
         };
+      }
+
+      if (body.pk === "GAME" && !body.sk) {
+        const playerIds = Object.keys(body.players || {});
+        if (!isPositiveNumber(body.buyInAmount) || !isPositiveNumber(body.chipsPerBuyIn)) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({
+              error: "Buy-in and chips per buy-in must both be more than 0.",
+            }),
+          };
+        }
+        if (playerIds.length < 2) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: "A game needs at least 2 players." }),
+          };
+        }
+
+        // Someone can only sit at one table at a time.
+        const existing = await dynamo.send(
+          new QueryCommand({
+            TableName: TABLE_NAME,
+            KeyConditionExpression: "pk = :pk AND begins_with(sk, :game)",
+            ExpressionAttributeValues: { ":pk": GROUP_PK, ":game": "GAME#" },
+          }),
+        );
+        const seated = new Set(
+          (existing.Items || [])
+            .filter((g) => g.status === "ACTIVE")
+            .flatMap((g) => Object.keys(g.players || {})),
+        );
+        const busy = playerIds.filter((id) => seated.has(id));
+        if (busy.length > 0) {
+          const names = busy.map((id) => body.players[id]?.name || "A player").join(", ");
+          return {
+            statusCode: 409,
+            headers,
+            body: JSON.stringify({
+              error: `${names} ${busy.length === 1 ? "is" : "are"} already in another active game.`,
+            }),
+          };
+        }
       }
 
       const prefix = body.pk === "GAME" ? "GAME#" : "PLAYER#";
