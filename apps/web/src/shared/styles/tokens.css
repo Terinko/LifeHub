@@ -127,6 +127,30 @@
   --bills-font-ui: "Manrope", system-ui, sans-serif;
   --bills-font-money: "JetBrains Mono", ui-monospace, monospace;
 
+  /* Kitchen: "Enamelware" (cream ground, white enamel cards with cobalt
+     rims, pepper orange for low and out) */
+  --enamel-ground: #f3f0e8;
+  --enamel-card: #ffffff;
+  --enamel-inset: #f7f5ef;
+  --enamel-ink: #10233f;
+  --enamel-ink-2: #2c3d58;
+  --enamel-muted: #55607a;
+  --enamel-line: #dce3ef;
+  --enamel-field-line: #b9c4d8;
+  --enamel-cobalt: #1e4c9a;
+  --enamel-cobalt-deep: #173c7a;
+  --enamel-cobalt-wash: #e8eef8;
+  --enamel-green: #1e7a55;
+  --enamel-green-wash: #e1f1e9;
+  --enamel-pepper: #b8431f;
+  --enamel-pepper-wash: #fce6dc;
+  --enamel-undo: #a9c4f5;
+  --enamel-backdrop: rgba(16, 35, 63, 0.42);
+  --enamel-shadow:
+    0 1px 0 rgba(16, 35, 63, 0.04), 0 6px 18px rgba(16, 35, 63, 0.06);
+  --enamel-font-ui: "Manrope", system-ui, sans-serif;
+  --enamel-font-display: "DM Serif Display", Georgia, serif;
+
   /* Poker chip colors for player avatars, picked per player id */
   --chip-red: #d93a3a;
   --chip-blue: #2f6fe0;
