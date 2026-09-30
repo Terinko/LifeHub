@@ -1,0 +1,19 @@
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: #e5e5ea;
+  color: #8e8e93;
+}
+
+.active {
+  background: var(--ios-blue);
+  color: #fff;
+}

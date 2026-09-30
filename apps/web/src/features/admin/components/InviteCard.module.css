@@ -1,0 +1,54 @@
+.card {
+  background: #3a3d36;
+  padding: 20px;
+  border-radius: 16px;
+  margin-bottom: 32px;
+  color: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.title {
+  margin-top: 0;
+  margin-bottom: 6px;
+  font-size: 18px;
+}
+
+.hint {
+  margin: 0 0 16px 0;
+  font-size: 13px;
+  color: #a0a0a0;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.email {
+  padding: 14px;
+  border-radius: 10px;
+  border: none;
+  background: #4c5046;
+  color: white;
+  font-size: 15px;
+  outline: none;
+}
+
+.pills {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.send {
+  margin-top: 4px;
+  padding: 14px;
+  border-radius: 10px;
+  border: none;
+  background: white;
+  color: #3a3d36;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}

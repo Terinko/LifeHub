@@ -5,9 +5,9 @@ import { RequireAuth } from "./RequireAuth";
 import { LoadingScreen } from "./LoadingScreen";
 
 // Each tool is its own bundle chunk, downloaded the first time it's opened.
-const Login = lazy(() => import("../components/Auth/Login"));
-const Admin = lazy(() => import("../components/Auth/Admin"));
-const Hub = lazy(() => import("../components/Hub/Hub"));
+const LoginPage = lazy(() => import("../features/auth"));
+const AdminPage = lazy(() => import("../features/admin"));
+const HubPage = lazy(() => import("../features/hub"));
 const BillsPage = lazy(() => import("../features/bills"));
 const KitchenTool = lazy(() => import("../components/Kitchen/KitchenTool"));
 const PokerPage = lazy(() => import("../features/poker"));
@@ -26,11 +26,11 @@ export function App() {
         <Routes>
           <Route
             path="/login"
-            element={<Login setSession={setIsAuthenticated} />}
+            element={<LoginPage onSignedIn={() => setIsAuthenticated(true)} />}
           />
           <Route element={<RequireAuth />}>
-            <Route path="/" element={<Hub />} />
-            <Route path="/admin" element={<Admin />} />
+            <Route path="/" element={<HubPage />} />
+            <Route path="/admin" element={<AdminPage />} />
             <Route path="/bills" element={<BillsPage />} />
             <Route path="/poker" element={<PokerPage />} />
             <Route path="/kitchen" element={<KitchenTool />} />
