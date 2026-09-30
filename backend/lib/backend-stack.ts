@@ -3,7 +3,10 @@ import * as cdk from "aws-cdk-lib";
 import { Construct } from "constructs";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as lambda from "aws-cdk-lib/aws-lambda";
-import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
+import {
+  NodejsFunction,
+  type NodejsFunctionProps,
+} from "aws-cdk-lib/aws-lambda-nodejs";
 import * as apigw from "aws-cdk-lib/aws-apigatewayv2";
 import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
 import * as s3 from "aws-cdk-lib/aws-s3";
@@ -19,55 +22,63 @@ dotenv.config();
 
 const repoRoot = path.join(__dirname, "../..");
 
+/**
+ * A Lambda bundled with esbuild from services/api/src/<tool>/handler.ts.
+ * When moving a Lambda over, keep its construct id so CloudFormation
+ * updates the function in place instead of replacing it.
+ */
+function apiFunction(
+  scope: Construct,
+  id: string,
+  tool: string,
+  props: Pick<NodejsFunctionProps, "environment" | "timeout" | "memorySize">,
+) {
+  return new NodejsFunction(scope, id, {
+    runtime: lambda.Runtime.NODEJS_24_X,
+    entry: path.join(repoRoot, `services/api/src/${tool}/handler.ts`),
+    handler: "handler",
+    projectRoot: repoRoot,
+    depsLockFilePath: path.join(repoRoot, "package-lock.json"),
+    bundling: { minify: true },
+    ...props,
+  });
+}
+
 export class BackendStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    const billsTable = new dynamodb.Table(this, "BillsTable", {
+    // Every table holds user data, so none of them can be deleted by a stack
+    // change: CloudFormation keeps the table if it ever leaves the stack,
+    // deletion protection blocks deleting it by any route, and point-in-time
+    // recovery keeps 35 days of restorable history.
+    const dataTable = (
+      id: string,
+      keys: Pick<dynamodb.TableProps, "partitionKey" | "sortKey">,
+    ) =>
+      new dynamodb.Table(this, id, {
+        ...keys,
+        billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+        removalPolicy: cdk.RemovalPolicy.RETAIN,
+        deletionProtection: true,
+        pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
+      });
+
+    const pkAndSk = {
       partitionKey: { name: "pk", type: dynamodb.AttributeType.STRING },
       sortKey: { name: "sk", type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
+    };
 
-    const kitchenTable = new dynamodb.Table(this, "KitchenTable", {
+    const billsTable = dataTable("BillsTable", pkAndSk);
+    const kitchenTable = dataTable("KitchenTable", pkAndSk);
+    const pokerTable = dataTable("PokerTable", pkAndSk);
+    const usersTable = dataTable("UsersTable", {
       partitionKey: { name: "pk", type: dynamodb.AttributeType.STRING },
-      sortKey: { name: "sk", type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
+    const fantasyTable = dataTable("FantasyTable", pkAndSk);
+    const applicationsTable = dataTable("ApplicationsTable", pkAndSk);
 
-    const pokerTable = new dynamodb.Table(this, "PokerTable", {
-      partitionKey: { name: "pk", type: dynamodb.AttributeType.STRING },
-      sortKey: { name: "sk", type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
-
-    const usersTable = new dynamodb.Table(this, "UsersTable", {
-      partitionKey: { name: "pk", type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
-
-    const fantasyTable = new dynamodb.Table(this, "FantasyTable", {
-      partitionKey: { name: "pk", type: dynamodb.AttributeType.STRING },
-      sortKey: { name: "sk", type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
-
-    const applicationsTable = new dynamodb.Table(this, "ApplicationsTable", {
-      partitionKey: { name: "pk", type: dynamodb.AttributeType.STRING },
-      sortKey: { name: "sk", type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
-
-    const billsLambda = new lambda.Function(this, "LifeHubBillsHandler", {
-      runtime: lambda.Runtime.NODEJS_20_X,
-      code: lambda.Code.fromAsset("lambda/bills"),
-      handler: "index.handler",
+    const billsLambda = apiFunction(this, "LifeHubBillsHandler", "bills", {
       environment: {
         TABLE_NAME: billsTable.tableName,
         USERS_TABLE: usersTable.tableName,
@@ -92,25 +103,14 @@ export class BackendStack extends cdk.Stack {
       memorySize: 512,
     });
 
-    const pokerLambda = new lambda.Function(this, "PokerHandler", {
-      runtime: lambda.Runtime.NODEJS_20_X,
-      code: lambda.Code.fromAsset("lambda/poker"),
-      handler: "index.handler",
+    const pokerLambda = apiFunction(this, "PokerHandler", "poker", {
       environment: {
         TABLE_NAME: pokerTable.tableName,
         USERS_TABLE: usersTable.tableName,
       },
     });
 
-    // Bundled from services/api like Applications; same construct id so the
-    // function is updated in place.
-    const fantasyLambda = new NodejsFunction(this, "FantasyHandler", {
-      runtime: lambda.Runtime.NODEJS_24_X,
-      entry: path.join(repoRoot, "services/api/src/fantasy/handler.ts"),
-      handler: "handler",
-      projectRoot: repoRoot,
-      depsLockFilePath: path.join(repoRoot, "package-lock.json"),
-      bundling: { minify: true },
+    const fantasyLambda = apiFunction(this, "FantasyHandler", "fantasy", {
       environment: {
         TABLE_NAME: fantasyTable.tableName,
         USERS_TABLE: usersTable.tableName,
@@ -120,21 +120,17 @@ export class BackendStack extends cdk.Stack {
       memorySize: 512,
     });
 
-    // Bundled from services/api with esbuild. Keep the construct id
-    // ("ApplicationsHandler") unchanged so CloudFormation updates this
-    // function in place instead of replacing it.
-    const applicationsLambda = new NodejsFunction(this, "ApplicationsHandler", {
-      runtime: lambda.Runtime.NODEJS_24_X,
-      entry: path.join(repoRoot, "services/api/src/applications/handler.ts"),
-      handler: "handler",
-      projectRoot: repoRoot,
-      depsLockFilePath: path.join(repoRoot, "package-lock.json"),
-      bundling: { minify: true },
-      environment: {
-        TABLE_NAME: applicationsTable.tableName,
-        USERS_TABLE: usersTable.tableName,
+    const applicationsLambda = apiFunction(
+      this,
+      "ApplicationsHandler",
+      "applications",
+      {
+        environment: {
+          TABLE_NAME: applicationsTable.tableName,
+          USERS_TABLE: usersTable.tableName,
+        },
       },
-    });
+    );
 
     billsTable.grantReadWriteData(billsLambda);
     kitchenTable.grantReadWriteData(kitchenLambda);
@@ -189,10 +185,8 @@ export class BackendStack extends cdk.Stack {
       },
     );
 
-    const adminLambda = new lambda.Function(this, "AdminHandler", {
-      runtime: lambda.Runtime.NODEJS_20_X,
-      code: lambda.Code.fromAsset("lambda/admin"),
-      handler: "index.handler",
+    // TABLE_NAME is the users table: the admin page manages profiles.
+    const adminLambda = apiFunction(this, "AdminHandler", "admin", {
       environment: {
         TABLE_NAME: usersTable.tableName,
         USER_POOL_ID: userPool.userPoolId,
