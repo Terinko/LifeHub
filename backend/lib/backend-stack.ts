@@ -87,13 +87,7 @@ export class BackendStack extends cdk.Stack {
 
     // Bundled from services/api; same construct id so the function is
     // updated in place.
-    const kitchenLambda = new NodejsFunction(this, "KitchenHandler", {
-      runtime: lambda.Runtime.NODEJS_24_X,
-      entry: path.join(repoRoot, "services/api/src/kitchen/handler.ts"),
-      handler: "handler",
-      projectRoot: repoRoot,
-      depsLockFilePath: path.join(repoRoot, "package-lock.json"),
-      bundling: { minify: true },
+    const kitchenLambda = apiFunction(this, "KitchenHandler", "kitchen", {
       environment: {
         TABLE_NAME: kitchenTable.tableName,
         USERS_TABLE: usersTable.tableName,
