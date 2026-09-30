@@ -1,0 +1,63 @@
+name: PR Checks
+
+# Runs the same checks a contributor runs locally on every pull request, so
+# problems show up on the PR instead of in the deploy that follows a merge.
+on:
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: pr-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web-and-api:
+    name: Typecheck, lint, test and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+
+  backend:
+    name: Backend tests and CDK synth
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            backend/package-lock.json
+
+      # The stack bundles the TypeScript Lambdas from the root workspace and
+      # uploads apps/web/dist, so both need to exist before synth.
+      - run: npm ci
+      - run: npm run build
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Backend tests
+        working-directory: ./backend
+        run: npm test
+
+      # Synth catches stack errors without touching AWS; no credentials needed.
+      - name: CDK synth
+        working-directory: ./backend
+        run: npx cdk synth --quiet
