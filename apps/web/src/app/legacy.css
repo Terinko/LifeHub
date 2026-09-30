@@ -5,5 +5,4 @@
    Delete a line here when its tool moves to CSS Modules. */
 @import "./index.css";
 @import "./App.css";
-@import "../components/Hub/Hub.css";
 @import "./legacy-shared.css";

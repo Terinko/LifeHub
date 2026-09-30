@@ -211,8 +211,8 @@
 }
 
 /* Shared rules that used to live in PokerTool.css. Poker no longer uses them,
-   but Kitchen, Bills, Login and Admin do, so they keep their spot in the
-   legacy.css order. */
+   but Kitchen (and Applications, for .ios-input-modal) do, so they keep their
+   spot in the legacy.css order. */
 .tool-content {
   padding: 16px;
   padding-bottom: 80px; /* Space for scrolling past bottom */

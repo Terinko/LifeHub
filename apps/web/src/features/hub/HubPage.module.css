@@ -1,0 +1,39 @@
+/* --- Matches the organic-minimalist theme used by Kitchen/Fantasy --- */
+.page {
+  background-color: #f9f9f6;
+  color: #3a3d36;
+  min-height: 100vh;
+  font-family:
+    "Inter",
+    -apple-system,
+    sans-serif;
+}
+
+.header {
+  padding: calc(28px + var(--safe-top, 0px)) 24px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.title {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  color: #2c3029;
+  margin: 0;
+}
+
+.signOut {
+  background: none;
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: #798f7a;
+  cursor: pointer;
+  padding: 6px 0;
+}
+
+.content {
+  padding: 0 20px 40px;
+}

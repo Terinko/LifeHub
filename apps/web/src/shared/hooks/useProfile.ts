@@ -1,13 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
+import type { MyProfile } from "@lifehub/shared";
 import { api } from "../api/client";
 
 /** The signed-in user's LifeHub profile (from the Users table). */
-export type Profile = {
-  pk: string;
-  email?: string;
-  role?: "ADMIN" | "USER";
-  permissions?: Partial<Record<string, boolean>>;
-};
+export type Profile = MyProfile;
 
 export const profileKeys = {
   me: ["profile", "me"] as const,

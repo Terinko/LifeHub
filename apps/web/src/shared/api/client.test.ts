@@ -45,6 +45,20 @@ describe("api client", () => {
     });
   });
 
+  it("can send a body with DELETE", async () => {
+    const fetchMock = mockFetch(200, "{}");
+
+    await api.delete("/admin/users", { pk: "USER#1" });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${API_BASE}/admin/users`,
+      expect.objectContaining({
+        method: "DELETE",
+        body: JSON.stringify({ pk: "USER#1" }),
+      }),
+    );
+  });
+
   it("returns null for an empty response", async () => {
     mockFetch(200, "");
     await expect(api.delete("/poker/1")).resolves.toBeNull();
