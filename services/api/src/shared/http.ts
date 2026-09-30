@@ -26,3 +26,10 @@ export class HttpError extends Error {
 
 export const badRequest = (message: string) => new HttpError(400, message);
 export const notFound = (message: string) => new HttpError(404, message);
+
+/**
+ * JSON.parse of a raw body the way the older Lambdas did it: a missing or
+ * malformed body throws a SyntaxError, so the caller gets a 500.
+ */
+export const parseBodyStrictly = (body: string | undefined): unknown =>
+  JSON.parse(String(body));
