@@ -1,0 +1,23 @@
+.hourly {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin: 0 -4px;
+  padding: 0 4px 2px;
+}
+.hourly::-webkit-scrollbar {
+  display: none;
+}
+
+.hour {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 50px;
+}
+.hour b {
+  font-weight: 600;
+  font-size: 16px;
+}

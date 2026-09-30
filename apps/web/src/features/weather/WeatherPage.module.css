@@ -1,0 +1,31 @@
+/* Full-bleed sky + animated canvas behind liquid-glass cards. */
+
+.root {
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  color: #fff;
+  text-align: left;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui,
+    sans-serif;
+  background: #2b4056;
+  z-index: 10;
+}
+
+.root button {
+  font: inherit;
+  color: inherit;
+}
+
+.content {
+  position: relative;
+  z-index: 2;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: calc(10px + var(--safe-top, 0px)) 16px
+    calc(28px + var(--safe-bottom, 0px));
+  min-height: 100%;
+}

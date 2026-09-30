@@ -1,0 +1,60 @@
+/* Sky gradients cross-fade when conditions or day/night change. The
+   hyphenated names are scene keys (see sceneKey in lib/codes.ts). */
+.sky {
+  position: fixed;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 1.2s ease;
+  z-index: 0;
+}
+.on {
+  opacity: 1;
+}
+.clear-day {
+  background: linear-gradient(180deg, #3a97e0, #6bb6ee 50%, #a9d6f5);
+}
+.clear-night {
+  background: linear-gradient(180deg, #0c1330, #1a2757 55%, #2c3b6e);
+}
+.partly-day {
+  background: linear-gradient(180deg, #4a8fd0, #7fb2e0 50%, #b9d4ea);
+}
+.partly-night {
+  background: linear-gradient(180deg, #111a38, #23305c 55%, #36456f);
+}
+.cloudy-day {
+  background: linear-gradient(180deg, #6d7f93, #8697a9 55%, #a3b1c0);
+}
+.cloudy-night {
+  background: linear-gradient(180deg, #1c2230, #2a3242 55%, #394356);
+}
+.fog-day {
+  background: linear-gradient(180deg, #8c98a3, #a7b1b9 55%, #c2c9ce);
+}
+.fog-night {
+  background: linear-gradient(180deg, #2a2f38, #383e48 55%, #4a515c);
+}
+.rain-day {
+  background: linear-gradient(180deg, #3f5b76, #2b4056 55%, #213140);
+}
+.rain-night {
+  background: linear-gradient(180deg, #1b2635, #16202c 55%, #111822);
+}
+.storm-day {
+  background: linear-gradient(180deg, #2d3250, #1b1e30 60%, #14161f);
+}
+.storm-night {
+  background: linear-gradient(180deg, #161a2b, #0e1019 60%, #0a0b10);
+}
+.snow-day {
+  background: linear-gradient(180deg, #9fb2c7, #6a7f96 60%, #55687d);
+}
+.snow-night {
+  background: linear-gradient(180deg, #36445a, #2a3548 60%, #222b3b);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sky {
+    transition: none;
+  }
+}

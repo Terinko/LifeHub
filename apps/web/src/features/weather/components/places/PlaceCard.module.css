@@ -1,0 +1,66 @@
+.card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+}
+.card.current {
+  border-color: rgba(255, 255, 255, 0.55);
+}
+.main {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+.name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 17px;
+  font-weight: 600;
+}
+.temp {
+  font-size: 32px;
+  font-weight: 300;
+}
+.remove {
+  margin-right: 12px;
+  color: #ffb4ad;
+}
+
+/* Cards pick up a tint of their current conditions. The names are scene
+   keys (see sceneKey in lib/codes.ts). */
+.card.tint-clear-day {
+  background: rgba(58, 151, 224, 0.4);
+}
+.card.tint-partly-day {
+  background: rgba(74, 143, 208, 0.36);
+}
+.card.tint-cloudy-day,
+.card.tint-fog-day {
+  background: rgba(120, 138, 158, 0.38);
+}
+.card.tint-rain-day,
+.card.tint-rain-night {
+  background: rgba(44, 68, 89, 0.5);
+}
+.card.tint-storm-day,
+.card.tint-storm-night {
+  background: rgba(30, 32, 52, 0.55);
+}
+.card.tint-snow-day,
+.card.tint-snow-night {
+  background: rgba(140, 160, 185, 0.4);
+}
+.card.tint-clear-night,
+.card.tint-partly-night,
+.card.tint-cloudy-night,
+.card.tint-fog-night {
+  background: rgba(20, 30, 70, 0.5);
+}

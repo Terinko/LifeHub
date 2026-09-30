@@ -13,7 +13,7 @@ const KitchenTool = lazy(() => import("../components/Kitchen/KitchenTool"));
 const PokerPage = lazy(() => import("../features/poker"));
 const FantasyPage = lazy(() => import("../features/fantasy"));
 const ApplicationsPage = lazy(() => import("../features/applications"));
-const WeatherTool = lazy(() => import("../components/Weather/WeatherTool"));
+const WeatherPage = lazy(() => import("../features/weather"));
 
 export function App() {
   const { isInitializing, setIsAuthenticated } = useAuth();
@@ -35,7 +35,7 @@ export function App() {
             <Route path="/poker" element={<PokerPage />} />
             <Route path="/kitchen" element={<KitchenTool />} />
             <Route path="/fantasy" element={<FantasyPage />} />
-            <Route path="/weather" element={<WeatherTool />} />
+            <Route path="/weather" element={<WeatherPage />} />
             <Route path="/applications" element={<ApplicationsPage />} />
           </Route>
         </Routes>

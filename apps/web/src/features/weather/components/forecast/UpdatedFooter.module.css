@@ -1,0 +1,11 @@
+.footer {
+  margin-top: 18px;
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.7);
+}
+.footer a {
+  color: inherit;
+  text-decoration: underline;
+}
