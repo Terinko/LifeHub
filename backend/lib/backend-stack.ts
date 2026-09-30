@@ -23,46 +23,35 @@ export class BackendStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    const billsTable = new dynamodb.Table(this, "BillsTable", {
+    // Every table holds user data, so none of them can be deleted by a stack
+    // change: CloudFormation keeps the table if it ever leaves the stack,
+    // deletion protection blocks deleting it by any route, and point-in-time
+    // recovery keeps 35 days of restorable history.
+    const dataTable = (
+      id: string,
+      keys: Pick<dynamodb.TableProps, "partitionKey" | "sortKey">,
+    ) =>
+      new dynamodb.Table(this, id, {
+        ...keys,
+        billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+        removalPolicy: cdk.RemovalPolicy.RETAIN,
+        deletionProtection: true,
+        pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
+      });
+
+    const pkAndSk = {
       partitionKey: { name: "pk", type: dynamodb.AttributeType.STRING },
       sortKey: { name: "sk", type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
+    };
 
-    const kitchenTable = new dynamodb.Table(this, "KitchenTable", {
+    const billsTable = dataTable("BillsTable", pkAndSk);
+    const kitchenTable = dataTable("KitchenTable", pkAndSk);
+    const pokerTable = dataTable("PokerTable", pkAndSk);
+    const usersTable = dataTable("UsersTable", {
       partitionKey: { name: "pk", type: dynamodb.AttributeType.STRING },
-      sortKey: { name: "sk", type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
-
-    const pokerTable = new dynamodb.Table(this, "PokerTable", {
-      partitionKey: { name: "pk", type: dynamodb.AttributeType.STRING },
-      sortKey: { name: "sk", type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
-
-    const usersTable = new dynamodb.Table(this, "UsersTable", {
-      partitionKey: { name: "pk", type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
-
-    const fantasyTable = new dynamodb.Table(this, "FantasyTable", {
-      partitionKey: { name: "pk", type: dynamodb.AttributeType.STRING },
-      sortKey: { name: "sk", type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
-
-    const applicationsTable = new dynamodb.Table(this, "ApplicationsTable", {
-      partitionKey: { name: "pk", type: dynamodb.AttributeType.STRING },
-      sortKey: { name: "sk", type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
+    const fantasyTable = dataTable("FantasyTable", pkAndSk);
+    const applicationsTable = dataTable("ApplicationsTable", pkAndSk);
 
     const billsLambda = new lambda.Function(this, "LifeHubBillsHandler", {
       runtime: lambda.Runtime.NODEJS_20_X,
