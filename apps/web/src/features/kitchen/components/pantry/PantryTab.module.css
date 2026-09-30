@@ -1,0 +1,69 @@
+.tab {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 14px;
+  border-radius: 18px;
+  border: 2px solid var(--enamel-cobalt);
+  background: var(--enamel-card);
+  color: var(--enamel-muted);
+}
+
+.searchInput {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  border: none;
+  background: transparent;
+  color: var(--enamel-ink);
+  font: 500 16px var(--enamel-font-ui);
+  outline: none;
+}
+
+.none {
+  margin: 0;
+  padding: 8px 4px;
+  color: var(--enamel-muted);
+  font-size: 14px;
+}
+
+.toList {
+  flex: none;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 2px solid var(--enamel-cobalt);
+  background: transparent;
+  color: var(--enamel-cobalt);
+  font: 700 13px var(--enamel-font-ui);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  position: relative;
+}
+
+.toList::after {
+  content: "";
+  position: absolute;
+  inset: -5px 0;
+}
+
+.onList {
+  flex: none;
+  min-height: 36px;
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--enamel-green);
+  font-size: 13px;
+  font-weight: 700;
+}

@@ -1,0 +1,39 @@
+.notice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 20px;
+  border-radius: 18px;
+  border: 2px dashed var(--enamel-field-line);
+  background: var(--enamel-card);
+}
+
+.error {
+  border: 2px solid var(--enamel-pepper);
+  background: var(--enamel-pepper-wash);
+}
+
+.title {
+  font-family: var(--enamel-font-display);
+  font-weight: 400;
+  font-size: 22px;
+  color: var(--enamel-ink);
+}
+
+.body {
+  font-size: 14px;
+  color: var(--enamel-muted);
+}
+
+.action {
+  margin-top: 8px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: none;
+  border-radius: 14px;
+  background: var(--enamel-cobalt);
+  color: #fff;
+  font: 700 15px var(--enamel-font-ui);
+  cursor: pointer;
+}

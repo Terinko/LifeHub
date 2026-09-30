@@ -13,8 +13,9 @@ import {
 
 export type RouteContext = {
   userId: string;
+  /** The caller's profile. Not loaded (undefined) when access is "user". */
   profile: UserProfile | undefined;
-  /** Parsed JSON body (undefined when there is none). */
+  /** Parsed JSON body (undefined when there is none, or jsonBody is false). */
   body: unknown;
   pathParameters: Record<string, string | undefined>;
   query: Record<string, string | undefined>;
@@ -29,10 +30,20 @@ type Options = {
   /**
    * "admin" re-checks the caller's role on every request; `{ permission }`
    * requires that tool permission on the profile (admins always pass).
+   * "user" lets every signed-in caller through without reading the profile.
    */
   access: "user" | "admin" | { permission: string };
   /** Profile attribute stamped on each request, e.g. "lastUsedFantasy". */
   usageAttribute?: string;
+  /** Return false for requests that shouldn't stamp usageAttribute. */
+  countsAsUse?: (event: APIGatewayProxyEventV2WithJWTAuthorizer) => boolean;
+  /**
+   * false skips JSON parsing, for routes that read `event.body` themselves
+   * (so a bad body gets the tool's own error, or is ignored).
+   */
+  jsonBody?: boolean;
+  /** Sent instead of the error's own message on an unexpected 500. */
+  internalErrorMessage?: string;
   /** Keyed by the API Gateway route key, e.g. "DELETE /applications/{id}". */
   routes: Record<string, Route>;
 };
@@ -68,6 +79,9 @@ export function createHandler({
   name,
   access,
   usageAttribute,
+  countsAsUse = () => true,
+  jsonBody = true,
+  internalErrorMessage,
   routes,
 }: Options) {
   return async (
@@ -79,11 +93,13 @@ export function createHandler({
     }
 
     try {
-      const profile = await getProfile(userId);
+      const profile = access === "user" ? undefined : await getProfile(userId);
       if (!isAllowed(access, profile)) {
         return json(403, { error: deniedMessage(access, name) });
       }
-      if (usageAttribute) await recordToolUse(userId, usageAttribute);
+      if (usageAttribute && countsAsUse(event)) {
+        await recordToolUse(userId, usageAttribute);
+      }
 
       const route = routes[event.routeKey];
       if (!route) return json(404, { error: "Not found" });
@@ -91,7 +107,7 @@ export function createHandler({
       return await route({
         userId,
         profile,
-        body: parseBody(event.body),
+        body: jsonBody ? parseBody(event.body) : undefined,
         pathParameters: event.pathParameters ?? {},
         query: event.queryStringParameters ?? {},
         event,
@@ -102,7 +118,7 @@ export function createHandler({
       }
       console.error(`${name} Handler Error:`, error);
       const message = error instanceof Error ? error.message : "Internal error";
-      return json(500, { error: message });
+      return json(500, { error: internalErrorMessage ?? message });
     }
   };
 }

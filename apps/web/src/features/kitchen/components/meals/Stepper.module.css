@@ -1,0 +1,47 @@
+.stepper {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.button {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid var(--enamel-line);
+  background: var(--enamel-inset);
+  color: var(--enamel-ink);
+  display: grid;
+  place-items: center;
+  padding: 0;
+  cursor: pointer;
+  position: relative;
+}
+
+.button::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+}
+
+.button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.value {
+  min-width: 64px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--enamel-ink);
+}
+
+.short {
+  color: var(--enamel-pepper);
+}
+
+.muted {
+  color: var(--enamel-muted);
+}

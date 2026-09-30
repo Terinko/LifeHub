@@ -1,0 +1,24 @@
+.results {
+  padding: 4px 14px;
+}
+
+.status {
+  padding: 10px 0;
+}
+
+.result {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  width: 100%;
+  padding: 11px 0;
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  background: none;
+  font-size: 16px;
+  text-align: left;
+  cursor: pointer;
+}
+.result:first-of-type {
+  border-top: none;
+}
