@@ -73,6 +73,6 @@ service.ts      business rules
 repository.ts   every DynamoDB call for the tool
 ```
 
-`shared/createHandler.ts` does what every Lambda needs: reads the caller from the Cognito token, loads their profile, checks access, parses JSON, adds CORS headers and turns thrown `HttpError`s into `{ error }` responses.
+`shared/createHandler.ts` does what every Lambda needs: reads the caller from the Cognito token, loads their profile, checks access, parses JSON, adds CORS headers and turns thrown `HttpError`s into `{ error }` responses. Tools open to every user (`access: "user"`) skip the profile read. Its optional settings (`countsAsUse`, `jsonBody`, `internalErrorMessage`) exist so moved Lambdas keep their exact responses.
 
 The CDK stack bundles each handler with esbuild (`NodejsFunction`). When moving a Lambda over, keep its construct id so CloudFormation updates it in place, and compare `npx cdk synth` against `main` before merging.

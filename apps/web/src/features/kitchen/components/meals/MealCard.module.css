@@ -1,0 +1,57 @@
+.meal {
+  padding: 14px;
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 2px;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--enamel-font-display);
+  font-weight: 400;
+  font-size: 24px;
+  letter-spacing: normal;
+  color: var(--enamel-ink);
+}
+
+.edit {
+  min-height: 44px;
+  padding: 0 4px;
+  border: none;
+  background: transparent;
+  color: var(--enamel-cobalt);
+  font: 700 14px var(--enamel-font-ui);
+  cursor: pointer;
+}
+
+.warn {
+  color: var(--enamel-pepper);
+  font-weight: 600;
+}
+
+.ate {
+  margin-top: 10px;
+  min-height: 50px;
+  border: none;
+  border-radius: 14px;
+  background: var(--enamel-cobalt);
+  color: #fff;
+  font: 700 16px var(--enamel-font-ui);
+  cursor: pointer;
+}
+
+.ate:active {
+  background: var(--enamel-cobalt-deep);
+}
+
+.caption {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--enamel-muted);
+  text-align: center;
+}

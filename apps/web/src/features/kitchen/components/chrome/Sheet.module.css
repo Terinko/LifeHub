@@ -1,0 +1,117 @@
+.layer {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  background: var(--enamel-backdrop);
+}
+
+.sheet {
+  position: relative;
+  width: min(560px, calc(100% - 16px));
+  max-height: calc(100svh - 40px - var(--safe-top));
+  margin-bottom: calc(8px + var(--safe-bottom));
+  box-sizing: border-box;
+  border-radius: 30px;
+  display: flex;
+  flex-direction: column;
+  background: var(--enamel-ground);
+  border: 2px solid var(--enamel-cobalt);
+  box-shadow: 0 -10px 40px rgba(16, 35, 63, 0.25);
+  color: var(--enamel-ink);
+  font-family: var(--enamel-font-ui);
+  outline: none;
+  animation: rise 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+}
+
+@keyframes rise {
+  from {
+    transform: translateY(40px);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet {
+    animation: none;
+  }
+}
+
+/* The grabber and title: pulling here always drags the sheet. */
+.handle {
+  flex: none;
+  padding: 10px 20px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  touch-action: none;
+  cursor: grab;
+}
+
+.grabber {
+  align-self: center;
+  width: 40px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--enamel-field-line);
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.titles {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-top: 4px;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--enamel-font-display);
+  font-weight: 400;
+  font-size: 26px;
+  letter-spacing: normal;
+  line-height: 1.15;
+  color: var(--enamel-ink);
+}
+
+.subtitle {
+  font-size: 13px;
+  color: var(--enamel-muted);
+}
+
+.close {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
+  border: none;
+  background: var(--enamel-cobalt-wash);
+  color: var(--enamel-cobalt);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.body {
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}

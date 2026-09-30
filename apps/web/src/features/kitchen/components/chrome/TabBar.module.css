@@ -1,0 +1,38 @@
+.bar {
+  position: fixed;
+  z-index: 20;
+  left: 50%;
+  bottom: calc(16px + var(--safe-bottom));
+  transform: translateX(-50%);
+  width: min(528px, calc(100% - 32px));
+  box-sizing: border-box;
+  display: flex;
+  gap: 4px;
+  padding: 5px;
+  border-radius: 22px;
+  border: 2px solid var(--enamel-cobalt);
+  background: var(--enamel-card);
+  box-shadow: 0 10px 28px rgba(16, 35, 63, 0.12);
+}
+
+.tab {
+  flex: 1;
+  min-height: 48px;
+  border: none;
+  border-radius: 16px;
+  background: transparent;
+  color: var(--enamel-muted);
+  font: 600 14px var(--enamel-font-ui);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.tab[aria-current="page"] {
+  background: var(--enamel-cobalt);
+  color: #fff;
+  font-weight: 700;
+}

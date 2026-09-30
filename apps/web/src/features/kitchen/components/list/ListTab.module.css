@@ -1,0 +1,29 @@
+.tab {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.cart {
+  padding-bottom: 12px;
+}
+
+.putAway {
+  margin-top: 6px;
+  min-height: 48px;
+  border: none;
+  border-radius: 14px;
+  background: var(--enamel-green);
+  color: #fff;
+  font: 700 15px var(--enamel-font-ui);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.putAway:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

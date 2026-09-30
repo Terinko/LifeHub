@@ -1,0 +1,133 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.fieldLabel {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--enamel-ink-2);
+}
+
+.input {
+  width: 100%;
+  min-height: 48px;
+  box-sizing: border-box;
+  padding: 0 14px;
+  border-radius: 14px;
+  border: 2px solid var(--enamel-field-line);
+  background: var(--enamel-card);
+  color: var(--enamel-ink);
+  font: 500 16px var(--enamel-font-ui);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--enamel-cobalt);
+}
+
+textarea.input {
+  min-height: 96px;
+  padding: 12px 14px;
+  resize: vertical;
+}
+
+.help {
+  font-size: 12px;
+  color: var(--enamel-muted);
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.primary {
+  min-height: 52px;
+  border: none;
+  border-radius: 16px;
+  background: var(--enamel-cobalt);
+  color: #fff;
+  font: 700 16px var(--enamel-font-ui);
+  cursor: pointer;
+}
+
+.primary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.secondary {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 2px dashed var(--enamel-field-line);
+  border-radius: 14px;
+  background: transparent;
+  color: var(--enamel-cobalt);
+  font: 700 14px var(--enamel-font-ui);
+  cursor: pointer;
+}
+
+.danger {
+  min-height: 48px;
+  border: 2px solid var(--enamel-pepper);
+  border-radius: 16px;
+  background: transparent;
+  color: var(--enamel-pepper);
+  font: 700 15px var(--enamel-font-ui);
+  cursor: pointer;
+}
+
+.iconButton {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--enamel-muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.segmented {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 16px;
+  background: var(--enamel-cobalt-wash);
+}
+
+.segment {
+  flex: 1;
+  min-height: 40px;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--enamel-cobalt);
+  font: 600 14px var(--enamel-font-ui);
+  cursor: pointer;
+}
+
+.segment[aria-pressed="true"] {
+  background: var(--enamel-cobalt);
+  color: #fff;
+  font-weight: 700;
+}
+
+.error {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--enamel-pepper);
+}
+
+.inline {
+  display: flex;
+  gap: 6px;
+}
