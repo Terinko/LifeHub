@@ -1,0 +1,30 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Manrope:wght@400;500;600;700;800&display=swap");
+
+.page {
+  flex: 1;
+  min-height: 100svh;
+  position: relative;
+  background: var(--enamel-ground);
+  color: var(--enamel-ink);
+  font-family: var(--enamel-font-ui);
+  font-size: 15px;
+  line-height: 1.35;
+  letter-spacing: normal;
+  text-align: left;
+}
+
+.content {
+  width: min(560px, 100%);
+  box-sizing: border-box;
+  margin: 0 auto;
+  padding: 4px 16px calc(110px + var(--safe-bottom));
+}
+
+.withAddBar {
+  padding-bottom: calc(176px + var(--safe-bottom));
+}
+
+.loading {
+  margin: 24px 4px;
+  color: var(--enamel-muted);
+}

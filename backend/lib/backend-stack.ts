@@ -85,15 +85,13 @@ export class BackendStack extends cdk.Stack {
       },
     });
 
-    const kitchenLambda = new lambda.Function(this, "KitchenHandler", {
-      runtime: lambda.Runtime.NODEJS_20_X,
-      code: lambda.Code.fromAsset("lambda/kitchen"),
-      handler: "kitchen.handler",
+    // Bundled from services/api; same construct id so the function is
+    // updated in place.
+    const kitchenLambda = apiFunction(this, "KitchenHandler", "kitchen", {
       environment: {
         TABLE_NAME: kitchenTable.tableName,
         USERS_TABLE: usersTable.tableName,
         GEMINI_API_KEY: process.env.GEMINI_API_KEY || "",
-        WALMART_PUBLISHER_ID: process.env.WALMART_PUBLISHER_ID || "",
       },
       timeout: cdk.Duration.seconds(30),
       memorySize: 512,
@@ -138,7 +136,7 @@ export class BackendStack extends cdk.Stack {
     usersTable.grantReadWriteData(pokerLambda);
     usersTable.grantReadWriteData(fantasyLambda);
     usersTable.grantWriteData(billsLambda);
-    usersTable.grantWriteData(kitchenLambda);
+    usersTable.grantReadWriteData(kitchenLambda);
     // Admin-only tool: just needs to re-verify the caller's role, no usage
     // stamping (the admin-visibility feature is about tracking everyone
     // *else*, not the admin's own use of an admin-only tool).

@@ -1,0 +1,9 @@
+.open {
+  min-height: 48px;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+}
