@@ -1,0 +1,78 @@
+.hero {
+  text-align: center;
+  padding: 6px 0 4px;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.25);
+}
+
+.place {
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: -0.3px;
+}
+
+.dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+.dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35);
+  transition: background 0.3s;
+}
+.dots span.on {
+  background: #fff;
+}
+
+.icon {
+  margin-top: 10px;
+  animation: float 4s ease-in-out infinite;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.2));
+}
+
+@keyframes float {
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.temp {
+  font-size: 88px;
+  font-weight: 200;
+  line-height: 1;
+  margin-left: 18px; /* balance the ° */
+  font-variant-numeric: tabular-nums;
+}
+
+.label {
+  font-size: 19px;
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+.sub {
+  font-size: 15px;
+  opacity: 0.85;
+  margin-top: 2px;
+}
+
+.loading {
+  margin-top: 60px;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .icon,
+  .loading {
+    animation: none;
+  }
+}
