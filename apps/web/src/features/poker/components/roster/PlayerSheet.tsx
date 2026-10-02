@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { ChartNoAxesColumn } from "lucide-react";
 import { useClaimPlayer, useDeleteItem, useRenamePlayer } from "../../queries";
 import type { Player } from "../../types";
 import { Sheet } from "../chrome/Sheet";
@@ -13,6 +14,8 @@ type Props = {
   /** This user has already claimed someone. */
   hasClaim: boolean;
   playing: boolean;
+  /** Opens their stats, when they have Hall of Fame games to show. */
+  onStats?: () => void;
   onClose: () => void;
 };
 
@@ -23,6 +26,7 @@ export function PlayerSheet({
   isMe,
   hasClaim,
   playing,
+  onStats,
   onClose,
 }: Props) {
   const [name, setName] = useState(player.name);
@@ -42,6 +46,12 @@ export function PlayerSheet({
 
   return (
     <Sheet title={player.name} onClose={onClose}>
+      {onStats && (
+        <button type="button" className={card.quiet} onClick={onStats}>
+          <ChartNoAxesColumn size={18} aria-hidden />
+          See {player.name}'s stats
+        </button>
+      )}
       <form className={styles.form} onSubmit={save}>
         <label className={styles.field}>
           <span className={card.label}>Name</span>

@@ -45,7 +45,7 @@ export function GameHistoryCard({
   const settlements = game.settlements ?? [];
 
   return (
-    <article className={`${card.card} ${styles.game}`}>
+    <article id={`game-${game.sk}`} className={`${card.card} ${styles.game}`}>
       <div className={styles.head}>
         <button
           type="button"

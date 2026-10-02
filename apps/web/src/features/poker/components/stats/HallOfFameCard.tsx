@@ -20,12 +20,6 @@ const AWARDS: {
     show: (a) => plural(a.value, "buy-in"),
   },
   {
-    key: "tiltMaster",
-    title: "The Tilt Master",
-    about: "Most buy-ins in one night",
-    show: (a) => plural(a.value, "buy-in"),
-  },
-  {
     key: "roiKing",
     title: "The ROI King",
     about: "Biggest profit off one buy-in",

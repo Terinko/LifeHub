@@ -1,6 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Plus } from "lucide-react";
+import { playerProfile } from "../../lib/profile";
+import { useGroupStats, useHasGroupStats } from "../../queries";
 import type { Player } from "../../types";
+import { ProfileSheet } from "../stats/ProfileSheet";
 import { Notice } from "../chrome/Notice";
 import card from "../chrome/card.module.css";
 import { AddPlayerSheet } from "./AddPlayerSheet";
@@ -18,7 +21,16 @@ type Props = {
 export function RosterTab({ players, seated, myIds }: Props) {
   const [openId, setOpenId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [statsId, setStatsId] = useState<string | null>(null);
   const open = players.find((p) => p.sk === openId);
+  const canSeeGroup = useHasGroupStats();
+  const group = useGroupStats(canSeeGroup);
+  const profileOf = useMemo(() => {
+    const games = group.data ?? [];
+    return (id: string) => playerProfile(games, id);
+  }, [group.data]);
+  const openProfile = open ? profileOf(open.sk) : null;
+  const statsProfile = statsId ? profileOf(statsId) : null;
 
   return (
     <div className={styles.tab}>
@@ -57,8 +69,19 @@ export function RosterTab({ players, seated, myIds }: Props) {
           isMe={myIds.includes(open.sk)}
           hasClaim={myIds.length > 0}
           playing={seated.has(open.sk)}
+          onStats={
+            openProfile
+              ? () => {
+                  setOpenId(null);
+                  setStatsId(open.sk);
+                }
+              : undefined
+          }
           onClose={() => setOpenId(null)}
         />
+      )}
+      {statsProfile && (
+        <ProfileSheet profile={statsProfile} onClose={() => setStatsId(null)} />
       )}
       {adding && (
         <AddPlayerSheet players={players} onClose={() => setAdding(false)} />

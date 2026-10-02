@@ -53,3 +53,41 @@ export function done(
     { status: "COMPLETED", completedAt, date: completedAt, ...extra },
   );
 }
+
+// A small shared history: Tyler and Sam twice, then Tyler and Alex.
+export const g1 = done(
+  "1",
+  "2026-08-01T03:00:00Z",
+  { "PLAYER#me": ["Tyler", 1, 20], "PLAYER#s": ["Sam", 3, -20] },
+  {
+    settlements: [
+      {
+        from: "Sam",
+        fromId: "PLAYER#s",
+        to: "Tyler",
+        toId: "PLAYER#me",
+        amount: 20,
+      },
+    ],
+  },
+);
+export const g2 = done(
+  "2",
+  "2026-09-01T03:00:00Z",
+  { "PLAYER#me": ["Tyler", 2, -5], "PLAYER#s": ["Sam", 2, 5] },
+  {
+    settlements: [
+      {
+        from: "Tyler",
+        fromId: "PLAYER#me",
+        to: "Sam",
+        toId: "PLAYER#s",
+        amount: 5,
+      },
+    ],
+  },
+);
+export const g3 = done("3", "2026-09-08T03:00:00Z", {
+  "PLAYER#me": ["Tyler", 1, 10],
+  "PLAYER#a": ["Alex", 4, -10],
+});

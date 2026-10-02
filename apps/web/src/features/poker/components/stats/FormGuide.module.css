@@ -1,0 +1,30 @@
+.form {
+  display: inline-flex;
+  gap: 5px;
+}
+
+.dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.W {
+  background: var(--vegas-up);
+  color: #062a2b;
+}
+
+.L {
+  background: var(--vegas-down);
+  color: #2b1d03;
+}
+
+.E {
+  background: var(--vegas-inset);
+  border: 1px solid var(--vegas-field-line);
+  color: var(--vegas-text-sec);
+}

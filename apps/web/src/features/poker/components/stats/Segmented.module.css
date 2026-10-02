@@ -1,0 +1,27 @@
+.seg {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 20px;
+  border: 1px solid var(--vegas-line);
+  background: var(--vegas-inset);
+}
+
+.option {
+  flex: 1;
+  min-height: 34px;
+  padding: 0 6px;
+  border: none;
+  border-radius: 17px;
+  background: transparent;
+  color: var(--vegas-text-sec);
+  font-family: var(--vegas-font-ui);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.option[aria-pressed="true"] {
+  background: var(--vegas-coral);
+  color: var(--vegas-coral-ink);
+}

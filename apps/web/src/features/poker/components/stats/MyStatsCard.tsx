@@ -1,10 +1,12 @@
 import { Flame, Snowflake } from "lucide-react";
 import type { MyStats } from "../../lib/stats";
-import { formatSigned, trendOf } from "../../lib/money";
+import type { Profile } from "../../lib/profile";
+import { formatPct, formatSigned, trendOf } from "../../lib/money";
+import { FormGuide } from "./FormGuide";
 import card from "../chrome/card.module.css";
 import styles from "./MyStatsCard.module.css";
 
-type Props = { stats: MyStats };
+type Props = { stats: MyStats; profile: Profile | null };
 
 function streakText(streak: number) {
   if (streak > 0) return `On a ${streak}-game winning streak`;
@@ -13,10 +15,21 @@ function streakText(streak: number) {
 }
 
 /** My lifetime numbers across every game one of my players sat in. */
-export function MyStatsCard({ stats }: Props) {
+export function MyStatsCard({ stats, profile }: Props) {
   const tiles = [
     { label: "Games", value: String(stats.gamesPlayed) },
     { label: "Win rate", value: `${stats.winRate}%` },
+    ...(profile
+      ? [
+          {
+            label: "ROI",
+            value: formatPct(profile.roi),
+            trend: trendOf(profile.roi),
+          },
+          { label: "Nights won", value: String(profile.nightsWon) },
+          { label: "Avg finish", value: profile.avgFinish.toFixed(1) },
+        ]
+      : []),
     { label: "Buy-ins", value: String(stats.buyInsTotal) },
     {
       label: "Avg a game",
@@ -43,6 +56,12 @@ export function MyStatsCard({ stats }: Props) {
       >
         {formatSigned(stats.netTotal)}
       </span>
+      {profile && profile.lastFive.length > 0 && (
+        <span className={styles.form}>
+          <span className={styles.label}>Last {profile.lastFive.length}</span>
+          <FormGuide results={profile.lastFive} />
+        </span>
+      )}
 
       <dl className={styles.tiles}>
         {tiles.map((t) => (
