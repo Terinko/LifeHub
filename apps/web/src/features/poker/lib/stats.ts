@@ -1,5 +1,6 @@
 import type { Game, Seat } from "../types";
 import { round2 } from "./money";
+import { finishOf, roiOf, wonNight } from "./results";
 
 const byCompletion = (a: Game, b: Game) =>
   new Date(a.completedAt ?? a.date).getTime() -
@@ -123,11 +124,22 @@ export type LeaderRow = {
   buyIns: number;
   winRate: number;
   avgNet: number;
+  /** Profit per dollar put in, as a whole percent. */
+  roi: number;
+  nightsWon: number;
+  avgFinish: number;
 };
+
+export type LeaderSort = "net" | "roi" | "winRate" | "nightsWon";
+
+/** Best first by the chosen measure; lifetime net breaks ties. */
+export const sortLeaders = (rows: LeaderRow[], by: LeaderSort) =>
+  [...rows].sort((a, b) => b[by] - a[by] || b.net - a.net);
 
 /** Everyone's lifetime results across Hall of Fame games, best first. */
 export function leaderboard(games: Game[]): LeaderRow[] {
-  const rows = new Map<string, LeaderRow & { wins: number }>();
+  type Tally = LeaderRow & { wins: number; spent: number; finishes: number };
+  const rows = new Map<string, Tally>();
   for (const game of [...games].sort(byCompletion)) {
     for (const [id, seat] of Object.entries(game.players ?? {})) {
       const row = rows.get(id) ?? {
@@ -139,8 +151,16 @@ export function leaderboard(games: Game[]): LeaderRow[] {
         wins: 0,
         winRate: 0,
         avgNet: 0,
+        roi: 0,
+        nightsWon: 0,
+        avgFinish: 0,
+        spent: 0,
+        finishes: 0,
       };
       row.name = seat.name;
+      row.spent += seat.buyIns * game.buyInAmount;
+      row.finishes += finishOf(game, id);
+      if (wonNight(game, id)) row.nightsWon += 1;
       row.net += seat.net ?? 0;
       row.games += 1;
       row.buyIns += seat.buyIns;
@@ -149,11 +169,13 @@ export function leaderboard(games: Game[]): LeaderRow[] {
     }
   }
   return [...rows.values()]
-    .map(({ wins, ...row }) => ({
+    .map(({ wins, spent, finishes, ...row }) => ({
       ...row,
       net: round2(row.net),
       winRate: Math.round((wins / row.games) * 100),
       avgNet: round2(row.net / row.games),
+      roi: roiOf(row.net, spent),
+      avgFinish: Math.round((finishes / row.games) * 10) / 10,
     }))
     .sort((a, b) => b.net - a.net);
 }
@@ -163,8 +185,6 @@ export type Award = { name: string; value: number } | null;
 export type HallOfFame = {
   /** Most buy-ins in one night while still finishing up. */
   houdini: Award;
-  /** Most buy-ins in one night. */
-  tiltMaster: Award;
   /** Biggest profit off exactly one buy-in. */
   roiKing: Award;
   /** Biggest gap between best and worst night. */
@@ -178,7 +198,6 @@ export type HallOfFame = {
 export function hallOfFame(games: Game[]): HallOfFame | null {
   if (games.length === 0) return null;
   let houdini: Award = null;
-  let tiltMaster: Award = null;
   let roiKing: Award = null;
   const swings = new Map<
     string,
@@ -190,8 +209,6 @@ export function hallOfFame(games: Game[]): HallOfFame | null {
       const net = seat.net ?? 0;
       if (net > 0 && seat.buyIns > (houdini?.value ?? 0))
         houdini = { name: seat.name, value: seat.buyIns };
-      if (seat.buyIns > (tiltMaster?.value ?? 0))
-        tiltMaster = { name: seat.name, value: seat.buyIns };
       if (seat.buyIns === 1 && net > (roiKing?.value ?? 0))
         roiKing = { name: seat.name, value: round2(net) };
       const swing = swings.get(id) ?? {
@@ -215,7 +232,6 @@ export function hallOfFame(games: Game[]): HallOfFame | null {
 
   return {
     houdini,
-    tiltMaster,
     roiKing,
     rollercoaster:
       widest && widest.best - widest.worst > 0

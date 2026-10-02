@@ -27,6 +27,7 @@ const TITLES: Record<Tab, string> = {
 export function PokerPage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("game");
+  const [historyFocus, setHistoryFocus] = useState<string | null>(null);
   const [settlingSk, setSettlingSk] = useState<string | null>(null);
   const [settled, setSettled] = useState<{
     game: Game;
@@ -95,7 +96,11 @@ export function PokerPage() {
               <RosterTab players={players} seated={seated} myIds={myIds} />
             )}
             {tab === "history" && (
-              <HistoryTab games={pastGames} myIds={myIds} />
+              <HistoryTab
+                games={pastGames}
+                myIds={myIds}
+                focusSk={historyFocus}
+              />
             )}
             {tab === "stats" && (
               <Suspense
@@ -115,6 +120,10 @@ export function PokerPage() {
                   <StatsTab
                     mine={mine.data}
                     onFindMe={() => setTab("roster")}
+                    onOpenGame={(sk) => {
+                      setHistoryFocus(sk);
+                      setTab("history");
+                    }}
                   />
                 )}
               </Suspense>
@@ -123,7 +132,13 @@ export function PokerPage() {
         )}
       </main>
 
-      <TabBar tab={tab} onChange={setTab} />
+      <TabBar
+        tab={tab}
+        onChange={(next) => {
+          setHistoryFocus(null);
+          setTab(next);
+        }}
+      />
 
       {settling && (
         <SettleSheet

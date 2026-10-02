@@ -51,3 +51,7 @@ export function formatShortSigned(n: number): string {
   if (r === 0) return formatShortMoney(0);
   return `${r > 0 ? "+" : "−"}${formatShortMoney(Math.abs(r))}`;
 }
+
+/** "+41%", "−30%" or "0%": a signed whole percent, like ROI. */
+export const formatPct = (n: number) =>
+  `${n > 0 ? "+" : n < 0 ? "−" : ""}${Math.abs(Math.round(n))}%`;

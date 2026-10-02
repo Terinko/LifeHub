@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { gameDate } from "../../lib/share";
 import { useDeleteItem } from "../../queries";
 import type { Game } from "../../types";
@@ -7,11 +7,25 @@ import { Notice } from "../chrome/Notice";
 import { GameHistoryCard } from "./GameHistoryCard";
 import styles from "./HistoryTab.module.css";
 
-type Props = { games: Game[]; myIds: string[] };
+type Props = {
+  games: Game[];
+  myIds: string[];
+  /** A game to open and scroll to, like one picked from the record book. */
+  focusSk?: string | null;
+};
 
 /** Finished games, newest first. The latest one starts open. */
-export function HistoryTab({ games, myIds }: Props) {
-  const [openSk, setOpenSk] = useState<string | null>(games[0]?.sk ?? null);
+export function HistoryTab({ games, myIds, focusSk }: Props) {
+  const [openSk, setOpenSk] = useState<string | null>(
+    focusSk ?? games[0]?.sk ?? null,
+  );
+
+  useEffect(() => {
+    if (!focusSk) return;
+    document
+      .getElementById(`game-${focusSk}`)
+      ?.scrollIntoView({ block: "center" });
+  }, [focusSk]);
   const [deleting, setDeleting] = useState<Game | null>(null);
   const remove = useDeleteItem();
 
