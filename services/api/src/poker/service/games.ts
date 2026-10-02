@@ -8,6 +8,8 @@ import { busyPlayerNames } from "../views";
 
 type Body = Record<string, unknown>;
 
+const notRunning = () => new HttpError(409, "That game isn't active anymore.");
+
 export async function updateBuyIn({ gameSk, playerId, delta }: Body) {
   if (!gameSk || !playerId || (delta !== 1 && delta !== -1)) {
     throw badRequest("gameSk, playerId and delta (+1/-1) required");
@@ -33,7 +35,46 @@ export async function updateFinalChips({ gameSk, playerId, finalChips }: Body) {
     await repo.setFinalChips(gameSk as string, playerId as string, chips);
   } catch (error) {
     if (!isConditionalCheckFailed(error)) throw error;
-    throw new HttpError(409, "That game isn't active anymore.");
+    throw notRunning();
+  }
+  return { updated: true };
+}
+
+/** A player leaving early: their chips are counted and their row locks. */
+export async function cashOut({ gameSk, playerId, finalChips }: Body) {
+  if (!gameSk || !playerId) throw badRequest("gameSk and playerId required");
+  const chips = Number(finalChips);
+  if (
+    finalChips === null ||
+    finalChips === undefined ||
+    finalChips === "" ||
+    !Number.isInteger(chips) ||
+    chips < 0
+  ) {
+    throw badRequest("Enter the chips they're leaving with (0 or more)");
+  }
+  try {
+    await repo.setCashOut(
+      gameSk as string,
+      playerId as string,
+      chips,
+      new Date().toISOString(),
+    );
+  } catch (error) {
+    if (!isConditionalCheckFailed(error)) throw error;
+    throw notRunning();
+  }
+  return { updated: true };
+}
+
+/** Undoes a cash out, for someone who sat back down or was picked by mistake. */
+export async function undoCashOut({ gameSk, playerId }: Body) {
+  if (!gameSk || !playerId) throw badRequest("gameSk and playerId required");
+  try {
+    await repo.clearCashOut(gameSk as string, playerId as string);
+  } catch (error) {
+    if (!isConditionalCheckFailed(error)) throw error;
+    throw notRunning();
   }
   return { updated: true };
 }

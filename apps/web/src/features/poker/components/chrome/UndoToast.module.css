@@ -1,0 +1,39 @@
+.toast {
+  composes: glass from "./glass.module.css";
+  position: fixed;
+  z-index: 25;
+  left: 50%;
+  bottom: calc(92px + var(--safe-bottom));
+  transform: translateX(-50%);
+  width: min(420px, calc(100vw - 32px));
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 8px 8px 18px;
+  border-radius: 26px;
+}
+
+.message {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.undo {
+  flex: none;
+  min-height: 40px;
+  padding: 0 18px;
+  border-radius: 20px;
+  border: none;
+  background: var(--vegas-coral);
+  color: var(--vegas-coral-ink);
+  font-family: var(--vegas-font-ui);
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}

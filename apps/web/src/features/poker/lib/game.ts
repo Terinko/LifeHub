@@ -36,6 +36,15 @@ export const seatsOf = (game: Game): [string, Seat][] =>
     a.name.localeCompare(b.name),
   );
 
+/** Seats still at the table, then the people who cashed out early. */
+export function tableOf(game: Game) {
+  const seats = seatsOf(game);
+  return {
+    playing: seats.filter(([, s]) => !s.cashedOutAt),
+    cashedOut: seats.filter(([, s]) => s.cashedOutAt),
+  };
+}
+
 export function potOf(game: Game) {
   const buyIns = Object.values(game.players ?? {}).reduce(
     (sum, s) => sum + s.buyIns,

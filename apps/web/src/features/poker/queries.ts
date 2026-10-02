@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { isAdmin, useProfile } from "../../shared/hooks/useProfile";
 import {
   addPlayer,
+  cashOut,
   claimPlayer,
   deleteItem,
   endGame,
@@ -11,6 +12,7 @@ import {
   renamePlayer,
   startGame,
   unclaimPlayer,
+  undoCashOut,
   updateBuyIn,
   updateFinalChips,
 } from "./api";
@@ -97,6 +99,17 @@ export const useSaveChips = () =>
   usePokerMutation(
     ({ sk, id, chips }: { sk: string; id: string; chips: number | null }) =>
       updateFinalChips(sk, id, chips),
+  );
+
+export const useCashOut = () =>
+  usePokerMutation(
+    ({ sk, id, chips }: { sk: string; id: string; chips: number }) =>
+      cashOut(sk, id, chips),
+  );
+
+export const useUndoCashOut = () =>
+  usePokerMutation(({ sk, id }: { sk: string; id: string }) =>
+    undoCashOut(sk, id),
   );
 
 type BuyIn = { game: Game; playerId: string; delta: 1 | -1 };

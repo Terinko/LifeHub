@@ -80,7 +80,8 @@ describe("UPDATE_BUYIN", () => {
       Key: { pk: G, sk: "GAME#1" },
       UpdateExpression:
         "SET players.#pid.buyIns = players.#pid.buyIns + :delta",
-      ConditionExpression: "attribute_exists(players.#pid.buyIns)",
+      ConditionExpression:
+        "attribute_exists(players.#pid.buyIns) AND attribute_not_exists(players.#pid.cashedOutAt)",
       ExpressionAttributeNames: { "#pid": "PLAYER#a" },
       ExpressionAttributeValues: { ":delta": 1 },
     });
@@ -151,6 +152,62 @@ describe("UPDATE_FINAL_CHIPS", () => {
     expect(await post({ ...body, finalChips: 5 })).toEqual({
       status: 409,
       body: { error: "That game isn't active anymore." },
+    });
+  });
+});
+
+describe("CASH_OUT and UNDO_CASH_OUT", () => {
+  const body = {
+    action: "CASH_OUT",
+    gameSk: "GAME#1",
+    playerId: "PLAYER#a",
+  };
+
+  it("locks in the count and the time they left", async () => {
+    respond({});
+    expect(await post({ ...body, finalChips: 24500 })).toEqual({
+      status: 200,
+      body: { updated: true },
+    });
+    const input = pokerWrites()[0]?.input;
+    expect(input).toMatchObject({
+      Key: { pk: G, sk: "GAME#1" },
+      UpdateExpression:
+        "SET players.#pid.finalChips = :chips, players.#pid.cashedOutAt = :at",
+      ConditionExpression:
+        "#status = :active AND attribute_exists(players.#pid)",
+      ExpressionAttributeValues: { ":chips": 24500, ":active": "ACTIVE" },
+    });
+    const values = input?.ExpressionAttributeValues as Record<string, unknown>;
+    expect(values[":at"]).toEqual(expect.stringMatching(/^\d{4}-\d\d-\d\dT/));
+  });
+
+  it("needs a whole, non-negative count and a running game", async () => {
+    respond({});
+    for (const finalChips of [undefined, null, "", -5, 1.5, "lots"]) {
+      expect(await post({ ...body, finalChips })).toEqual({
+        status: 400,
+        body: { error: "Enter the chips they're leaving with (0 or more)" },
+      });
+    }
+    expect(pokerWrites()).toHaveLength(0);
+    respond({ failWrites: true });
+    expect(await post({ ...body, finalChips: 0 })).toEqual({
+      status: 409,
+      body: { error: "That game isn't active anymore." },
+    });
+  });
+
+  it("puts them back at the table with the count cleared", async () => {
+    respond({});
+    expect(await post({ ...body, action: "UNDO_CASH_OUT" })).toEqual({
+      status: 200,
+      body: { updated: true },
+    });
+    expect(pokerWrites()[0]?.input).toMatchObject({
+      UpdateExpression:
+        "SET players.#pid.finalChips = :none REMOVE players.#pid.cashedOutAt",
+      ExpressionAttributeValues: { ":none": null, ":active": "ACTIVE" },
     });
   });
 });

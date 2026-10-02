@@ -144,9 +144,10 @@ export const bumpBuyIns = (gameSk: string, playerId: string, delta: 1 | -1) =>
     // DynamoDB rejects values the expressions don't use, so :floor is
     // only sent on the decrement path.
     delta < 0 ? { ":delta": delta, ":floor": 1 } : { ":delta": delta },
+    // Someone who has cashed out can't buy back in until they're undone.
     delta < 0
       ? "players.#pid.buyIns > :floor"
-      : "attribute_exists(players.#pid.buyIns)",
+      : "attribute_exists(players.#pid.buyIns) AND attribute_not_exists(players.#pid.cashedOutAt)",
   );
 
 /** Only while the game is running and the player is seated at it. */
@@ -160,5 +161,33 @@ export const setFinalChips = (
     "SET players.#pid.finalChips = :chips",
     { "#pid": playerId, "#status": "status" },
     { ":chips": chips, ":active": "ACTIVE" },
+    "#status = :active AND attribute_exists(players.#pid)",
+  );
+
+/**
+ * Locks in a player who leaves early: their chip count and when they left.
+ * Only while the game is running and they're seated at it.
+ */
+export const setCashOut = (
+  gameSk: string,
+  playerId: string,
+  chips: number,
+  at: string,
+) =>
+  update(
+    gameSk,
+    "SET players.#pid.finalChips = :chips, players.#pid.cashedOutAt = :at",
+    { "#pid": playerId, "#status": "status" },
+    { ":chips": chips, ":at": at, ":active": "ACTIVE" },
+    "#status = :active AND attribute_exists(players.#pid)",
+  );
+
+/** Puts a cashed-out player back at the table with their count cleared. */
+export const clearCashOut = (gameSk: string, playerId: string) =>
+  update(
+    gameSk,
+    "SET players.#pid.finalChips = :none REMOVE players.#pid.cashedOutAt",
+    { "#pid": playerId, "#status": "status" },
+    { ":none": null, ":active": "ACTIVE" },
     "#status = :active AND attribute_exists(players.#pid)",
   );

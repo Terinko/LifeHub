@@ -25,6 +25,7 @@ export function CountRow({ id, seat, value, net, onChange, onDone }: Props) {
         </label>
         <span className={styles.paid}>
           {seat.buyIns} {plural}
+          {seat.cashedOutAt ? " · cashed out" : ""}
         </span>
       </div>
       <input
