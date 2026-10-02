@@ -9,6 +9,8 @@ export type Seat = {
   buyIns: number;
   finalChips?: number | null;
   net?: number;
+  /** Set when the player left early with their chips counted. */
+  cashedOutAt?: string;
   [key: string]: unknown;
 };
 

@@ -2,7 +2,13 @@ import { json, parseBodyStrictly } from "../../shared/http";
 import type { Route } from "../../shared/createHandler";
 import { hasPermission } from "../../shared/users";
 import { endGame } from "../service/endGame";
-import { saveItem, updateBuyIn, updateFinalChips } from "../service/games";
+import {
+  cashOut,
+  saveItem,
+  undoCashOut,
+  updateBuyIn,
+  updateFinalChips,
+} from "../service/games";
 import { claimPlayer, renamePlayer, unclaimPlayer } from "../service/players";
 
 type Body = Record<string, unknown>;
@@ -25,6 +31,10 @@ export const post: Route = async ({ userId, profile, event }) => {
       return json(200, await updateBuyIn(body));
     case "UPDATE_FINAL_CHIPS":
       return json(200, await updateFinalChips(body));
+    case "CASH_OUT":
+      return json(200, await cashOut(body));
+    case "UNDO_CASH_OUT":
+      return json(200, await undoCashOut(body));
     case "END_GAME":
       return json(
         200,

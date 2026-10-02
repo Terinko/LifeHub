@@ -12,6 +12,8 @@ export type Seat = {
   buyIns: number;
   finalChips: number | null;
   net?: number;
+  /** When they left early with their chips counted. Their row is locked. */
+  cashedOutAt?: string;
 };
 
 export type Settlement = {

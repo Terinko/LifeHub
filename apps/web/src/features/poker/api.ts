@@ -52,5 +52,12 @@ export const updateFinalChips = (
   finalChips: number | null,
 ) => action({ action: "UPDATE_FINAL_CHIPS", gameSk, playerId, finalChips });
 
+/** Locks in someone leaving early with this many chips. */
+export const cashOut = (gameSk: string, playerId: string, finalChips: number) =>
+  action({ action: "CASH_OUT", gameSk, playerId, finalChips });
+
+export const undoCashOut = (gameSk: string, playerId: string) =>
+  action({ action: "UNDO_CASH_OUT", gameSk, playerId });
+
 export const endGame = ({ sk, ...rest }: EndGameInput) =>
   action<EndGameResult>({ action: "END_GAME", game: { sk }, ...rest });
