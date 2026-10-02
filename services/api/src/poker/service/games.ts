@@ -79,6 +79,29 @@ export async function undoCashOut({ gameSk, playerId }: Body) {
   return { updated: true };
 }
 
+export const NOTES_LIMIT = 280;
+
+/** A line or two about a game, shown in History and the recap. */
+export async function setNotes({ gameSk, notes }: Body) {
+  if (typeof gameSk !== "string" || !gameSk.startsWith("GAME#")) {
+    throw badRequest("gameSk required");
+  }
+  if (notes !== undefined && notes !== null && typeof notes !== "string") {
+    throw badRequest("Notes must be text");
+  }
+  const text = (notes ?? "").trim();
+  if (text.length > NOTES_LIMIT) {
+    throw badRequest(`Keep notes to ${NOTES_LIMIT} characters`);
+  }
+  try {
+    await repo.setNotes(gameSk, text);
+  } catch (error) {
+    if (!isConditionalCheckFailed(error)) throw error;
+    throw new HttpError(404, "That game doesn't exist anymore.");
+  }
+  return { updated: true, notes: text };
+}
+
 /** Checks a new game (pk "GAME", no sk) before it's created. */
 async function checkNewGame(body: Body) {
   const seats = (body.players || {}) as Record<string, Seat | undefined>;

@@ -36,6 +36,8 @@ export type Game = {
   completedAt?: string;
   settlements?: Settlement[];
   countsForStats?: boolean;
+  /** A line or two about the night. */
+  notes?: string;
 };
 
 /** GET /poker/mystats: the players I've claimed and their completed games. */
@@ -60,6 +62,7 @@ export type EndGameInput = {
 /** What END_GAME returns: nets and payouts, whether or not it was saved. */
 export type EndGameResult = {
   saved: boolean;
+  countsForStats?: boolean;
   settlements: Settlement[];
   players?: Record<string, Seat>;
 };

@@ -9,6 +9,7 @@ import { myNet, potOf, resultsOf } from "../../lib/game";
 import { gameDate } from "../../lib/share";
 import type { Game } from "../../types";
 import { Money } from "../chrome/Money";
+import { NoteEditor } from "../notes/NoteEditor";
 import card from "../chrome/card.module.css";
 import styles from "./GameHistoryCard.module.css";
 
@@ -56,6 +57,9 @@ export function GameHistoryCard({
           <span className={styles.titles}>
             <span className={styles.date}>{date}</span>
             <span className={styles.summary}>{summary(game, myIds)}</span>
+            {!expanded && game.notes && (
+              <span className={styles.notePreview}>“{game.notes}”</span>
+            )}
           </span>
           {mine !== null && (
             <span
@@ -108,6 +112,7 @@ export function GameHistoryCard({
               ))}
             </div>
           )}
+          <NoteEditor key={game.notes ?? ""} sk={game.sk} notes={game.notes} />
         </>
       )}
     </article>

@@ -59,5 +59,12 @@ export const cashOut = (gameSk: string, playerId: string, finalChips: number) =>
 export const undoCashOut = (gameSk: string, playerId: string) =>
   action({ action: "UNDO_CASH_OUT", gameSk, playerId });
 
+export const setNotes = (gameSk: string, notes: string) =>
+  action<{ updated: boolean; notes: string }>({
+    action: "SET_NOTES",
+    gameSk,
+    notes,
+  });
+
 export const endGame = ({ sk, ...rest }: EndGameInput) =>
   action<EndGameResult>({ action: "END_GAME", game: { sk }, ...rest });

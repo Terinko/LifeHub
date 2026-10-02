@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { formatPct, formatSigned } from "../../lib/money";
 import { playerProfile } from "../../lib/profile";
 import { recordBook } from "../../lib/records";
+import { wrappedFor, wrappedYears } from "../../lib/wrapped";
 import {
   bankroll,
   hallOfFame,
@@ -27,6 +28,8 @@ import { RecordBookCard } from "./RecordBookCard";
 import { RivalsCard } from "./RivalsCard";
 import { Segmented } from "./Segmented";
 import { StakesCard } from "./StakesCard";
+import { WrappedCard } from "./WrappedCard";
+import { WrappedStory } from "./WrappedStory";
 import styles from "./StatsTab.module.css";
 
 type Props = {
@@ -91,8 +94,23 @@ export default function StatsTab({ mine, onFindMe, onOpenGame }: Props) {
 
   const opened = openId ? playerProfile(shared.games, openId) : null;
 
+  // Wrapped covers the whole group when this user can see it, else just
+  // the games they played.
+  const [wrappedYear, setWrappedYear] = useState<number | null>(null);
+  const wrappedPool = useMemo(
+    () => (canSeeGroup ? shared.games : (mine?.games ?? [])),
+    [canSeeGroup, shared.games, mine],
+  );
+  const years = useMemo(() => wrappedYears(wrappedPool), [wrappedPool]);
+  const wrapped =
+    wrappedYear === null
+      ? null
+      : wrappedFor(wrappedPool, wrappedYear, mine?.playerIds[0]);
+
   return (
     <div className={styles.tab}>
+      <WrappedCard years={years} onOpen={setWrappedYear} />
+
       {mine && mine.playerIds.length === 0 ? (
         <Notice
           title="Which player are you?"
@@ -173,6 +191,9 @@ export default function StatsTab({ mine, onFindMe, onOpenGame }: Props) {
         </>
       )}
 
+      {wrapped && (
+        <WrappedStory wrapped={wrapped} onClose={() => setWrappedYear(null)} />
+      )}
       {opened && (
         <ProfileSheet profile={opened} onClose={() => setOpenId(null)} />
       )}
