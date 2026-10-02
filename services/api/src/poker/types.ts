@@ -34,4 +34,6 @@ export type Game = PokerItem & {
   players?: Record<string, Seat>;
   settlements?: Settlement[];
   countsForStats?: unknown;
+  /** A line or two about the night. */
+  notes?: string;
 };

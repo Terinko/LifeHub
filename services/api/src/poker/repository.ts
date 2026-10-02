@@ -191,3 +191,21 @@ export const clearCashOut = (gameSk: string, playerId: string) =>
     { ":none": null, ":active": "ACTIVE" },
     "#status = :active AND attribute_exists(players.#pid)",
   );
+
+/** Sets or clears a game's note. Fails if the game is gone. */
+export const setNotes = (gameSk: string, notes: string) =>
+  notes
+    ? update(
+        gameSk,
+        "SET notes = :notes",
+        undefined,
+        { ":notes": notes },
+        "attribute_exists(sk)",
+      )
+    : update(
+        gameSk,
+        "REMOVE notes",
+        undefined,
+        undefined,
+        "attribute_exists(sk)",
+      );

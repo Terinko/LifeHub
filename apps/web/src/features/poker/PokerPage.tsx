@@ -9,7 +9,12 @@ import { RosterTab } from "./components/roster/RosterTab";
 import { PayoutsSheet } from "./components/settle/PayoutsSheet";
 import { SettleSheet } from "./components/settle/SettleSheet";
 import { isGame, seatedIds, splitItems } from "./lib/game";
-import { useHasGroupStats, useMyStats, usePokerItems } from "./queries";
+import {
+  useGroupStats,
+  useHasGroupStats,
+  useMyStats,
+  usePokerItems,
+} from "./queries";
 import type { EndGameResult, Game } from "./types";
 import { useVegasBackground } from "./useVegasBackground";
 import styles from "./PokerPage.module.css";
@@ -36,6 +41,7 @@ export function PokerPage() {
   const items = usePokerItems();
   const mine = useMyStats();
   const canCountStats = useHasGroupStats();
+  const fame = useGroupStats(canCountStats);
   useVegasBackground();
 
   const { players, activeGames, pastGames } = useMemo(
@@ -155,6 +161,7 @@ export function PokerPage() {
         <PayoutsSheet
           game={settled.game}
           result={settled.result}
+          history={fame.data}
           onClose={() => setSettled(null)}
         />
       )}

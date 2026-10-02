@@ -10,6 +10,7 @@ import {
   getMyStats,
   getPoker,
   renamePlayer,
+  setNotes,
   startGame,
   unclaimPlayer,
   undoCashOut,
@@ -110,6 +111,11 @@ export const useCashOut = () =>
 export const useUndoCashOut = () =>
   usePokerMutation(({ sk, id }: { sk: string; id: string }) =>
     undoCashOut(sk, id),
+  );
+
+export const useSetNotes = () =>
+  usePokerMutation(({ sk, notes }: { sk: string; notes: string }) =>
+    setNotes(sk, notes),
   );
 
 type BuyIn = { game: Game; playerId: string; delta: 1 | -1 };

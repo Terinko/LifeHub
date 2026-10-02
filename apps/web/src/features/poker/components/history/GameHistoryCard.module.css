@@ -113,3 +113,12 @@
     transition: none;
   }
 }
+
+.notePreview {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--vegas-text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

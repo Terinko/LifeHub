@@ -5,6 +5,7 @@ import { endGame } from "../service/endGame";
 import {
   cashOut,
   saveItem,
+  setNotes,
   undoCashOut,
   updateBuyIn,
   updateFinalChips,
@@ -35,6 +36,8 @@ export const post: Route = async ({ userId, profile, event }) => {
       return json(200, await cashOut(body));
     case "UNDO_CASH_OUT":
       return json(200, await undoCashOut(body));
+    case "SET_NOTES":
+      return json(200, await setNotes(body));
     case "END_GAME":
       return json(
         200,

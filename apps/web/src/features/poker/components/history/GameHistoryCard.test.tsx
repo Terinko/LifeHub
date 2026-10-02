@@ -3,6 +3,16 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { done } from "../../test/fixtures";
 import { GameHistoryCard } from "./GameHistoryCard";
 
+const setNotes = vi.fn();
+vi.mock("../../queries", () => ({
+  useSetNotes: () => ({
+    mutate: setNotes,
+    reset: vi.fn(),
+    isPending: false,
+    error: null,
+  }),
+}));
+
 const g = done(
   "a",
   "2026-09-26T23:00:00",
@@ -57,5 +67,27 @@ describe("GameHistoryCard", () => {
     expect(
       screen.getByRole("button", { name: "Delete the Sat, Sep 26 game" }),
     ).toBeInTheDocument();
+  });
+
+  it("adds a note about the night", () => {
+    render(
+      <GameHistoryCard
+        game={{ ...g, notes: "Casey hit quads" }}
+        myIds={[]}
+        expanded
+        onToggle={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("“Casey hit quads”")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Edit note" }));
+    fireEvent.change(screen.getByLabelText("Note about the night"), {
+      target: { value: "Casey hit quads twice" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save note" }));
+    expect(setNotes).toHaveBeenCalledWith(
+      { sk: "GAME#a", notes: "Casey hit quads twice" },
+      expect.anything(),
+    );
   });
 });
