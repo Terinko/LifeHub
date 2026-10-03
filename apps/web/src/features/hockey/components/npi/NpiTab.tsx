@@ -2,6 +2,7 @@ import { findRow } from "../../lib/poll";
 import { useNpi } from "../../queries";
 import card from "../chrome/card.module.css";
 import { Notice } from "../chrome/Notice";
+import { ChevronRight } from "lucide-react";
 import { FieldMeter } from "./FieldMeter";
 import styles from "./NpiTab.module.css";
 
@@ -12,7 +13,13 @@ const npiLabel = (n: number | null | undefined) =>
 const FIELD = 16;
 
 /** The NPI table, with where the followed team sits against the field. */
-export function NpiTab({ teamName }: { teamName: string | undefined }) {
+type Props = {
+  teamName: string | undefined;
+  onTeam: (name: string) => void;
+  onProjection: () => void;
+};
+
+export function NpiTab({ teamName, onTeam, onProjection }: Props) {
   const npi = useNpi();
   if (npi.isPending)
     return <div className={card.skeleton} style={{ height: 420 }} />;
@@ -54,6 +61,18 @@ export function NpiTab({ teamName }: { teamName: string | undefined }) {
         </section>
       )}
 
+      <button
+        type="button"
+        className={`${card.card} ${styles.projection}`}
+        onClick={onProjection}
+      >
+        <span className={styles.projectionText}>
+          <b>Projected NCAA field</b>
+          <span>The 16-team bracket if the season ended today</span>
+        </span>
+        <ChevronRight size={18} aria-hidden />
+      </button>
+
       <Notice>
         {tiedAtTop > 3
           ? `Early season: ${tiedAtTop} teams are tied at the top, so this means little until November. `
@@ -71,16 +90,21 @@ export function NpiTab({ teamName }: { teamName: string | undefined }) {
         </div>
         <ol className={styles.list}>
           {rows.map((row, i) => (
-            <li
-              key={row.team}
-              className={styles.row}
-              data-mine={i === at || undefined}
-              data-cut={row.rank === FIELD || undefined}
-            >
-              <span className={`${card.score} ${styles.rank}`}>{row.rank}</span>
-              <span className={styles.name}>{row.team}</span>
-              <span className={styles.num}>{npiLabel(row.npi)}</span>
-              <span className={styles.rec}>{row.record}</span>
+            <li key={`${row.rank}-${row.team}`}>
+              <button
+                type="button"
+                className={`${card.rowButton} ${styles.row}`}
+                data-mine={i === at || undefined}
+                data-cut={row.rank === FIELD || undefined}
+                onClick={() => onTeam(row.team)}
+              >
+                <span className={`${card.score} ${styles.rank}`}>
+                  {row.rank}
+                </span>
+                <span className={styles.name}>{row.team}</span>
+                <span className={styles.num}>{npiLabel(row.npi)}</span>
+                <span className={styles.rec}>{row.record}</span>
+              </button>
             </li>
           ))}
         </ol>

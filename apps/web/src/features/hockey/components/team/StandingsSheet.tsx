@@ -14,11 +14,12 @@ import styles from "./StandingsSheet.module.css";
 type Props = {
   initial: HockeyConference;
   teamName: string | undefined;
+  onTeam: (name: string) => void;
   onClose: () => void;
 };
 
 /** Conference standings, any of the six, on a glass sheet. */
-export function StandingsSheet({ initial, teamName, onClose }: Props) {
+export function StandingsSheet({ initial, teamName, onTeam, onClose }: Props) {
   const [conference, setConference] = useState(initial);
   const standings = useStandings(conference);
   const rows = standings.data?.rows ?? [];
@@ -61,21 +62,24 @@ export function StandingsSheet({ initial, teamName, onClose }: Props) {
             </div>
             <ol className={styles.list}>
               {rows.map((row) => (
-                <li
-                  key={row.team}
-                  className={styles.row}
-                  data-mine={
-                    (teamName && sameHockeyTeam(row.team, teamName)) ||
-                    undefined
-                  }
-                >
-                  <span className={`${card.score} ${styles.rank}`}>
-                    {row.rank}
-                  </span>
-                  <span className={styles.name}>{row.team}</span>
-                  <span className={styles.pts}>{row.points}</span>
-                  <span>{row.record}</span>
-                  <span className={styles.dim}>{row.goals}</span>
+                <li key={row.team}>
+                  <button
+                    type="button"
+                    className={`${card.rowButton} ${styles.row}`}
+                    data-mine={
+                      (teamName && sameHockeyTeam(row.team, teamName)) ||
+                      undefined
+                    }
+                    onClick={() => onTeam(row.team)}
+                  >
+                    <span className={`${card.score} ${styles.rank}`}>
+                      {row.rank}
+                    </span>
+                    <span className={styles.name}>{row.team}</span>
+                    <span className={styles.pts}>{row.points}</span>
+                    <span>{row.record}</span>
+                    <span className={styles.dim}>{row.goals}</span>
+                  </button>
                 </li>
               ))}
             </ol>

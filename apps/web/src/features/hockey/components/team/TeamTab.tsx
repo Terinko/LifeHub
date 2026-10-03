@@ -13,8 +13,12 @@ import { Notice } from "../chrome/Notice";
 import { SectionTitle } from "../chrome/SectionTitle";
 import { NextGameCard } from "./NextGameCard";
 import { ScheduleList } from "./ScheduleList";
+import { StatLeaders } from "./StatLeaders";
 import { StatTiles } from "./StatTiles";
 import styles from "./TeamTab.module.css";
+
+/** ESPN id; gobobcats.com is the one school stats source we read. */
+const QUINNIPIAC = "2514";
 
 type Props = {
   teamId: string;
@@ -128,6 +132,8 @@ export function TeamTab(props: Props) {
           </span>
         </button>
       )}
+
+      {teamId === QUINNIPIAC && <StatLeaders />}
 
       <SectionTitle>Schedule</SectionTitle>
       {games.length === 0 ? (

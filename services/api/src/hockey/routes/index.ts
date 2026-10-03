@@ -6,6 +6,7 @@ import {
   getNpi,
   getPoll,
   getScores,
+  getStats,
   getStandings,
   getTeams,
   getTeamSchedule,
@@ -61,3 +62,5 @@ export const box: Route = async ({ query }) => {
   }
   return json(200, await getBoxScore(ids, date));
 };
+
+export const stats: Route = async () => json(200, await getStats());

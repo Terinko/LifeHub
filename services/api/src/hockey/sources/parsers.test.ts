@@ -103,6 +103,17 @@ describe("CHN", () => {
     expect(rows.find((r) => r.team === "Quinnipiac")?.rank).toBe(8);
   });
 
+  it("reads NPI values CHN marks as adjusted", () => {
+    const rows = parseNpi(fixture("chn-npi-marked.html"));
+    expect(rows).toHaveLength(26);
+    expect(rows.find((r) => r.team === "Holy Cross")).toEqual({
+      rank: 15,
+      team: "Holy Cross",
+      npi: 42.86,
+      record: "0-1-0",
+    });
+  });
+
   it("skips NPI rows without a number and finds moved columns", () => {
     const html = `<table>
       <tr><th>Rk</th><th></th><th>Team</th><th>Record (ot)</th><th>NPI</th></tr>

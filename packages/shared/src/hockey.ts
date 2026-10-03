@@ -188,3 +188,33 @@ export function hockeyTeamKey(name: string): string {
 
 export const sameHockeyTeam = (a: string, b: string) =>
   hockeyTeamKey(a) === hockeyTeamKey(b);
+
+export type HockeySkaterStats = {
+  name: string;
+  number?: string;
+  gamesPlayed: number;
+  goals: number;
+  assists: number;
+  points: number;
+  powerPlayGoals: number;
+  plusMinus: number;
+};
+
+export type HockeyGoalieStats = {
+  name: string;
+  number?: string;
+  gamesPlayed: number;
+  /** W-L-T */
+  record: string;
+  goalsAgainstAverage: number;
+  savePercentage: number;
+  saves: number;
+  shutouts: number;
+};
+
+/** GET /hockey/stats: Quinnipiac's season stats from gobobcats.com. */
+export type HockeyTeamStats = {
+  skaters: HockeySkaterStats[];
+  goalies: HockeyGoalieStats[];
+  source: string;
+};

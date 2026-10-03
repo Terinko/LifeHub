@@ -2,6 +2,7 @@ import type { HockeyGame, HockeyPoll } from "@lifehub/shared";
 import { countdown, dayLabel, easternDate, shiftDay, todayKey } from "./dates";
 import { groupGames, periodLabel, resultLabel } from "./games";
 import { movement, rankTrend, votesOutside } from "./poll";
+import { pollRecap, teamLine } from "./recap";
 import { records } from "./record";
 
 const side = (id: string, name: string, score?: number) => ({
@@ -155,5 +156,57 @@ describe("poll", () => {
       null,
     ]);
     expect(votesOutside(poll, "Yale")).toBe(4);
+  });
+});
+
+describe("poll recap", () => {
+  const row = (rank: number, team: string, previous: number | null) => ({
+    rank,
+    team,
+    previous,
+    points: 100 - rank,
+    firstPlaceVotes: 0,
+    record: "1-0-0",
+  });
+  const recapPoll: HockeyPoll = {
+    through: "Through Games OCT. 5, 2026",
+    seenAt: "2026-10-06",
+    rows: [
+      row(1, "Michigan", 2),
+      row(2, "Denver", 1),
+      row(3, "Quinnipiac", 9),
+      row(4, "Yale", null),
+    ],
+    others: [],
+    history: [
+      {
+        through: "Through Games SEP. 28, 2026",
+        seenAt: "2026-09-29",
+        rows: [row(1, "Denver", 1), row(2, "Michigan", 2), row(5, "Maine", 3)],
+      },
+      {
+        through: "Through Games OCT. 5, 2026",
+        seenAt: "2026-10-06",
+        rows: [],
+      },
+    ],
+  };
+
+  it("finds the movers, the new teams and who fell out", () => {
+    const recap = pollRecap(recapPoll);
+    expect(recap.risers.map((m) => [m.team, m.by])).toEqual([
+      ["Quinnipiac", 6],
+      ["Michigan", 1],
+    ]);
+    expect(recap.fallers.map((m) => [m.team, m.by])).toEqual([["Denver", 1]]);
+    expect(recap.newcomers).toEqual(["Yale"]);
+    expect(recap.droppedOut).toEqual(["Maine"]);
+    expect(recap.newTop).toBe(true);
+  });
+
+  it("says where a team moved", () => {
+    expect(teamLine(recapPoll, "Quinnipiac")).toBe("Up 6 to No. 3");
+    expect(teamLine(recapPoll, "Yale")).toBe("Enters the poll at No. 4");
+    expect(teamLine(recapPoll, "Maine")).toBeUndefined();
   });
 });
