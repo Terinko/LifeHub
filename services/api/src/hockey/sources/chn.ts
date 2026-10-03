@@ -3,7 +3,7 @@ import type {
   HockeyNpiRow,
   HockeyStandingsRow,
 } from "@lifehub/shared";
-import { rowsOf, tablesIn, tableWith, textOf, toNumber } from "./html";
+import { cell, rowsOf, tablesIn, tableWith, textOf, toNumber } from "./html";
 
 // College Hockey News: the NPI (the NCAA's selection ranking) updated after
 // every game, and each conference's standings.
@@ -26,13 +26,13 @@ export function parseNpi(html: string): HockeyNpiRow[] {
   const table = tableWith(html, "NPI");
   if (!table) throw new Error("NPI table not found");
   return rowsOf(table)
-    .filter((cells) => cells.length >= 4 && /^\d+$/.test(cells[0]!))
-    .map(([rank, team, npi, record]) => ({
+    .filter((cells) => cells.length >= 4 && /^\d+$/.test(cell(cells, 0)))
+    .map(([rank = "", team = "", npi = "", record = ""]) => ({
       rank: Number(rank),
-      team: team!,
-      npi: toNumber(npi!),
+      team: team,
+      npi: toNumber(npi),
       // "1-0-0 (0-0)": the bracket is OT wins/losses; keep the plain record.
-      record: record!.replace(/\s*\(.*\)$/, ""),
+      record: record.replace(/\s*\(.*\)$/, ""),
     }));
 }
 
@@ -45,17 +45,25 @@ export function parseStandings(html: string): HockeyStandingsRow[] {
   if (!table) throw new Error("Standings table not found");
   let rank = 0;
   return rowsOf(table)
-    .filter((cells) => cells.length >= 7 && /^\d+$/.test(cells[2]!))
+    .filter((cells) => cells.length >= 7 && /^\d+$/.test(cell(cells, 2)))
     .map((cells, i) => {
-      const [r, team, gp, record, , points, goals] = cells;
-      rank = /^\d+$/.test(r!) ? Number(r) : rank || i + 1;
+      const [
+        r = "",
+        team = "",
+        gp = "",
+        record = "",
+        ,
+        points = "",
+        goals = "",
+      ] = cells;
+      rank = /^\d+$/.test(r) ? Number(r) : rank || i + 1;
       return {
         rank,
-        team: team!,
+        team: team,
         gamesPlayed: Number(gp),
-        record: record!,
-        points: toNumber(points!),
-        goals: goals!,
+        record: record,
+        points: toNumber(points),
+        goals: goals,
       };
     });
 }

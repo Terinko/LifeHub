@@ -1,5 +1,5 @@
 import type { HockeyGoal, HockeyGoalie } from "@lifehub/shared";
-import { rowsOf, tablesIn, textOf, toNumber } from "./html";
+import { cell, rowsOf, tablesIn, textOf, toNumber } from "./html";
 
 // Quinnipiac's athletics site (a Sidearm Sports site) publishes full box
 // scores. ESPN's college hockey summaries are empty, so this is the one
@@ -26,9 +26,9 @@ const MONTHS = [
 /** "October 2, 2026" → "2026-10-02" */
 function isoDate(text: string) {
   const m = text.match(/^(\w+) (\d{1,2}), (\d{4})$/);
-  const month = m ? MONTHS.indexOf(m[1]!) + 1 : 0;
+  const month = m ? MONTHS.indexOf(m[1] ?? "") + 1 : 0;
   if (!m || month === 0) return undefined;
-  return `${m[3]}-${String(month).padStart(2, "0")}-${m[2]!.padStart(2, "0")}`;
+  return `${m[3]}-${String(month).padStart(2, "0")}-${(m[2] ?? "").padStart(2, "0")}`;
 }
 
 /**
@@ -40,8 +40,8 @@ export function boxScoreLinks(html: string): Map<string, string> {
   const pattern =
     /"((?:\\u002F|\/)sports(?:\\u002F|\/)mens-ice-hockey(?:\\u002F|\/)stats(?:\\u002F|\/)[^"]*?boxscore(?:\\u002F|\/)\d+)","Box score of [^"]*? on (\w+ \d{1,2}, \d{4})/g;
   for (const m of html.matchAll(pattern)) {
-    const date = isoDate(m[2]!);
-    if (date) links.set(date, SITE + m[1]!.replace(/\\u002F/g, "/"));
+    const date = isoDate(m[2] ?? "");
+    if (date) links.set(date, SITE + (m[1] ?? "").replace(/\\u002F/g, "/"));
   }
   return links;
 }
@@ -65,17 +65,29 @@ const goalTags = (type: string) =>
 
 function parseGoals(table: string): HockeyGoal[] {
   return rowsOf(table)
-    .filter((cells) => cells.length >= 6 && /\d:\d\d/.test(cells[2]!))
-    .map(([team, period, time, type, scorer, assists]) => ({
-      team: team!,
-      period: period!,
-      time: time!.replace(/^0(\d:)/, "$1"),
-      scorer: displayName(scorer!),
-      assists: assists
-        ? assists.split(";").map((a) => displayName(a.trim())).filter(Boolean)
-        : [],
-      tags: goalTags(type ?? ""),
-    }));
+    .filter((cells) => cells.length >= 6 && /\d:\d\d/.test(cell(cells, 2)))
+    .map(
+      ([
+        team = "",
+        period = "",
+        time = "",
+        type = "",
+        scorer = "",
+        assists,
+      ]) => ({
+        team: team,
+        period: period,
+        time: time.replace(/^0(\d:)/, "$1"),
+        scorer: displayName(scorer),
+        assists: assists
+          ? assists
+              .split(";")
+              .map((a) => displayName(a.trim()))
+              .filter(Boolean)
+          : [],
+        tags: goalTags(type ?? ""),
+      }),
+    );
 }
 
 /** The team abbreviation in the "UNH - Goalkeeping" label above a table. */
@@ -91,14 +103,14 @@ function parseGoalies(html: string): HockeyGoalie[] {
     .flatMap((t) => {
       const team = goalieTeam(html, t);
       return rowsOf(t)
-        .filter((c) => c.length >= 10 && /\d+:\d\d/.test(c[3]!))
+        .filter((c) => c.length >= 10 && /\d+:\d\d/.test(cell(c, 3)))
         .map((c) => ({
           team,
-          name: displayName(c[1]!),
-          decision: c[2]!,
-          minutes: c[3]!,
-          goalsAgainst: toNumber(c[4]!),
-          saves: toNumber(c[c.length - 1]!),
+          name: displayName(cell(c, 1)),
+          decision: cell(c, 2),
+          minutes: cell(c, 3),
+          goalsAgainst: toNumber(cell(c, 4)),
+          saves: toNumber(cell(c, c.length - 1)),
         }));
     });
 }
@@ -115,8 +127,8 @@ function shotsFrom(goalies: HockeyGoalie[]) {
   const teams = [...faced.keys()];
   if (teams.length !== 2) return [];
   return teams.map((team, i) => ({
-    team: teams[1 - i]!,
-    total: faced.get(team)!,
+    team: teams[1 - i] ?? "",
+    total: faced.get(team) ?? 0,
   }));
 }
 
@@ -129,6 +141,6 @@ export function parseBoxScore(html: string) {
     goals: parseGoals(scoring),
     goalies,
     shots: shotsFrom(goalies),
-    attendance: attendance ? toNumber(attendance[1]!) : undefined,
+    attendance: attendance ? toNumber(attendance[1] ?? "") : undefined,
   };
 }

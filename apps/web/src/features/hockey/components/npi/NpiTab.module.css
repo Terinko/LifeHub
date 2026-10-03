@@ -1,0 +1,124 @@
+.tab {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mine {
+  padding: 14px 16px;
+  border-top: 5px solid var(--rink-red);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mineHead {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.mineRank {
+  font-size: 48px;
+  line-height: 1;
+  color: var(--rink-red);
+  min-width: 44px;
+}
+
+.mineText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+  color: var(--rink-ink-2);
+}
+
+.mineText b {
+  font-size: 17px;
+  color: var(--rink-ink);
+}
+
+.table {
+  overflow: hidden;
+}
+
+.head,
+.row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 56px 64px;
+  gap: 8px;
+  align-items: center;
+  padding: 9px 12px 9px 7px;
+  border-left: 5px solid transparent;
+}
+
+.head {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--rink-ink-2);
+  border-bottom: 1px solid var(--rink-divider);
+}
+
+.head span:first-child,
+.rank {
+  text-align: right;
+}
+
+.head span:nth-child(n + 3),
+.num,
+.rec {
+  text-align: right;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.row {
+  border-bottom: 1px solid var(--rink-divider);
+}
+
+.row[data-cut] {
+  border-bottom: 2px dashed var(--rink-red);
+}
+
+.row[data-mine] {
+  border-left-color: var(--rink-red);
+  background: var(--rink-red-tint);
+}
+
+.rank {
+  font-size: 20px;
+}
+
+.name {
+  font-size: 15px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row[data-mine] .name {
+  font-weight: 800;
+}
+
+.num {
+  font-size: 14px;
+}
+
+.rec {
+  font-size: 13px;
+  color: var(--rink-ink-2);
+}
+
+.source {
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--rink-ink-2);
+}

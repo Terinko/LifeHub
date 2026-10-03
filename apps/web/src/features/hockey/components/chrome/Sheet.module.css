@@ -1,0 +1,93 @@
+.layer {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(14, 27, 43, 0.32);
+}
+
+.sheet {
+  composes: glass from "./glass.module.css";
+  width: min(560px, calc(100% - 16px));
+  max-height: calc(100svh - 64px - var(--safe-top));
+  margin-bottom: calc(8px + var(--safe-bottom));
+  box-sizing: border-box;
+  padding: 10px 18px 22px;
+  border-radius: 34px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--rink-glass-heavy);
+  color: var(--rink-ink);
+  font-family: var(--rink-font-ui);
+  outline: none;
+  animation: rise 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+}
+
+@keyframes rise {
+  from {
+    transform: translateY(40px);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet {
+    animation: none;
+  }
+}
+
+.grabber {
+  align-self: center;
+  width: 40px;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(14, 27, 43, 0.2);
+}
+
+.head {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--rink-font-score);
+  font-size: 24px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--rink-ink);
+}
+
+.close {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
+  border: 1px solid var(--rink-line);
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--rink-ink);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.body {
+  position: relative;
+  overflow-x: hidden;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}

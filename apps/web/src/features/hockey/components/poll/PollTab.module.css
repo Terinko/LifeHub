@@ -1,0 +1,109 @@
+.tab {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.through {
+  margin: 0;
+  font-size: 13px;
+  color: var(--rink-ink-2);
+}
+
+.mine {
+  padding: 14px 16px 10px;
+  border-top: 5px solid var(--rink-red);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mineHead {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.mineRank {
+  font-size: 48px;
+  line-height: 1;
+  color: var(--rink-red);
+  min-width: 44px;
+}
+
+.mineText {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+  color: var(--rink-ink-2);
+}
+
+.mineText b {
+  font-size: 17px;
+  color: var(--rink-ink);
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--rink-ink-2);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 9px 12px 9px 7px;
+  border-left: 5px solid transparent;
+  border-bottom: 1px solid var(--rink-divider);
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.row[data-mine] {
+  border-left-color: var(--rink-red);
+  background: var(--rink-red-tint);
+}
+
+.rank {
+  font-size: 22px;
+  text-align: right;
+}
+
+.team {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.name {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.row[data-mine] .name {
+  font-weight: 800;
+}
+
+.points {
+  font-size: 12px;
+  color: var(--rink-ink-2);
+}
+
+.others {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--rink-ink-2);
+}

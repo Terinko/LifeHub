@@ -13,7 +13,11 @@ describe("ESPN scoreboard", () => {
     events: EspnEvent[];
   };
   const games = toGames(events);
-  const byId = (id: string) => games.find((g) => g.id === id)!;
+  const byId = (id: string) => {
+    const game = games.find((g) => g.id === id);
+    if (!game) throw new Error(`No game ${id}`);
+    return game;
+  };
 
   it("reads a final with ranks, periods and TV", () => {
     expect(byId("401904792")).toMatchObject({

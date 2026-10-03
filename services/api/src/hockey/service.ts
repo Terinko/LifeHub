@@ -115,21 +115,25 @@ export function getTeams(): Promise<HockeyTeamOption[]> {
       ),
       ...INDEPENDENTS.map((name) => [name, "ind"] as [string, "ind"]),
     ];
-    return members
-      .flatMap(([name, conference]) => {
-        const team = byKey.get(hockeyTeamKey(name));
-        return team
-          ? [
-              {
-                id: team.id,
-                name: team.location,
-                logo: team.logos?.[0]?.href,
-                conference,
-              },
-            ]
-          : [];
-      })
-      .sort((a, b) => a.name.localeCompare(b.name));
+    return (
+      members
+        .flatMap(([name, conference]) => {
+          const team = byKey.get(hockeyTeamKey(name));
+          return team
+            ? [
+                {
+                  id: team.id,
+                  name: team.location,
+                  logo: team.logos?.[0]?.href,
+                  conference,
+                },
+              ]
+            : [];
+        })
+        // A school is listed once, under the first conference that claims it.
+        .filter((t, i, all) => all.findIndex((o) => o.id === t.id) === i)
+        .sort((a, b) => a.name.localeCompare(b.name))
+    );
   });
 }
 

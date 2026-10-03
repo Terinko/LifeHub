@@ -1,0 +1,39 @@
+.chart {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.grid {
+  stroke: var(--rink-divider);
+  stroke-width: 1;
+}
+
+.nr {
+  stroke: var(--rink-line);
+  stroke-dasharray: 3 4;
+}
+
+.axis {
+  font-family: var(--rink-font-ui);
+  font-size: 10px;
+  fill: var(--rink-ink-2);
+}
+
+.line {
+  fill: none;
+  stroke: var(--rink-red);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.dot {
+  fill: #ffffff;
+  stroke: var(--rink-red);
+  stroke-width: 2;
+}
+
+.now {
+  fill: var(--rink-red);
+}

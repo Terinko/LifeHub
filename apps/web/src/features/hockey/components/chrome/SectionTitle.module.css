@@ -1,0 +1,31 @@
+.title {
+  margin: 10px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--rink-font-score);
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--rink-blue);
+}
+
+.line {
+  flex: 1;
+  height: 2px;
+  border-radius: 1px;
+  background: currentColor;
+}
+
+.title[data-tone="red"] {
+  color: var(--rink-red);
+}
+
+.title[data-tone="muted"] {
+  color: var(--rink-ink-2);
+}
+
+.title[data-tone="muted"] .line {
+  background: var(--rink-line);
+}

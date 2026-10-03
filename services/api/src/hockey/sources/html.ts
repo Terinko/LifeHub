@@ -40,3 +40,6 @@ export const tableWith = (html: string, marker: string) =>
 
 /** "1,234" or "12" → number; anything else → NaN */
 export const toNumber = (text: string) => Number(text.replace(/,/g, ""));
+
+/** A row's cell text, or "" past the end. */
+export const cell = (cells: string[], i: number) => cells[i] ?? "";

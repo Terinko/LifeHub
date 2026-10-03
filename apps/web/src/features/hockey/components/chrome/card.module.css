@@ -1,0 +1,42 @@
+/* The opaque white card every list and stat sits on. */
+.card {
+  background: var(--rink-card);
+  border: 1px solid var(--rink-line);
+  border-radius: 16px;
+}
+
+.score {
+  font-family: var(--rink-font-score);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.rank {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--rink-ink-2);
+}
+
+.skeleton {
+  border-radius: 16px;
+  background: linear-gradient(
+    90deg,
+    var(--rink-divider) 0%,
+    #f7fafc 50%,
+    var(--rink-divider) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}

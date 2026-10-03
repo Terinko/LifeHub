@@ -1,0 +1,38 @@
+.stepper {
+  composes: glass from "../chrome/glass.module.css";
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px;
+  border-radius: 26px;
+}
+
+.arrow {
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
+  border: none;
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--rink-ink);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.day {
+  flex: 1;
+  min-height: 44px;
+  border: none;
+  background: none;
+  font-family: var(--rink-font-score);
+  font-size: 20px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--rink-ink);
+  cursor: pointer;
+}
+
+.day:disabled {
+  cursor: default;
+}

@@ -1,0 +1,94 @@
+/* The one glass card in the content: frosted over a band of red and blue
+   so it reads like the team's spot at center ice. */
+.hero {
+  composes: glass from "../chrome/glass.module.css";
+  border-radius: 24px;
+  padding: 18px 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.hero::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(200, 16, 46, 0.18), rgba(200, 16, 46, 0) 45%),
+    linear-gradient(270deg, rgba(29, 78, 216, 0.16), rgba(29, 78, 216, 0) 45%);
+}
+
+.top {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.kicker {
+  font-family: var(--rink-font-score);
+  font-size: 22px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--rink-red);
+}
+
+.state {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--rink-ink-2);
+  text-align: right;
+}
+
+.state[data-live] {
+  color: var(--rink-red);
+}
+
+.next,
+.facts {
+  position: relative;
+  margin: 0;
+  font-size: 14px;
+  color: var(--rink-ink);
+}
+
+.facts {
+  font-size: 13px;
+  color: var(--rink-ink-2);
+}
+
+.actions {
+  position: relative;
+  display: flex;
+  gap: 8px;
+}
+
+.primary,
+.secondary {
+  flex: 1;
+  min-height: 44px;
+  border-radius: 14px;
+  font-family: var(--rink-font-ui);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.primary {
+  border: none;
+  background: var(--rink-blue);
+  color: #ffffff;
+}
+
+.secondary {
+  border: 1px solid var(--rink-line);
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--rink-ink);
+}

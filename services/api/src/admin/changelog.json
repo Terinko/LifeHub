@@ -2,9 +2,7 @@
   {
     "id": "2026-09-08-poker-stats-charts",
     "date": "2026-09-08",
-    "tools": [
-      "pokerStats"
-    ],
+    "tools": ["pokerStats"],
     "bullets": [
       "Added graphs to your personal Poker stats: a bankroll-over-time chart, a win/loss chart per game, and a head-to-head breakdown of who you've won the most from (and lost the most to).",
       "The group Hall of Fame now has a full sortable leaderboard table, a ranked net-winnings chart, and a games-per-month activity chart."
@@ -13,9 +11,7 @@
   {
     "id": "2026-09-08-kitchen-merge-and-motion",
     "date": "2026-09-08",
-    "tools": [
-      "kitchen"
-    ],
+    "tools": ["kitchen"],
     "bullets": [
       "Adding a grocery or pantry item you already have now tops up the existing item instead of creating a duplicate row — even when the unit doesn't match exactly (e.g. \"cups\" vs \"bag\" now shows as a combined quantity you can edit).",
       "Marking a grocery item as bought now moves it to your pantry with a quick animation instead of freezing the screen while it saves.",
@@ -26,9 +22,7 @@
   {
     "id": "2026-09-14-quick-meals-replace-recipes",
     "date": "2026-09-14",
-    "tools": [
-      "kitchen"
-    ],
+    "tools": ["kitchen"],
     "bullets": [
       "Recipes are gone — Quick Meals is now the one way to build a meal, since it turned out to just work better.",
       "You can now paste a whole ingredient list and have it parsed into a Quick Meal in one shot, instead of adding items one at a time (the same AI parsing Recipes used to use).",
@@ -39,9 +33,7 @@
   {
     "id": "2026-09-28-weather-tool",
     "date": "2026-09-28",
-    "tools": [
-      "weather"
-    ],
+    "tools": ["weather"],
     "bullets": [
       "New Weather tool — an ad-free forecast with a live sky that rains, snows, storms, and shows the stars depending on the actual conditions.",
       "Temperatures average three weather models (the National Blend of Models, ECMWF, and ICON), which tested more accurate than any single one against real airport readings.",
@@ -52,9 +44,7 @@
   {
     "id": "2026-10-03-hockey-tool",
     "date": "2026-10-03",
-    "tools": [
-      "hockey"
-    ],
+    "tools": ["hockey"],
     "bullets": [
       "New Hockey tool for college hockey: live D-I scores with your team pinned on top, refreshing every 30 seconds while games are on.",
       "The weekly USCHO poll with each team's movement, plus a chart of where your team has ranked all season.",

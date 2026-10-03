@@ -41,7 +41,10 @@ describe("hockey handler", () => {
   it("needs the hockey permission", async () => {
     profile({ weather: true });
     const res = parseResponse(await handler(apiEvent("GET /hockey/npi")));
-    expect(res).toEqual({ status: 403, body: { error: "Hockey access required" } });
+    expect(res).toEqual({
+      status: 403,
+      body: { error: "Hockey access required" },
+    });
   });
 
   it("returns a day's scores", async () => {
@@ -55,15 +58,20 @@ describe("hockey handler", () => {
     expect(res.status).toBe(200);
     expect(res.body.date).toBe("20261002");
     expect(res.body.games).toHaveLength(4);
-    expect(String(fetchMock.mock.calls[0]![0])).toContain("dates=20261002");
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain("dates=20261002");
   });
 
   it("rejects a malformed date", async () => {
     profile({ hockey: true });
     const res = parseResponse(
-      await handler(apiEvent("GET /hockey/scores", { query: { date: "10-2" } })),
+      await handler(
+        apiEvent("GET /hockey/scores", { query: { date: "10-2" } }),
+      ),
     );
-    expect(res).toEqual({ status: 400, body: { error: "date must be YYYYMMDD" } });
+    expect(res).toEqual({
+      status: 400,
+      body: { error: "date must be YYYYMMDD" },
+    });
   });
 
   it("saves each new poll and returns the season so far", async () => {
@@ -75,8 +83,8 @@ describe("hockey handler", () => {
     expect(res.body.history).toHaveLength(1);
     const put = send.mock.calls.find(
       ([c]) => c.constructor.name === "PutCommand",
-    )![0];
-    expect(put.input).toMatchObject({
+    )?.[0];
+    expect(put?.input).toMatchObject({
       ConditionExpression: "attribute_not_exists(pk)",
       Item: { pk: "POLL#USCHO", sk: "Through Games SEP. 21, 2026" },
     });
@@ -97,12 +105,13 @@ describe("hockey handler", () => {
 
   it("reads a Quinnipiac box score from its site", async () => {
     profile({ hockey: true });
-    fetchMock.mockImplementation(async (url) =>
-      new Response(
-        String(url).includes("boxscore")
-          ? fixture("sidearm-box.html")
-          : fixture("sidearm-schedule.txt"),
-      ),
+    fetchMock.mockImplementation(
+      async (url) =>
+        new Response(
+          String(url).includes("boxscore")
+            ? fixture("sidearm-box.html")
+            : fixture("sidearm-schedule.txt"),
+        ),
     );
     const res = parseResponse(
       await handler(

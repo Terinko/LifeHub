@@ -1,0 +1,55 @@
+@import url("https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&family=Saira+Condensed:wght@600;700;800&display=swap");
+
+.page {
+  flex: 1;
+  min-height: 100svh;
+  position: relative;
+  background: var(--rink-ice);
+  color: var(--rink-ink);
+  font-family: var(--rink-font-ui);
+  font-size: 15px;
+  line-height: 1.35;
+  letter-spacing: normal;
+  text-align: left;
+}
+
+.content {
+  position: relative;
+  z-index: 1;
+  max-width: 560px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  padding: calc(84px + var(--safe-top)) 16px calc(120px + var(--safe-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.refresh {
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--rink-ink);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.refresh[data-spinning] svg {
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .refresh[data-spinning] svg {
+    animation: none;
+    opacity: 0.6;
+  }
+}

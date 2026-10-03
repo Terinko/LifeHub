@@ -1,0 +1,62 @@
+.game {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  font-family: var(--rink-font-ui);
+  color: var(--rink-ink);
+  cursor: pointer;
+}
+
+.game:active {
+  transform: scale(0.985);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.team {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
+}
+
+.name {
+  font-size: 15px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.score {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.row[data-lost] {
+  color: var(--rink-ink-2);
+}
+
+.row[data-mine] .name {
+  font-weight: 800;
+  color: var(--rink-red);
+}
+
+.status {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--rink-ink-2);
+}
+
+.game[data-state="in"] .status {
+  color: var(--rink-red);
+}

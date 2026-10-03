@@ -12,6 +12,7 @@ describe("hubTiles", () => {
       "poker",
       "fantasy",
       "weather",
+      "hockey",
       "applications",
       "admin",
     ]);

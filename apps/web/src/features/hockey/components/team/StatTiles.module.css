@@ -1,0 +1,38 @@
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.tile {
+  min-height: 64px;
+  padding: 10px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-family: var(--rink-font-ui);
+  color: var(--rink-ink);
+}
+
+button.tile {
+  cursor: pointer;
+}
+
+.value {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.value[data-accent] {
+  color: var(--rink-red);
+}
+
+.label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--rink-ink-2);
+}

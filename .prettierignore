@@ -3,3 +3,6 @@ node_modules
 package-lock.json
 # Formatted when it moves to services/api + infra
 backend
+
+# Real pages saved as parser test fixtures; keep them byte-for-byte.
+services/api/src/hockey/fixtures/
