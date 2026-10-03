@@ -25,15 +25,34 @@ export const standingsUrl = (conference: HockeyConference) =>
 export function parseNpi(html: string): HockeyNpiRow[] {
   const table = tableWith(html, "NPI");
   if (!table) throw new Error("NPI table not found");
-  return rowsOf(table)
-    .filter((cells) => cells.length >= 4 && /^\d+$/.test(cell(cells, 0)))
-    .map(([rank = "", team = "", npi = "", record = ""]) => ({
-      rank: Number(rank),
-      team: team,
-      npi: toNumber(npi),
+  const [head = [], ...body] = rowsOf(table);
+  // Find columns by their headings, so an added or moved column can't
+  // shift the numbers into the wrong place.
+  const col = (name: RegExp, fallback: number) => {
+    const i = head.findIndex((h) => name.test(h));
+    return i === -1 ? fallback : i;
+  };
+  const at = {
+    rank: col(/^rk$/i, 0),
+    team: col(/^team$/i, 1),
+    npi: col(/^npi$/i, 2),
+    record: col(/^record/i, 3),
+  };
+  const rows: HockeyNpiRow[] = [];
+  for (const cells of body) {
+    const npi = toNumber(cell(cells, at.npi));
+    const team = cell(cells, at.team);
+    if (!team || !Number.isFinite(npi)) continue;
+    rows.push({
+      // A blank rank is a tie with the row above.
+      rank: Number(cell(cells, at.rank)) || (rows.at(-1)?.rank ?? 1),
+      team,
+      npi,
       // "1-0-0 (0-0)": the bracket is OT wins/losses; keep the plain record.
-      record: record.replace(/\s*\(.*\)$/, ""),
-    }));
+      record: cell(cells, at.record).replace(/\s*\(.*\)$/, ""),
+    });
+  }
+  return rows;
 }
 
 /**

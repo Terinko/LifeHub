@@ -7,6 +7,7 @@ import { GlassHeader } from "./components/chrome/GlassHeader";
 import { IceBackdrop } from "./components/chrome/IceBackdrop";
 import { TabBar, type Tab } from "./components/chrome/TabBar";
 import { NpiTab } from "./components/npi/NpiTab";
+import { TabBoundary } from "./components/chrome/TabBoundary";
 import { PollTab } from "./components/poll/PollTab";
 import { BoxScoreSheet } from "./components/scores/BoxScoreSheet";
 import { ScoresTab } from "./components/scores/ScoresTab";
@@ -86,33 +87,35 @@ export function HockeyPage() {
       />
 
       <main className={styles.content}>
-        {tab === "scores" && (
-          <ScoresTab
-            date={date}
-            onDateChange={setDate}
-            teamId={teamId}
-            team={team}
-            nextGame={nextGame}
-            onOpenGame={setOpenGame}
-            onTeam={() => setTab("team")}
-          />
-        )}
-        {tab === "poll" && <PollTab teamName={team?.name} />}
-        {tab === "npi" && <NpiTab teamName={team?.name} />}
-        {tab === "team" && (
-          <TeamTab
-            teamId={teamId}
-            schedule={schedule.data}
-            loading={schedule.isPending}
-            failed={schedule.isError}
-            conferenceTeams={conferenceTeams}
-            onOpenGame={setOpenGame}
-            onStandings={() => setStandingsOpen(true)}
-            onChangeTeam={() => setPickerOpen(true)}
-            onPoll={() => setTab("poll")}
-            onNpi={() => setTab("npi")}
-          />
-        )}
+        <TabBoundary key={tab}>
+          {tab === "scores" && (
+            <ScoresTab
+              date={date}
+              onDateChange={setDate}
+              teamId={teamId}
+              team={team}
+              nextGame={nextGame}
+              onOpenGame={setOpenGame}
+              onTeam={() => setTab("team")}
+            />
+          )}
+          {tab === "poll" && <PollTab teamName={team?.name} />}
+          {tab === "npi" && <NpiTab teamName={team?.name} />}
+          {tab === "team" && (
+            <TeamTab
+              teamId={teamId}
+              schedule={schedule.data}
+              loading={schedule.isPending}
+              failed={schedule.isError}
+              conferenceTeams={conferenceTeams}
+              onOpenGame={setOpenGame}
+              onStandings={() => setStandingsOpen(true)}
+              onChangeTeam={() => setPickerOpen(true)}
+              onPoll={() => setTab("poll")}
+              onNpi={() => setTab("npi")}
+            />
+          )}
+        </TabBoundary>
       </main>
 
       <TabBar tab={tab} teamLabel={team?.name ?? "Team"} onChange={setTab} />

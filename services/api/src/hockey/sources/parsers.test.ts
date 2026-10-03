@@ -103,6 +103,19 @@ describe("CHN", () => {
     expect(rows.find((r) => r.team === "Quinnipiac")?.rank).toBe(8);
   });
 
+  it("skips NPI rows without a number and finds moved columns", () => {
+    const html = `<table>
+      <tr><th>Rk</th><th></th><th>Team</th><th>Record (ot)</th><th>NPI</th></tr>
+      <tr><td>1</td><td>*</td><td>Maine</td><td>2-0-0 (0-0)</td><td>60.10</td></tr>
+      <tr><td></td><td></td><td>Quinnipiac</td><td>2-0-0 (0-0)</td><td>60.10</td></tr>
+      <tr><td>3</td><td></td><td>Alaska</td><td>0-0-0 (0-0)</td><td>--</td></tr>
+    </table>`;
+    expect(parseNpi(html)).toEqual([
+      { rank: 1, team: "Maine", npi: 60.1, record: "2-0-0" },
+      { rank: 1, team: "Quinnipiac", npi: 60.1, record: "2-0-0" },
+    ]);
+  });
+
   it("reads conference standings, carrying tied ranks down", () => {
     const rows = parseStandings(fixture("chn-conf-ecac.html"));
     expect(rows).toHaveLength(12);
