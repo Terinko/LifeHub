@@ -22,15 +22,16 @@ jobs:
           UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36"
           get() { curl -sSL -m 30 -A "$UA" -o "$1" -w "$1 %{http_code} %{size_download}\n" "$2" || echo "$1 FAILED"; }
           E=https://site.api.espn.com/apis/site/v2/sports/hockey/mens-college-hockey
-          get chn-conf-ecac.html "https://www.collegehockeynews.com/reports/conf/ECAC/4"
-          get chn-conf-he.html "https://www.collegehockeynews.com/reports/conf/Hockey-East/5"
-          get chn-games.html "https://www.collegehockeynews.com/games/"
-          get chn-games-date.html "https://www.collegehockeynews.com/games/?date=20261002"
-          get ncaa-standings.html "https://www.ncaa.com/standings/icehockey-men/d1"
-          get chn-team-qu.html "https://www.collegehockeynews.com/reports/team/Quinnipiac/47"
-          BOX=$(grep -o 'href="/box/[^"]*"' chn-games.html chn-games-date.html | head -1 | sed 's/.*href="//;s/"$//')
-          echo "box link: $BOX"
-          [ -n "$BOX" ] && get chn-box.html "https://www.collegehockeynews.com$BOX"
+          C=https://www.collegehockeynews.com/reports/conf
+          get chn-conf-aha.html "$C/Atlantic-Hockey/1"
+          get chn-conf-b1g.html "$C/Big-Ten/10"
+          get chn-conf-ccha.html "$C/CCHA/2"
+          get chn-conf-nchc.html "$C/NCHC/9"
+          get chn-conf-ncaa.html "$C/NCAA/7"
+          get chn-conf-ind.html "$C/Independent/8"
+          get chn-pairwise.html "https://www.collegehockeynews.com/ratings/pairwise/"
+          get ncaa-npi.html "https://www.ncaa.com/rankings/icehockey-men/d1/npi"
+          get bobcats-schedule.html "https://gobobcats.com/sports/mens-ice-hockey/schedule"
           ls -la
       - name: Commit samples
         run: |
