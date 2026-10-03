@@ -16,6 +16,12 @@ import { notFound } from "../shared/http";
 import { cached } from "./cache";
 import { listPollSnapshots, savePollSnapshot } from "./repository";
 import { parseStats, STATS_URL } from "./sources/sidearmStats";
+import {
+  LIVE_PAGE,
+  LIVE_URL,
+  type LiveFeed,
+  parseLive,
+} from "./sources/sidearmLive";
 import { NPI_URL, parseNpi, parseStandings, standingsUrl } from "./sources/chn";
 import {
   ESPN_BASE,
@@ -165,19 +171,30 @@ export function getTeamSchedule(id: string): Promise<HockeyTeamSchedule> {
 }
 
 /**
- * A full box score when one side is Quinnipiac and its site has posted
- * one for that date; otherwise `available: false`.
+ * A full box score when one side is Quinnipiac: the posted one when its
+ * site has it for that date, else the live stats feed while that game is
+ * on (or just over); otherwise `available: false`.
  */
 export async function getBoxScore(
   teamIds: string[],
   date: string,
 ): Promise<HockeyBoxScore> {
   if (!teamIds.includes(QUINNIPIAC_ESPN_ID)) return { available: false };
-  const links = await cached("sidearm:links", 10 * MINUTE, async () =>
+  // Gobobcats posts the box score some time after the game ends, so the
+  // live stats feed fills in until the link appears.
+  const links = await cached("sidearm:links", 2 * MINUTE, async () =>
     boxScoreLinks(await page(SCHEDULE_URL)),
-  );
+  ).catch(() => new Map<string, string>());
   const url = links.get(date);
-  if (!url) return { available: false };
+  if (!url) {
+    const live = await cached("sidearm:live", 15 * SECOND, async () =>
+      fetchJson<LiveFeed>(LIVE_URL, PAGE_HEADERS, 10 * SECOND),
+    );
+    const box = parseLive(live, date);
+    return box
+      ? { available: true, ...box, live: true, source: LIVE_PAGE }
+      : { available: false };
+  }
   const box = await cached(`sidearm:box:${url}`, 10 * MINUTE, async () =>
     parseBoxScore(await page(url)),
   );

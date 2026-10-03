@@ -155,6 +155,8 @@ export type HockeyBoxScore =
       /** Shots on goal by team, from each team's skater totals */
       shots: { team: string; total: number }[];
       attendance?: number;
+      /** True while it comes from the in-game live stats feed */
+      live?: boolean;
       source: string;
     };
 

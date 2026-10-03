@@ -1,0 +1,487 @@
+{
+ "Game": {
+  "Type": "IceHockeyGame",
+  "HasStarted": true,
+  "IsComplete": false,
+  "Date": "10/3/2026",
+  "StartTime": "4:00 PM",
+  "Location": "M&T Bank Arena",
+  "Attendance": 0,
+  "Period": 3,
+  "ClockSeconds": 0,
+  "HomeTeam": {
+   "Id": "QUI",
+   "Name": "#7/8 Quinnipiac",
+   "Score": 6,
+   "PeriodScores": [
+    2,
+    2,
+    2
+   ]
+  },
+  "VisitingTeam": {
+   "Id": "MER",
+   "Name": "#20/19 Merrimack",
+   "Score": 3,
+   "PeriodScores": [
+    1,
+    1,
+    1
+   ]
+  }
+ },
+ "Stats": {
+  "HomeTeam": {
+   "Totals": {
+    "Values": {
+     "Goals": "6",
+     "Assists": "10",
+     "Shots": "41",
+     "ShotAttempts": "63",
+     "PowerPlayGoals": "0",
+     "PowerPlayEfficiency": "0-2",
+     "ShorthandedGoals": "0",
+     "Penalties": "2",
+     "FaceoffWon": "34",
+     "FaceoffLost": "23",
+     "BlockShot": "4",
+     "PenaltyMins": "4"
+    }
+   },
+   "PlayerGroups": {
+    "Goalies": {
+     "Values": [
+      {
+       "Uni": "33",
+       "Name": "R. APPLEBEE",
+       "Position": "",
+       "Saves": "25",
+       "GoalsAllowed": "3",
+       "SavePercentage": ".893",
+       "PersonId": "34380"
+      }
+     ]
+    }
+   }
+  },
+  "VisitingTeam": {
+   "Totals": {
+    "Values": {
+     "Goals": "3",
+     "Assists": "5",
+     "Shots": "28",
+     "ShotAttempts": "39",
+     "PowerPlayGoals": "1",
+     "PowerPlayEfficiency": "1-2",
+     "ShorthandedGoals": "0",
+     "Penalties": "2",
+     "FaceoffWon": "23",
+     "FaceoffLost": "34",
+     "BlockShot": "8",
+     "PenaltyMins": "4"
+    }
+   },
+   "PlayerGroups": {
+    "Goalies": {
+     "Values": [
+      {
+       "Uni": "88",
+       "Name": "L. FELDBERGS",
+       "Position": "",
+       "Saves": "35",
+       "GoalsAllowed": "5",
+       "SavePercentage": ".875",
+       "PersonId": "39932"
+      }
+     ]
+    }
+   }
+  }
+ },
+ "Plays": [
+  {
+   "Type": "Goal",
+   "Period": 1,
+   "ClockSeconds": 200,
+   "Narrative": "Goal by QUI Stockfish,Jack (EVEN STRENGTH); Assist by Edwards,Dylan and Verreault,Antonin; On ice for QUI: 33, 18, 24, 23, 22, 7; On ice for MER: 88, 23, 11, 10, 24, 4.",
+   "Player": {
+    "Team": "HomeTeam",
+    "FirstName": "Jack",
+    "LastName": "Stockfish",
+    "UniformNumber": "18"
+   },
+   "InvolvedPlayers": [
+    {
+     "Team": "HomeTeam",
+     "FirstName": "Dylan",
+     "LastName": "Edwards",
+     "UniformNumber": "24"
+    },
+    {
+     "Team": "HomeTeam",
+     "FirstName": "Antonin",
+     "LastName": "Verreault",
+     "UniformNumber": "23"
+    }
+   ],
+   "Score": {
+    "HomeTeam": 1,
+    "VisitingTeam": 0
+   }
+  },
+  {
+   "Type": "Penalty",
+   "Period": 1,
+   "ClockSeconds": 567,
+   "Narrative": "Penalty on O'Connell,Ryan MER for HOLDING.",
+   "Player": {
+    "Team": "VisitingTeam",
+    "FirstName": "Ryan",
+    "LastName": "O'Connell",
+    "UniformNumber": "28"
+   },
+   "InvolvedPlayers": [],
+   "Score": null
+  },
+  {
+   "Type": "Penalty",
+   "Period": 1,
+   "ClockSeconds": 699,
+   "Narrative": "Penalty on QUI.",
+   "Player": null,
+   "InvolvedPlayers": [],
+   "Score": null
+  },
+  {
+   "Type": "Goal",
+   "Period": 1,
+   "ClockSeconds": 787,
+   "Narrative": "Goal by MER Lalonde,Parker (POWER-PLAY); Assist by King,Nathan and Powell,Seamus; On ice for QUI: 33, 20, 15, 6, 12; On ice for MER: 88, 12, 2, 29, 7, 20.",
+   "Player": {
+    "Team": "VisitingTeam",
+    "FirstName": "Parker",
+    "LastName": "Lalonde",
+    "UniformNumber": "12"
+   },
+   "InvolvedPlayers": [
+    {
+     "Team": "VisitingTeam",
+     "FirstName": "Nathan",
+     "LastName": "King",
+     "UniformNumber": "2"
+    },
+    {
+     "Team": "VisitingTeam",
+     "FirstName": "Seamus",
+     "LastName": "Powell",
+     "UniformNumber": "4"
+    }
+   ],
+   "Score": {
+    "HomeTeam": 1,
+    "VisitingTeam": 1
+   }
+  },
+  {
+   "Type": "Goal",
+   "Period": 1,
+   "ClockSeconds": 871,
+   "Narrative": "Goal by QUI Borgula,Tyler (EVEN STRENGTH); Assist by Kostov,Alex and Groenewold,Elliott; On ice for QUI: 33, 10, 17, 26, 22, 7; On ice for MER: 88, 10, 23, 3, 24, 28.",
+   "Player": {
+    "Team": "HomeTeam",
+    "FirstName": "Tyler",
+    "LastName": "Borgula",
+    "UniformNumber": "10"
+   },
+   "InvolvedPlayers": [
+    {
+     "Team": "HomeTeam",
+     "FirstName": "Alex",
+     "LastName": "Kostov",
+     "UniformNumber": "17"
+    },
+    {
+     "Team": "HomeTeam",
+     "FirstName": "Elliott",
+     "LastName": "Groenewold",
+     "UniformNumber": "7"
+    }
+   ],
+   "Score": {
+    "HomeTeam": 2,
+    "VisitingTeam": 1
+   }
+  },
+  {
+   "Type": "Goal",
+   "Period": 2,
+   "ClockSeconds": 249,
+   "Narrative": "Goal by QUI Blace,Braden (EVEN STRENGTH); Assist by Groenewold,Elliott and Verreault,Antonin; On ice for QUI: 33, 22, 24, 23, 7, 12; On ice for MER: 88, 28, 4, 24, 15, 6.",
+   "Player": {
+    "Team": "HomeTeam",
+    "FirstName": "Braden",
+    "LastName": "Blace",
+    "UniformNumber": "22"
+   },
+   "InvolvedPlayers": [
+    {
+     "Team": "HomeTeam",
+     "FirstName": "Elliott",
+     "LastName": "Groenewold",
+     "UniformNumber": "7"
+    },
+    {
+     "Team": "HomeTeam",
+     "FirstName": "Antonin",
+     "LastName": "Verreault",
+     "UniformNumber": "23"
+    }
+   ],
+   "Score": {
+    "HomeTeam": 3,
+    "VisitingTeam": 1
+   }
+  },
+  {
+   "Type": "Goal",
+   "Period": 2,
+   "ClockSeconds": 965,
+   "Narrative": "Goal by MER Daneault,Ty (EVEN STRENGTH); Assist by King,Nathan and Astapovich,Daniel; On ice for QUI: 33, 26, 17, 10, 22, 7; On ice for MER: 88, 16, 7, 2, 6, 28.",
+   "Player": {
+    "Team": "VisitingTeam",
+    "FirstName": "Ty",
+    "LastName": "Daneault",
+    "UniformNumber": "16"
+   },
+   "InvolvedPlayers": [
+    {
+     "Team": "VisitingTeam",
+     "FirstName": "Nathan",
+     "LastName": "King",
+     "UniformNumber": "2"
+    },
+    {
+     "Team": "VisitingTeam",
+     "FirstName": "Daniel",
+     "LastName": "Astapovich",
+     "UniformNumber": "6"
+    }
+   ],
+   "Score": {
+    "HomeTeam": 3,
+    "VisitingTeam": 2
+   }
+  },
+  {
+   "Type": "Goal",
+   "Period": 2,
+   "ClockSeconds": 1157,
+   "Narrative": "Goal by QUI Frasca,Gabriel (EVEN STRENGTH); Assist by Borgula,Tyler and Lansing,Matthew; On ice for QUI: 33, 4, 26, 15, 14, 10; On ice for MER: 88, 23, 24, 15, 4, 26.",
+   "Player": {
+    "Team": "HomeTeam",
+    "FirstName": "Gabriel",
+    "LastName": "Frasca",
+    "UniformNumber": "14"
+   },
+   "InvolvedPlayers": [
+    {
+     "Team": "HomeTeam",
+     "FirstName": "Tyler",
+     "LastName": "Borgula",
+     "UniformNumber": "10"
+    },
+    {
+     "Team": "HomeTeam",
+     "FirstName": "Matthew",
+     "LastName": "Lansing",
+     "UniformNumber": "26"
+    }
+   ],
+   "Score": {
+    "HomeTeam": 4,
+    "VisitingTeam": 2
+   }
+  },
+  {
+   "Type": "Goal",
+   "Period": 3,
+   "ClockSeconds": 264,
+   "Narrative": "Goal by QUI Marcellus,Mason (EVEN STRENGTH); Assist by Pelosi,Chris and Wyttenbach,Ethan; On ice for QUI: 33, 20, 19, 4, 28, 2; On ice for MER: 88, 23, 29, 21, 8, 9.",
+   "Player": {
+    "Team": "HomeTeam",
+    "FirstName": "Mason",
+    "LastName": "Marcellus",
+    "UniformNumber": "20"
+   },
+   "InvolvedPlayers": [
+    {
+     "Team": "HomeTeam",
+     "FirstName": "Chris",
+     "LastName": "Pelosi",
+     "UniformNumber": "28"
+    },
+    {
+     "Team": "HomeTeam",
+     "FirstName": "Ethan",
+     "LastName": "Wyttenbach",
+     "UniformNumber": "19"
+    }
+   ],
+   "Score": {
+    "HomeTeam": 5,
+    "VisitingTeam": 2
+   }
+  },
+  {
+   "Type": "Penalty",
+   "Period": 3,
+   "ClockSeconds": 359,
+   "Narrative": "Penalty on Frasca,Gabriel QUI for INTERFERENCE.",
+   "Player": {
+    "Team": "HomeTeam",
+    "FirstName": "Gabriel",
+    "LastName": "Frasca",
+    "UniformNumber": "14"
+   },
+   "InvolvedPlayers": [],
+   "Score": null
+  },
+  {
+   "Type": "Goal",
+   "Period": 3,
+   "ClockSeconds": 555,
+   "Narrative": "Goal by MER Fitzpatrick,Caelan (EVEN STRENGTH); Assist by Lalonde,Parker; On ice for QUI: 33, 4, 19, 18, 23, 2; On ice for MER: 88, 29, 12, 16, 3, 7.",
+   "Player": {
+    "Team": "VisitingTeam",
+    "FirstName": "Caelan",
+    "LastName": "Fitzpatrick",
+    "UniformNumber": "29"
+   },
+   "InvolvedPlayers": [
+    {
+     "Team": "VisitingTeam",
+     "FirstName": "Parker",
+     "LastName": "Lalonde",
+     "UniformNumber": "12"
+    },
+    {
+     "Team": "HomeTeam",
+     "FirstName": "Rorke",
+     "LastName": "Applebee",
+     "UniformNumber": "33"
+    }
+   ],
+   "Score": {
+    "HomeTeam": 5,
+    "VisitingTeam": 3
+   }
+  },
+  {
+   "Type": "Penalty",
+   "Period": 3,
+   "ClockSeconds": 939,
+   "Narrative": "Penalty on King,Nathan MER for HOOKING.",
+   "Player": {
+    "Team": "VisitingTeam",
+    "FirstName": "Nathan",
+    "LastName": "King",
+    "UniformNumber": "2"
+   },
+   "InvolvedPlayers": [],
+   "Score": null
+  },
+  {
+   "Type": "Goal",
+   "Period": 3,
+   "ClockSeconds": 1085,
+   "Narrative": "Goal by QUI Schwartz,Aaron (EVEN STRENGTH); On ice for QUI: 33, 11, 28, 6, 27, 15; On ice for MER: 29, 12, 16, 20, 7, 2.",
+   "Player": {
+    "Team": "HomeTeam",
+    "FirstName": "Aaron",
+    "LastName": "Schwartz",
+    "UniformNumber": "11"
+   },
+   "InvolvedPlayers": [
+    {
+     "Team": "HomeTeam",
+     "FirstName": "Rorke",
+     "LastName": "Applebee",
+     "UniformNumber": "33"
+    },
+    {
+     "Team": "HomeTeam",
+     "FirstName": "Chris",
+     "LastName": "Pelosi",
+     "UniformNumber": "28"
+    }
+   ],
+   "Score": {
+    "HomeTeam": 6,
+    "VisitingTeam": 3
+   }
+  },
+  {
+   "Type": "Shot",
+   "Period": 1,
+   "ClockSeconds": 46,
+   "Narrative": "Shot by QUI Cerbone,Andon MISSED, save Feldbergs,Linards.",
+   "Player": {
+    "Team": "HomeTeam",
+    "FirstName": "Andon",
+    "LastName": "Cerbone",
+    "UniformNumber": "27"
+   },
+   "InvolvedPlayers": [
+    {
+     "Team": "VisitingTeam",
+     "FirstName": "Linards",
+     "LastName": "Feldbergs",
+     "UniformNumber": "88"
+    }
+   ],
+   "Score": null
+  },
+  {
+   "Type": "Shot",
+   "Period": 1,
+   "ClockSeconds": 61,
+   "Narrative": "Shot by MER Lalonde,Parker MISSED, save Applebee,Rorke.",
+   "Player": {
+    "Team": "VisitingTeam",
+    "FirstName": "Parker",
+    "LastName": "Lalonde",
+    "UniformNumber": "12"
+   },
+   "InvolvedPlayers": [
+    {
+     "Team": "HomeTeam",
+     "FirstName": "Rorke",
+     "LastName": "Applebee",
+     "UniformNumber": "33"
+    }
+   ],
+   "Score": null
+  },
+  {
+   "Type": "Shot",
+   "Period": 1,
+   "ClockSeconds": 99,
+   "Narrative": "Shot by MER King,Nathan MISSED, save Applebee,Rorke.",
+   "Player": {
+    "Team": "VisitingTeam",
+    "FirstName": "Nathan",
+    "LastName": "King",
+    "UniformNumber": "2"
+   },
+   "InvolvedPlayers": [
+    {
+     "Team": "HomeTeam",
+     "FirstName": "Rorke",
+     "LastName": "Applebee",
+     "UniformNumber": "33"
+    }
+   ],
+   "Score": null
+  }
+ ]
+}
