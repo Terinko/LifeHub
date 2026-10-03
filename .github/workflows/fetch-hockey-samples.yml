@@ -1,0 +1,46 @@
+name: Fetch hockey samples (temporary)
+
+on:
+  push:
+    branches:
+      - claude/project-thread-5nz3i9
+    paths:
+      - .github/workflows/fetch-hockey-samples.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch public pages
+        run: |
+          mkdir -p hockey-samples
+          cd hockey-samples
+          UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36"
+          get() { curl -sSL -m 30 -A "$UA" -o "$1" -w "$1 %{http_code} %{size_download}\n" "$2" || echo "$1 FAILED"; }
+          E=https://site.api.espn.com/apis/site/v2/sports/hockey/mens-college-hockey
+          get espn-scoreboard.json "$E/scoreboard?dates=20261002&limit=200"
+          get espn-scoreboard-today.json "$E/scoreboard?limit=200"
+          get espn-summary.json "$E/summary?event=401904792"
+          get espn-teams.json "$E/teams?limit=200"
+          get espn-rankings.json "$E/rankings"
+          get espn-standings.json "https://site.api.espn.com/apis/v2/sports/hockey/mens-college-hockey/standings"
+          get espn-qu-schedule.json "$E/teams/QUIN/schedule"
+          get ncaa-rankings.html "https://www.ncaa.com/rankings/icehockey-men/d1"
+          get chn-npi.html "https://www.collegehockeynews.com/ratings/npi"
+          get chn-krach.html "https://www.collegehockeynews.com/ratings/krach"
+          get chn-standings.html "https://www.collegehockeynews.com/standings/"
+          get bobcats-schedule-text.html "https://gobobcats.com/sports/mens-ice-hockey/schedule/text"
+          get bobcats-boxscore.html "https://gobobcats.com/sports/mens-ice-hockey/stats/2026-27/new-hampshire/boxscore/23767"
+          get uscho-poll.html "https://www.uscho.com/rankings/d-i-mens-poll/"
+          ls -la
+      - name: Commit samples
+        run: |
+          git config user.name "Tyler"
+          git config user.email "rinkotyler@gmail.com"
+          git add hockey-samples
+          git commit -m "Add fetched hockey samples"
+          git push
