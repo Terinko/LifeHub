@@ -5,7 +5,7 @@ import styles from "./BoxDetails.module.css";
 
 type Box = Extract<HockeyBoxScore, { available: true }>;
 
-/** Shots, goalies and every goal, from the school's published box score. */
+/** Shots, goalies and every goal, from the school's box score or live stats. */
 export function BoxDetails({ box }: { box: Box }) {
   return (
     <>
@@ -65,7 +65,7 @@ export function BoxDetails({ box }: { box: Box }) {
           ? `Attendance ${box.attendance.toLocaleString()} · `
           : ""}
         <a href={box.source} target="_blank" rel="noreferrer">
-          Full box score
+          {box.live ? "Live stats" : "Full box score"}
         </a>
       </p>
     </>

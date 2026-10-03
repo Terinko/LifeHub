@@ -1,6 +1,7 @@
 import type { HockeyGame } from "@lifehub/shared";
 import { shortDate, timeLabel } from "../../lib/dates";
 import { useBoxScore } from "../../queries";
+import { DEFAULT_TEAM_ID as QUINNIPIAC } from "../../storage";
 import { Notice } from "../chrome/Notice";
 import { Sheet } from "../chrome/Sheet";
 import { BoxDetails } from "./BoxDetails";
@@ -42,6 +43,11 @@ export function BoxScoreSheet({ game, teamId, onClose }: Props) {
           <Notice tone="error">Couldn't load the scoring summary.</Notice>
         ) : box.data?.available ? (
           <BoxDetails box={box.data} />
+        ) : [game.away.id, game.home.id].includes(QUINNIPIAC) ? (
+          <Notice>
+            Quinnipiac hasn't published stats for this game yet. They'll show
+            here once its live stats or box score are up.
+          </Notice>
         ) : (
           <Notice>
             Goal-by-goal detail is only published for Quinnipiac games, so this

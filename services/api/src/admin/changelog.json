@@ -63,5 +63,13 @@
       "Quinnipiac's stat leaders: points, goals and assists for every skater, plus each goalie's record, GAA and save percentage.",
       "A weekly poll recap: who rose, who fell, who's new, and where your team landed."
     ]
+  },
+  {
+    "id": "2026-10-03-hockey-live-box",
+    "date": "2026-10-03",
+    "tools": ["hockey"],
+    "bullets": [
+      "Quinnipiac box scores now fill in live during the game (goals, assists, shots and goalies from the Bobcats' live stats) instead of waiting for the box score to be posted afterward."
+    ]
   }
 ]
