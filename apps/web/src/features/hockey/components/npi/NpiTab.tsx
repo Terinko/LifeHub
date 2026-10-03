@@ -5,6 +5,9 @@ import { Notice } from "../chrome/Notice";
 import { FieldMeter } from "./FieldMeter";
 import styles from "./NpiTab.module.css";
 
+const npiLabel = (n: number | null | undefined) =>
+  typeof n === "number" && Number.isFinite(n) ? n.toFixed(2) : "–";
+
 /** NCAA tournament field size: six conference champions plus ten at-large. */
 const FIELD = 16;
 
@@ -34,7 +37,7 @@ export function NpiTab({ teamName }: { teamName: string | undefined }) {
             <span className={styles.mineText}>
               <b>
                 {teamName}
-                {mine ? ` · ${mine.npi.toFixed(2)}` : ""}
+                {mine ? ` · ${npiLabel(mine.npi)}` : ""}
               </b>
               <span>
                 {!mine
@@ -76,7 +79,7 @@ export function NpiTab({ teamName }: { teamName: string | undefined }) {
             >
               <span className={`${card.score} ${styles.rank}`}>{row.rank}</span>
               <span className={styles.name}>{row.team}</span>
-              <span className={styles.num}>{row.npi.toFixed(2)}</span>
+              <span className={styles.num}>{npiLabel(row.npi)}</span>
               <span className={styles.rec}>{row.record}</span>
             </li>
           ))}
