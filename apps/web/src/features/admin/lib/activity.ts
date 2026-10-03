@@ -28,4 +28,5 @@ export const TOOL_USAGE_FIELDS = [
   { key: "lastUsedKitchen", label: "Kitchen" },
   { key: "lastUsedPoker", label: "Poker" },
   { key: "lastUsedFantasy", label: "Fantasy" },
+  { key: "lastUsedHockey", label: "Hockey" },
 ] as const satisfies { key: keyof UserProfile; label: string }[];

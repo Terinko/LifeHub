@@ -77,6 +77,8 @@ export class BackendStack extends cdk.Stack {
     });
     const fantasyTable = dataTable("FantasyTable", pkAndSk);
     const applicationsTable = dataTable("ApplicationsTable", pkAndSk);
+    // Public poll snapshots, so Hockey can chart a team's rank by week.
+    const hockeyTable = dataTable("HockeyTable", pkAndSk);
 
     const billsLambda = apiFunction(this, "LifeHubBillsHandler", "bills", {
       environment: {
@@ -126,17 +128,31 @@ export class BackendStack extends cdk.Stack {
       },
     );
 
+    // Reads public scores, polls and standings from ESPN, NCAA.com, College
+    // Hockey News and Quinnipiac's site; the team list fans out to several
+    // pages on a cold start, hence the longer timeout.
+    const hockeyLambda = apiFunction(this, "HockeyHandler", "hockey", {
+      environment: {
+        TABLE_NAME: hockeyTable.tableName,
+        USERS_TABLE: usersTable.tableName,
+      },
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 512,
+    });
+
     billsTable.grantReadWriteData(billsLambda);
     kitchenTable.grantReadWriteData(kitchenLambda);
     pokerTable.grantReadWriteData(pokerLambda);
     fantasyTable.grantReadWriteData(fantasyLambda);
     applicationsTable.grantReadWriteData(applicationsLambda);
+    hockeyTable.grantReadWriteData(hockeyLambda);
     // Read for permission checks; write so each tool can record a
     // lastUsed<Tool> timestamp on the caller's profile for admin visibility.
     usersTable.grantReadWriteData(pokerLambda);
     usersTable.grantReadWriteData(fantasyLambda);
     usersTable.grantWriteData(billsLambda);
     usersTable.grantReadWriteData(kitchenLambda);
+    usersTable.grantReadWriteData(hockeyLambda);
     // Admin-only tool: just needs to re-verify the caller's role, no usage
     // stamping (the admin-visibility feature is about tracking everyone
     // *else*, not the admin's own use of an admin-only tool).
@@ -378,6 +394,28 @@ export class BackendStack extends cdk.Stack {
       integration: applicationsIntegration,
       authorizer,
     });
+
+    const hockeyIntegration = new HttpLambdaIntegration(
+      "HockeyIntegration",
+      hockeyLambda,
+    );
+
+    for (const path of [
+      "/hockey/scores",
+      "/hockey/poll",
+      "/hockey/npi",
+      "/hockey/standings/{conference}",
+      "/hockey/teams",
+      "/hockey/teams/{id}",
+      "/hockey/box",
+    ]) {
+      httpApi.addRoutes({
+        path,
+        methods: [apigw.HttpMethod.GET],
+        integration: hockeyIntegration,
+        authorizer,
+      });
+    }
 
     const websiteBucket = new s3.Bucket(this, "LifeHubFrontendBucket", {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,

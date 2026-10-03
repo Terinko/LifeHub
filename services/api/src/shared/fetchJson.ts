@@ -25,3 +25,20 @@ export async function fetchJson<T>(
   }
   return (await res.json()) as T;
 }
+
+/** GETs a page as text (for sites with no JSON API), with the same timeout. */
+export async function fetchText(
+  url: string,
+  init: RequestInit = {},
+  timeoutMs = 10_000,
+): Promise<string> {
+  const res = await fetch(url, {
+    ...init,
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new UpstreamError(url, res.status, body);
+  }
+  return res.text();
+}

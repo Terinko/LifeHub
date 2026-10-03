@@ -8,7 +8,7 @@ const template = Template.fromStack(new BackendStack(new cdk.App(), "Test"));
 
 test("every DynamoDB table survives stack changes and keeps backups", () => {
   const tables = template.findResources("AWS::DynamoDB::Table");
-  expect(Object.keys(tables).length).toBe(6);
+  expect(Object.keys(tables).length).toBe(7);
 
   for (const [id, table] of Object.entries(tables)) {
     expect({ id, deletion: table.DeletionPolicy }).toEqual({

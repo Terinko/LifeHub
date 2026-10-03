@@ -43,6 +43,12 @@ const TOOL_TILES: (HubTile & { key: ToolPermission })[] = [
     subtitle: "Ad-free forecast",
     path: "/weather",
   },
+  {
+    key: "hockey",
+    label: "Hockey",
+    subtitle: "Scores, polls & the Bobcats",
+    path: "/hockey",
+  },
 ];
 
 /** Only admins see these, after the tools. */
