@@ -9,11 +9,13 @@ import {
   type HockeyStandings,
   type HockeyTeamOption,
   type HockeyTeamSchedule,
+  type HockeyTeamStats,
 } from "@lifehub/shared";
 import { fetchJson, fetchText } from "../shared/fetchJson";
 import { notFound } from "../shared/http";
 import { cached } from "./cache";
 import { listPollSnapshots, savePollSnapshot } from "./repository";
+import { parseStats, STATS_URL } from "./sources/sidearmStats";
 import { NPI_URL, parseNpi, parseStandings, standingsUrl } from "./sources/chn";
 import {
   ESPN_BASE,
@@ -102,10 +104,15 @@ export async function getPoll(): Promise<HockeyPoll> {
 /** Every D-I team, matched to its ESPN id, for the team picker. */
 export function getTeams(): Promise<HockeyTeamOption[]> {
   return cached("teams", 12 * HOUR, async () => {
-    const [espn, ...pages] = await Promise.all([
+    // One conference page being down shouldn't hide every other team.
+    const [espn, settled] = await Promise.all([
       fetchJson<EspnTeamsResponse>(`${ESPN_BASE}/teams?limit=500`),
-      ...HOCKEY_CONFERENCES.map((c) => getStandings(c)),
+      Promise.allSettled(HOCKEY_CONFERENCES.map((c) => getStandings(c))),
     ]);
+    const pages = settled.flatMap((r) =>
+      r.status === "fulfilled" ? [r.value] : [],
+    );
+    if (pages.length === 0) throw new Error("No conference pages loaded");
     const byKey = new Map(
       teamsOf(espn).map((t) => [hockeyTeamKey(t.location), t]),
     );
@@ -175,4 +182,12 @@ export async function getBoxScore(
     parseBoxScore(await page(url)),
   );
   return { available: true, ...box, source: url };
+}
+
+/** Quinnipiac's season skater and goalie stats. */
+export function getStats(): Promise<HockeyTeamStats> {
+  return cached("sidearm:stats", 30 * MINUTE, async () => ({
+    ...parseStats(await page(STATS_URL)),
+    source: STATS_URL,
+  }));
 }

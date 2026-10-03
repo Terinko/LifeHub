@@ -408,6 +408,7 @@ export class BackendStack extends cdk.Stack {
       "/hockey/teams",
       "/hockey/teams/{id}",
       "/hockey/box",
+      "/hockey/stats",
     ]) {
       httpApi.addRoutes({
         path,

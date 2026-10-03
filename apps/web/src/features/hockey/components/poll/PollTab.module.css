@@ -67,7 +67,7 @@
   border-bottom: 1px solid var(--rink-divider);
 }
 
-.row:last-child {
+li:last-child > .row {
   border-bottom: none;
 }
 

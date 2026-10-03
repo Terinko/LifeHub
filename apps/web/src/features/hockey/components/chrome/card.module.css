@@ -40,3 +40,21 @@
     animation: none;
   }
 }
+
+/* A whole list row that opens something. Zero specificity, so the row's
+   own layout and borders always win. */
+:where(.rowButton) {
+  appearance: none;
+  width: 100%;
+  margin: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+:where(.rowButton):active {
+  background: var(--rink-chip);
+}

@@ -1,10 +1,15 @@
-import { useQuery } from "@tanstack/react-query";
-import type { HockeyConference, HockeyGame } from "@lifehub/shared";
+import { useQueries, useQuery } from "@tanstack/react-query";
+import {
+  HOCKEY_CONFERENCES,
+  type HockeyConference,
+  type HockeyGame,
+} from "@lifehub/shared";
 import {
   getBoxScore,
   getNpi,
   getPoll,
   getScores,
+  getStats,
   getStandings,
   getTeamSchedule,
   getTeams,
@@ -20,6 +25,7 @@ export const hockeyKeys = {
   teams: ["hockey", "teams"] as const,
   team: (id: string) => ["hockey", "team", id] as const,
   box: (id: string) => ["hockey", "box", id] as const,
+  stats: ["hockey", "stats"] as const,
 };
 
 const SECOND = 1000;
@@ -70,10 +76,11 @@ export const useTeams = (enabled = true) =>
     staleTime: 6 * 60 * MINUTE,
   });
 
-export const useTeamSchedule = (id: string) =>
+export const useTeamSchedule = (id: string, enabled = true) =>
   useQuery({
     queryKey: hockeyKeys.team(id),
     queryFn: () => getTeamSchedule(id),
+    enabled: enabled && !!id,
     refetchInterval: (query) =>
       hasLiveGame(query.state.data?.games) ? LIVE_REFRESH : 5 * MINUTE,
   });
@@ -86,4 +93,23 @@ export const useBoxScore = (game: HockeyGame) =>
       getBoxScore(easternDate(game.start), [game.away.id, game.home.id]),
     enabled: game.state !== "pre",
     refetchInterval: game.state === "in" ? LIVE_REFRESH : false,
+  });
+
+/** Quinnipiac's season stats (the only school whose stats we can read). */
+export const useStats = (enabled: boolean) =>
+  useQuery({
+    queryKey: hockeyKeys.stats,
+    queryFn: getStats,
+    enabled,
+    staleTime: 10 * MINUTE,
+  });
+
+/** Every conference's standings at once, for the tournament projection. */
+export const useAllStandings = () =>
+  useQueries({
+    queries: HOCKEY_CONFERENCES.map((conference) => ({
+      queryKey: hockeyKeys.standings(conference),
+      queryFn: () => getStandings(conference),
+      staleTime: 10 * MINUTE,
+    })),
   });

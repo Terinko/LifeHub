@@ -7,6 +7,7 @@ import { GlassHeader } from "./components/chrome/GlassHeader";
 import { IceBackdrop } from "./components/chrome/IceBackdrop";
 import { TabBar, type Tab } from "./components/chrome/TabBar";
 import { NpiTab } from "./components/npi/NpiTab";
+import { ProjectionSheet } from "./components/npi/ProjectionSheet";
 import { TabBoundary } from "./components/chrome/TabBoundary";
 import { PollTab } from "./components/poll/PollTab";
 import { BoxScoreSheet } from "./components/scores/BoxScoreSheet";
@@ -14,6 +15,7 @@ import { ScoresTab } from "./components/scores/ScoresTab";
 import { StandingsSheet } from "./components/team/StandingsSheet";
 import { TeamPickerSheet } from "./components/team/TeamPickerSheet";
 import { TeamTab } from "./components/team/TeamTab";
+import { TeamSheet } from "./components/teams/TeamSheet";
 import { todayKey } from "./lib/dates";
 import { useStandings, useTeamSchedule } from "./queries";
 import { loadTeamId, saveTeamId } from "./storage";
@@ -41,6 +43,8 @@ export function HockeyPage() {
   const [openGame, setOpenGame] = useState<HockeyGame>();
   const [standingsOpen, setStandingsOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [shownTeam, setShownTeam] = useState<string>();
+  const [projectionOpen, setProjectionOpen] = useState(false);
 
   const schedule = useTeamSchedule(teamId);
   const team = schedule.data?.team;
@@ -57,11 +61,14 @@ export function HockeyPage() {
   const closeGame = useCallback(() => setOpenGame(undefined), []);
   const closeStandings = useCallback(() => setStandingsOpen(false), []);
   const closePicker = useCallback(() => setPickerOpen(false), []);
+  const closeTeam = useCallback(() => setShownTeam(undefined), []);
+  const closeProjection = useCallback(() => setProjectionOpen(false), []);
 
   const pickTeam = (id: string) => {
     saveTeamId(id);
     setTeamId(id);
     setPickerOpen(false);
+    setShownTeam(undefined);
   };
 
   return (
@@ -99,8 +106,16 @@ export function HockeyPage() {
               onTeam={() => setTab("team")}
             />
           )}
-          {tab === "poll" && <PollTab teamName={team?.name} />}
-          {tab === "npi" && <NpiTab teamName={team?.name} />}
+          {tab === "poll" && (
+            <PollTab teamName={team?.name} onTeam={setShownTeam} />
+          )}
+          {tab === "npi" && (
+            <NpiTab
+              teamName={team?.name}
+              onTeam={setShownTeam}
+              onProjection={() => setProjectionOpen(true)}
+            />
+          )}
           {tab === "team" && (
             <TeamTab
               teamId={teamId}
@@ -120,13 +135,11 @@ export function HockeyPage() {
 
       <TabBar tab={tab} teamLabel={team?.name ?? "Team"} onChange={setTab} />
 
-      {openGame && (
-        <BoxScoreSheet game={openGame} teamId={teamId} onClose={closeGame} />
-      )}
       {standingsOpen && conference && (
         <StandingsSheet
           initial={conference}
           teamName={team?.name}
+          onTeam={setShownTeam}
           onClose={closeStandings}
         />
       )}
@@ -136,6 +149,25 @@ export function HockeyPage() {
           onPick={pickTeam}
           onClose={closePicker}
         />
+      )}
+      {projectionOpen && (
+        <ProjectionSheet
+          teamName={team?.name}
+          onTeam={setShownTeam}
+          onClose={closeProjection}
+        />
+      )}
+      {shownTeam && (
+        <TeamSheet
+          name={shownTeam}
+          followedId={teamId}
+          onFollow={pickTeam}
+          onOpenGame={setOpenGame}
+          onClose={closeTeam}
+        />
+      )}
+      {openGame && (
+        <BoxScoreSheet game={openGame} teamId={teamId} onClose={closeGame} />
       )}
     </div>
   );

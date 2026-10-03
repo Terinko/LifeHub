@@ -3,11 +3,17 @@ import { usePoll } from "../../queries";
 import card from "../chrome/card.module.css";
 import { Notice } from "../chrome/Notice";
 import { MoveChip } from "./MoveChip";
+import { PollRecap } from "./PollRecap";
 import { RankTrend } from "./RankTrend";
 import styles from "./PollTab.module.css";
 
 /** The USCHO Top 20, with the followed team's season charted on top. */
-export function PollTab({ teamName }: { teamName: string | undefined }) {
+type Props = {
+  teamName: string | undefined;
+  onTeam: (name: string) => void;
+};
+
+export function PollTab({ teamName, onTeam }: Props) {
   const poll = usePoll();
   if (poll.isPending)
     return <div className={card.skeleton} style={{ height: 420 }} />;
@@ -24,6 +30,7 @@ export function PollTab({ teamName }: { teamName: string | undefined }) {
       <p className={styles.through}>
         USCHO.com poll · {through.replace(/^Through Games\s*/i, "through ")}
       </p>
+      <PollRecap poll={poll.data} teamName={teamName} onTeam={onTeam} />
       {teamName && (
         <section
           className={`${card.card} ${styles.mine}`}
@@ -54,22 +61,26 @@ export function PollTab({ teamName }: { teamName: string | undefined }) {
 
       <ol className={`${card.card} ${styles.list}`}>
         {rows.map((row, i) => (
-          <li
-            key={row.team}
-            className={styles.row}
-            data-mine={i === mineAt || undefined}
-          >
-            <span className={`${card.score} ${styles.rank}`}>{row.rank}</span>
-            <span className={styles.team}>
-              <span className={styles.name}>{row.team}</span>
-              <span className={styles.points}>
-                {row.points} pts
-                {row.firstPlaceVotes
-                  ? ` · ${row.firstPlaceVotes} first`
-                  : ""} · {row.record}
+          <li key={row.team}>
+            <button
+              type="button"
+              className={`${card.rowButton} ${styles.row}`}
+              data-mine={i === mineAt || undefined}
+              onClick={() => onTeam(row.team)}
+            >
+              <span className={`${card.score} ${styles.rank}`}>{row.rank}</span>
+              <span className={styles.team}>
+                <span className={styles.name}>{row.team}</span>
+                <span className={styles.points}>
+                  {row.points} pts
+                  {row.firstPlaceVotes
+                    ? ` · ${row.firstPlaceVotes} first`
+                    : ""}{" "}
+                  · {row.record}
+                </span>
               </span>
-            </span>
-            <MoveChip move={movement(row)} />
+              <MoveChip move={movement(row)} />
+            </button>
           </li>
         ))}
       </ol>

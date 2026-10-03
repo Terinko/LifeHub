@@ -40,7 +40,8 @@ export function parseNpi(html: string): HockeyNpiRow[] {
   };
   const rows: HockeyNpiRow[] = [];
   for (const cells of body) {
-    const npi = toNumber(cell(cells, at.npi));
+    // CHN marks adjusted values with "*" or "#" ("# 42.86"); keep the number.
+    const npi = toNumber(cell(cells, at.npi).replace(/^[^\d.-]+/, ""));
     const team = cell(cells, at.team);
     if (!team || !Number.isFinite(npi)) continue;
     rows.push({

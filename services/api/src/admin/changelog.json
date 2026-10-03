@@ -51,5 +51,17 @@
       "The NPI, the NCAA's tournament ranking, with where your team sits against the 16-team field.",
       "A team page with a countdown to the next game, the full schedule and TV, conference standings, and box scores for Quinnipiac games."
     ]
+  },
+  {
+    "id": "2026-10-03-hockey-more",
+    "date": "2026-10-03",
+    "tools": ["hockey"],
+    "bullets": [
+      "Fixed the NPI screen going blank.",
+      "Tap any team in the poll, the NPI or standings to see its record, last results and next games, and follow it if you like.",
+      "A projected NCAA field: the 16-team bracket if the season ended today, with the last four in and first four out.",
+      "Quinnipiac's stat leaders: points, goals and assists for every skater, plus each goalie's record, GAA and save percentage.",
+      "A weekly poll recap: who rose, who fell, who's new, and where your team landed."
+    ]
   }
 ]

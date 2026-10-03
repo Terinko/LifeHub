@@ -7,6 +7,7 @@ import type {
   HockeyStandings,
   HockeyTeamOption,
   HockeyTeamSchedule,
+  HockeyTeamStats,
 } from "@lifehub/shared";
 import { api } from "../../shared/api/client";
 
@@ -29,3 +30,5 @@ export const getBoxScore = (date: string, teamIds: string[]) =>
   api.get<HockeyBoxScore>(
     `/hockey/box?date=${date}&teams=${teamIds.map(encodeURIComponent).join(",")}`,
   );
+
+export const getStats = () => api.get<HockeyTeamStats>("/hockey/stats");

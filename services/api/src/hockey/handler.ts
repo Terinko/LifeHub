@@ -20,5 +20,6 @@ export const handler = createHandler({
     "GET /hockey/teams": routes.teams,
     "GET /hockey/teams/{id}": routes.team,
     "GET /hockey/box": routes.box,
+    "GET /hockey/stats": routes.stats,
   },
 });
