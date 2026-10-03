@@ -1,0 +1,37 @@
+.meter {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.track {
+  position: relative;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--rink-blue-wash);
+}
+
+.field {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 5px;
+  background: var(--rink-blue);
+}
+
+.pin {
+  position: absolute;
+  top: -4px;
+  width: 5px;
+  height: 18px;
+  margin-left: -2px;
+  border-radius: 3px;
+  background: var(--rink-red);
+  box-shadow: 0 0 0 2px #ffffff;
+}
+
+.labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--rink-ink-2);
+}

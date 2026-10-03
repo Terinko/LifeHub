@@ -1,0 +1,22 @@
+.chip {
+  min-width: 44px;
+  box-sizing: border-box;
+  padding: 4px 6px;
+  border-radius: 8px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--rink-chip);
+  color: var(--rink-ink-2);
+}
+
+.chip[data-kind="up"],
+.chip[data-kind="new"] {
+  background: var(--rink-blue-wash);
+  color: var(--rink-blue-ink);
+}
+
+.chip[data-kind="down"] {
+  background: var(--rink-red-wash);
+  color: var(--rink-red-ink);
+}

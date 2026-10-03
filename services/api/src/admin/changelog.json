@@ -40,5 +40,16 @@
       "Includes a next-2-hours rain timeline, hourly and 10-day forecasts, and official National Weather Service alerts.",
       "Save as many places as you want and swipe between them."
     ]
+  },
+  {
+    "id": "2026-10-03-hockey-tool",
+    "date": "2026-10-03",
+    "tools": ["hockey"],
+    "bullets": [
+      "New Hockey tool for college hockey: live D-I scores with your team pinned on top, refreshing every 30 seconds while games are on.",
+      "The weekly USCHO poll with each team's movement, plus a chart of where your team has ranked all season.",
+      "The NPI, the NCAA's tournament ranking, with where your team sits against the 16-team field.",
+      "A team page with a countdown to the next game, the full schedule and TV, conference standings, and box scores for Quinnipiac games."
+    ]
   }
 ]

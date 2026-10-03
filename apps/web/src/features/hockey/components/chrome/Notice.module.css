@@ -1,0 +1,16 @@
+.notice {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--rink-note-line);
+  background: var(--rink-note);
+  color: var(--rink-note-ink);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.notice[data-tone="error"] {
+  border-color: var(--rink-red-wash);
+  background: var(--rink-red-tint);
+  color: var(--rink-red-ink);
+}

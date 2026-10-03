@@ -1,0 +1,53 @@
+.bar {
+  composes: glass from "./glass.module.css";
+  position: fixed;
+  z-index: 20;
+  left: 50%;
+  bottom: calc(18px + var(--safe-bottom));
+  transform: translateX(-50%);
+  width: min(440px, calc(100% - 24px));
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 2px;
+  padding: 6px;
+  border-radius: 34px;
+}
+
+.tab {
+  min-height: 54px;
+  border-radius: 27px;
+  border: none;
+  background: transparent;
+  color: var(--rink-ink-2);
+  font-family: var(--rink-font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+.label {
+  max-width: 100%;
+  padding: 0 4px;
+  box-sizing: border-box;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tab[aria-current="page"] {
+  color: var(--rink-red);
+  font-weight: 700;
+  background: var(--rink-glass-lens);
+  box-shadow:
+    inset 0 1px 0 #ffffff,
+    0 4px 14px rgba(14, 27, 43, 0.12);
+}

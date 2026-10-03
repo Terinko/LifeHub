@@ -142,6 +142,7 @@ describe("inviting", () => {
       pokerStats: false,
       fantasy: false,
       weather: false,
+      hockey: false,
     });
   });
 

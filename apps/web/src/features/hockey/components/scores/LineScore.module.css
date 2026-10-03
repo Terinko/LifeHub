@@ -1,0 +1,46 @@
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  color: var(--rink-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.table th,
+.table td {
+  padding: 6px 4px;
+  text-align: center;
+  font-weight: 500;
+}
+
+.table thead th {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.teamCol {
+  text-align: left !important;
+  width: 100%;
+  font-size: 15px;
+  white-space: nowrap;
+}
+
+.table tbody th {
+  color: var(--rink-ink);
+}
+
+.table tbody tr[data-lost] th,
+.table tbody tr[data-lost] .total {
+  color: var(--rink-ink-2);
+}
+
+.table tbody tr[data-mine] th {
+  font-weight: 800;
+  color: var(--rink-red);
+}
+
+.total {
+  font-size: 26px;
+  color: var(--rink-ink);
+  padding-left: 10px !important;
+}

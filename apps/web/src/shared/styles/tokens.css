@@ -160,4 +160,34 @@
   --chip-orange: #e0741f;
   --chip-teal: #12908e;
   --chip-pink: #d23f86;
+
+  /* Rink: the light ice theme (Hockey). Opaque white cards on ice; Liquid
+     Glass (frosted white) for the floating bars, sheets and the team hero. */
+  --rink-ice: #f4f8fb;
+  --rink-card: #ffffff;
+  --rink-ink: #0e1b2b;
+  --rink-ink-2: #4e5d70;
+  --rink-line: #d7e1ea;
+  --rink-divider: #e6edf3;
+  --rink-red: #c8102e;
+  --rink-red-wash: #fbe0e4;
+  --rink-red-ink: #9b0e25;
+  --rink-red-tint: #fff4f5;
+  --rink-blue: #1d4ed8;
+  --rink-blue-wash: #dce7ff;
+  --rink-blue-ink: #1e3a8a;
+  --rink-chip: #eef2f6;
+  --rink-note: #fff8e6;
+  --rink-note-line: #f0dca4;
+  --rink-note-ink: #4a3b0b;
+  --rink-glass: rgba(255, 255, 255, 0.56);
+  --rink-glass-heavy: rgba(248, 251, 254, 0.84);
+  --rink-glass-line: rgba(255, 255, 255, 0.75);
+  --rink-glass-lens: rgba(255, 255, 255, 0.9);
+  --rink-glass-blur: blur(24px) saturate(190%);
+  --rink-glass-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(14, 27, 43, 0.05), 0 12px 32px rgba(14, 27, 43, 0.14);
+  --rink-font-ui: "Public Sans", system-ui, sans-serif;
+  --rink-font-score: "Saira Condensed", "Arial Narrow", sans-serif;
 }

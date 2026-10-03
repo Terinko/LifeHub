@@ -2,6 +2,7 @@ import {
   Briefcase,
   ChefHat,
   CloudSun,
+  Goal,
   Receipt,
   ShieldCheck,
   Spade,
@@ -20,6 +21,7 @@ const ICONS: Record<TileKey, LucideIcon> = {
   poker: Spade,
   fantasy: Tv,
   weather: CloudSun,
+  hockey: Goal,
   applications: Briefcase,
   admin: ShieldCheck,
 };

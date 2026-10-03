@@ -1,0 +1,72 @@
+.searchLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--rink-ink-2);
+}
+
+.search {
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 14px;
+  border: 1px solid var(--rink-line);
+  background: #ffffff;
+  font-family: var(--rink-font-ui);
+  font-size: 16px;
+  color: var(--rink-ink);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0 12px;
+}
+
+.list li {
+  border-bottom: 1px solid var(--rink-divider);
+}
+
+.list li:last-child {
+  border-bottom: none;
+}
+
+.team {
+  width: 100%;
+  min-height: 48px;
+  border: none;
+  background: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  font-family: var(--rink-font-ui);
+  color: var(--rink-ink);
+  cursor: pointer;
+}
+
+.team[aria-pressed="true"] {
+  color: var(--rink-red);
+}
+
+.name {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.conf {
+  font-size: 12px;
+  color: var(--rink-ink-2);
+}
+
+.empty {
+  padding: 14px 0;
+  font-size: 14px;
+  color: var(--rink-ink-2);
+}

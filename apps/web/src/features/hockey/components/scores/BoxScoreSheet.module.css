@@ -1,0 +1,36 @@
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.when {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--rink-ink-2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.when[data-live] {
+  color: var(--rink-red);
+}
+
+.facts {
+  font-size: 13px;
+  color: var(--rink-ink-2);
+}
+
+.lines {
+  background: var(--rink-card);
+  border: 1px solid var(--rink-line);
+  border-top: 5px solid var(--rink-red);
+  border-radius: 16px;
+  padding: 6px 12px;
+}
+
+.loading {
+  font-size: 13px;
+  color: var(--rink-ink-2);
+  padding: 8px 2px;
+}
