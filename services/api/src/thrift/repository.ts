@@ -1,9 +1,4 @@
-import { PutCommand, QueryCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
-import {
-  quantile,
-  type ThriftCalibration,
-  type ThriftItemType,
-} from "@lifehub/shared";
+import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { isConditionalCheckFailed } from "../shared/conditionalCheck";
 import { db } from "../shared/db";
 import { requireEnv } from "../shared/env";
@@ -11,7 +6,7 @@ import { HttpError } from "../shared/http";
 
 const table = () => requireEnv("TABLE_NAME");
 
-/** Lookups one person can run per day (eBay allows 5,000 calls a day in all). */
+/** Lookups one person can run per day, to keep traffic to Poshmark light. */
 export const DAILY_LOOKUPS = 60;
 
 /**
@@ -39,53 +34,4 @@ export async function takeLookup(userId: string, now = new Date()) {
     }
     throw error;
   }
-}
-
-// Calibration is shared by everyone who uses Thrift: each saved check makes
-// the estimate better for the whole group. It holds numbers people typed in,
-// never eBay listing data.
-const calPk = (itemType: ThriftItemType) => `CAL#${itemType}`;
-
-export async function saveSale(
-  userId: string,
-  sale: {
-    itemType: ThriftItemType;
-    query: string;
-    ceiling: number;
-    sold: number;
-  },
-  now = new Date(),
-) {
-  await db.send(
-    new PutCommand({
-      TableName: table(),
-      Item: {
-        pk: calPk(sale.itemType),
-        sk: `${now.toISOString()}#${userId}`,
-        query: sale.query,
-        ceiling: sale.ceiling,
-        sold: sale.sold,
-        ratio: sale.sold / sale.ceiling,
-      },
-    }),
-  );
-}
-
-/** The median sold ÷ asking ratio for this kind of item, or null with no checks. */
-export async function getCalibration(
-  itemType: ThriftItemType,
-): Promise<ThriftCalibration | null> {
-  const res = await db.send(
-    new QueryCommand({
-      TableName: table(),
-      KeyConditionExpression: "pk = :pk",
-      ExpressionAttributeValues: { ":pk": calPk(itemType) },
-      ProjectionExpression: "ratio",
-    }),
-  );
-  const ratios = (res.Items ?? [])
-    .map((item) => Number(item.ratio))
-    .filter((r) => Number.isFinite(r) && r > 0);
-  const median = quantile(ratios, 0.5);
-  return median === null ? null : { ratio: median, checks: ratios.length };
 }

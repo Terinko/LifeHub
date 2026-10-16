@@ -82,5 +82,14 @@
       "Every listing behind the number is one tap away, and you can mark any that aren't a match.",
       "Links to Terapeak and eBay's Sold filter let you check real sales, and the price you saw there sharpens future estimates for the group."
     ]
+  },
+  {
+    "id": "2026-10-16-thrift-poshmark",
+    "date": "2026-10-16",
+    "tools": ["thrift"],
+    "bullets": [
+      "Thrift now reads real sold prices from Poshmark: \"Likely sells for\" is the middle half of recent sales for the item, and every sale behind it is one tap away.",
+      "If Poshmark doesn't answer, or you've used today's lookups, you can look up the sales yourself, type the typical price, and still get a verdict."
+    ]
   }
 ]

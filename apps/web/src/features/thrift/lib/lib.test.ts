@@ -6,25 +6,22 @@ import {
   type ThriftListing,
 } from "@lifehub/shared";
 import { matchBrands } from "./brands";
-import { terapeakUrl } from "./links";
-import { confidence, estimateText, howText, verdictLine } from "./present";
+import { poshmarkSoldUrl } from "./links";
+import {
+  confidence,
+  estimateText,
+  howText,
+  soldVerdict,
+  verdictLine,
+} from "./present";
 
-const fixed = (prices: number[]): ThriftListing[] =>
+const sold = (prices: number[]): ThriftListing[] =>
   prices.map((price, i) => ({
-    id: `f${i}`,
+    id: `s${i}`,
     title: "Item",
     price,
-    kind: "fixed",
-    url: "https://www.ebay.com/itm/1",
+    url: `https://poshmark.com/listing/s${i}`,
   }));
-const auction = (id: string, price: number, bids = 3): ThriftListing => ({
-  id,
-  title: "Item",
-  price,
-  kind: "auction",
-  bids,
-  url: "https://www.ebay.com/itm/2",
-});
 
 const NONE = new Set<string>();
 const TEN = [40, 42, 44, 46, 48, 50, 55, 60, 65, 70];
@@ -57,79 +54,77 @@ describe("matchBrands", () => {
 });
 
 describe("thriftEstimate", () => {
-  it("is a range from the auction floor to the cheapest quarter", () => {
-    const est = thriftEstimate(
-      [...fixed(TEN), auction("a", 31), auction("b", 36)],
-      NONE,
-      null,
-    );
-    expect(est.kind).toBe("range");
-    expect(est.low).toBe(33.5);
-    expect(est.high).toBeCloseTo(44.5);
-    expect(estimateText(est)).toBe("$34–$45");
-  });
-
-  it("uses the calibrated ratio once there are enough checks", () => {
-    const est = thriftEstimate(fixed(TEN), NONE, { ratio: 0.7, checks: 6 });
-    expect(est.kind).toBe("calibrated");
-    expect(est.low).toBeCloseTo(44.5 * 0.7);
-    expect(est.high).toBeCloseTo(44.5);
-  });
-
-  it("falls back to the asking price before calibration, and says so", () => {
-    const est = thriftEstimate(fixed(TEN), NONE, { ratio: 0.7, checks: 2 });
-    expect(est.kind).toBe("asking");
-    expect(howText(est, { ratio: 0.7, checks: 2 }, "Jeans or pants")).toContain(
-      "(2 of 5)",
+  it("is the middle half of the sale prices", () => {
+    const est = thriftEstimate(sold(TEN), NONE);
+    expect(est.low).toBe(44.5);
+    expect(est.typical).toBe(49);
+    expect(est.high).toBe(58.75);
+    expect(estimateText(est)).toBe("$45–$59");
+    expect(howText(est)).toMatch(
+      /^The middle half of 10 recent Poshmark sales, with a typical sale at \$49\./,
     );
   });
 
-  it("gives no estimate with too few listings and no auctions", () => {
-    const est = thriftEstimate(fixed([25, 32, 48]), NONE, null);
-    expect(est.kind).toBe("none");
+  it("gives no estimate with too few sales", () => {
+    const est = thriftEstimate(sold([25, 32, 48]), NONE);
+    expect(est.low).toBeNull();
+    expect(estimateText(est)).toBe("No estimate");
     expect(thriftVerdict(5, est)).toBe("unsure");
-    expect(verdictLine("unsure", 5, est)).toMatch(/^Only 3 current listings/);
+    expect(verdictLine("unsure", 5, est)).toBe(
+      "Only 3 matching sales on Poshmark. That's too few to judge.",
+    );
     expect(confidence(est, true).level).toBe("Low");
   });
 
-  it("leaves excluded listings out", () => {
-    const listings = fixed(TEN);
-    const est = thriftEstimate(listings, new Set(["f0", "f1", "f2"]), null);
-    expect(est.kind).toBe("none");
-    expect(est.fixed).toHaveLength(7);
+  it("leaves sales marked as not a match out", () => {
+    const est = thriftEstimate(sold(TEN), new Set(["s0", "s1", "s2", "s3"]));
+    expect(est.prices).toEqual([48, 50, 55, 60, 65, 70]);
+    expect(est.low).toBe(51.25);
   });
 
-  it("ignores auctions nobody has bid on", () => {
-    const est = thriftEstimate([auction("a", 5, 0)], NONE, null);
-    expect(est.kind).toBe("none");
+  it("trusts many close prices and a brand read off the tag", () => {
+    const many = thriftEstimate(sold([...TEN, ...TEN]), NONE);
+    expect(confidence(many, true)).toEqual({
+      level: "High",
+      why: "brand read from the tag, 20 matching sales, prices close together",
+    });
+    expect(confidence(many, false).level).toBe("Medium");
+    expect(confidence(thriftEstimate(sold(TEN), NONE), false).level).toBe(
+      "Low",
+    );
   });
 });
 
 describe("thriftVerdict", () => {
-  const est = thriftEstimate([...fixed(TEN), auction("a", 30)], NONE, null);
+  const est = thriftEstimate(sold(TEN), NONE);
 
   it("waits for a tag price", () => {
     expect(thriftVerdict(null, est)).toBeNull();
+    expect(verdictLine(null, null, est)).toBe(
+      "Type the tag price to get a verdict.",
+    );
   });
 
   it("calls a third of the low end a good find", () => {
-    expect(thriftVerdict(10, est)).toBe("good");
-    expect(thriftVerdict(15, est)).toBe("fair");
-    expect(thriftVerdict(25, est)).toBe("skip");
+    expect(thriftVerdict(14, est)).toBe("good");
+    expect(verdictLine("good", 14, est)).toBe(
+      "Tag $14 is about a third of the low end of what it sells for.",
+    );
+    expect(thriftVerdict(25, est)).toBe("fair");
+    expect(thriftVerdict(35, est)).toBe("skip");
   });
 
-  it("is not sure when asking prices are spread too wide", () => {
+  it("is not sure when sale prices are spread too wide", () => {
     const wide = thriftEstimate(
-      fixed([10, 10, 10, 12, 50, 60, 80, 90, 100, 120]),
+      sold([10, 10, 10, 12, 50, 60, 80, 90, 100, 120]),
       NONE,
-      null,
     );
     expect(thriftVerdict(2, wide)).toBe("unsure");
   });
 });
 
 describe("links and search", () => {
-  it("builds the eBay search from the brand and detail", () => {
+  it("builds the search from the brand and detail", () => {
     expect(
       thriftQuery({
         brand: "Levi's",
@@ -140,10 +135,28 @@ describe("links and search", () => {
     expect(thriftQuery({ brand: "Coach", itemType: "Bag" })).toBe("coach bag");
   });
 
-  it("opens Terapeak's sold tab for the same search", () => {
-    const url = new URL(terapeakUrl("coach bag"));
-    expect(url.pathname).toBe("/sh/research");
-    expect(url.searchParams.get("keywords")).toBe("coach bag");
-    expect(url.searchParams.get("tabName")).toBe("SOLD");
+  it("opens Poshmark's sold search for the same words", () => {
+    const url = new URL(poshmarkSoldUrl("coach bag"));
+    expect(url.searchParams.get("query")).toBe("coach bag");
+    expect(url.searchParams.get("availability")).toBe("sold_out");
+  });
+});
+
+describe("soldVerdict", () => {
+  it("waits for the sold price, then the tag price", () => {
+    expect(soldVerdict(8, null).verdict).toBeNull();
+    expect(soldVerdict(null, 30)).toEqual({
+      verdict: null,
+      line: "Type the tag price to get a verdict.",
+    });
+  });
+
+  it("judges the tag against what it sold for", () => {
+    expect(soldVerdict(9, 30)).toEqual({
+      verdict: "good",
+      line: "Tag $9 is about a third of the $30 you saw it sell for.",
+    });
+    expect(soldVerdict(18, 30).verdict).toBe("fair");
+    expect(soldVerdict(25, 30).verdict).toBe("skip");
   });
 });

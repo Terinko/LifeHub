@@ -21,15 +21,12 @@ const dateFmt = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
 });
 
-function endsIn(iso: string | undefined) {
-  if (!iso) return "";
-  const hours = Math.round((Date.parse(iso) - Date.now()) / 3_600_000);
-  if (!Number.isFinite(hours)) return "";
-  if (hours < 1) return "ends within the hour";
-  return `ends in ${hours}h`;
-}
+const day = (iso: string | undefined) => {
+  const t = iso ? Date.parse(iso) : NaN;
+  return Number.isFinite(t) ? dateFmt.format(new Date(t)) : undefined;
+};
 
-/** Every listing behind the estimate; "Not a match" recalculates on the spot. */
+/** Every sale behind the estimate; "Not a match" recalculates on the spot. */
 export function EvidenceScreen({
   data,
   estimate,
@@ -38,42 +35,34 @@ export function EvidenceScreen({
   onToggle,
   onBack,
 }: Props) {
-  const auctions = data.listings.filter((l) => l.kind === "auction");
-  const fixed = data.listings
-    .filter((l) => l.kind === "fixed")
-    .sort((a, b) => a.price - b.price);
-  const dates = fixed
-    .map((l) => l.listedAt)
+  const sales = [...data.listings].sort((a, b) => a.price - b.price);
+  const dates = data.listings
+    .map((l) => l.soldAt)
     .filter((d): d is string => !!d)
     .sort();
-  const [firstDate] = dates;
-  const lastDate = dates.at(-1);
+  const first = day(dates[0]);
+  const last = day(dates.at(-1));
 
   const row = (l: ThriftListing) => {
     const out = excluded.has(l.id);
-    const meta =
-      l.kind === "auction"
-        ? `${l.bids ?? 0} bid${l.bids === 1 ? "" : "s"} · ${endsIn(l.endsAt)}`
-        : [
-            l.condition,
-            l.listedAt && `listed ${dateFmt.format(new Date(l.listedAt))}`,
-            l.shipping
-              ? `+${money(l.shipping)} shipping`
-              : l.shipping === 0
-                ? "free shipping"
-                : "",
-          ]
-            .filter(Boolean)
-            .join(" · ");
-    const low =
-      l.kind === "fixed" &&
+    const meta = [
+      l.size && `size ${l.size}`,
+      l.condition,
+      day(l.soldAt) && `sold ${day(l.soldAt)}`,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    // Outline the middle half, the sales the estimate is made of.
+    const middle =
       !out &&
-      estimate.ceiling !== null &&
-      l.price <= estimate.ceiling;
+      estimate.low !== null &&
+      estimate.high !== null &&
+      l.price >= estimate.low &&
+      l.price <= estimate.high;
     return (
       <div
         key={l.id}
-        className={`${styles.item} ${out ? styles.out : ""} ${low ? styles.lowQuarter : ""}`}
+        className={`${styles.item} ${out ? styles.out : ""} ${middle ? styles.lowQuarter : ""}`}
       >
         {l.imageUrl ? (
           <img
@@ -115,14 +104,12 @@ export function EvidenceScreen({
   return (
     <>
       <div>
-        <div className={styles.label}>Asking prices, not sales</div>
+        <div className={styles.label}>Sold on Poshmark</div>
         <p className={styles.sec}>
-          Current eBay listings for “{data.query}”
-          {firstDate &&
-            lastDate &&
-            firstDate !== lastDate &&
-            `, listed ${dateFmt.format(new Date(firstDate))} to ${dateFmt.format(new Date(lastDate))}`}
-          . Tap a title to open it on eBay.
+          Recent sales for “{data.query}”
+          {first && last && first !== last && `, sold ${first} to ${last}`}.
+          Each price is what it was listed at when it sold. Tap a title to open
+          it on Poshmark.
         </p>
       </div>
 
@@ -139,22 +126,15 @@ export function EvidenceScreen({
         </div>
       </div>
 
-      <div className={styles.label}>Live auctions with bids</div>
-      {auctions.length ? (
-        <div className={styles.list}>{auctions.map(row)}</div>
+      <div className={styles.label}>Cheapest first · middle half outlined</div>
+      {sales.length ? (
+        <div className={styles.list}>{sales.map(row)}</div>
       ) : (
-        <p className={styles.sec}>No live auctions with bids right now.</p>
-      )}
-
-      <div className={styles.label}>Buy It Now · cheapest quarter outlined</div>
-      {fixed.length ? (
-        <div className={styles.list}>{fixed.map(row)}</div>
-      ) : (
-        <p className={styles.sec}>No Buy It Now listings match.</p>
+        <p className={styles.sec}>No sales match this search.</p>
       )}
 
       <p className={styles.sec}>
-        If you plan to resell, eBay takes roughly 13% when an item sells.
+        If you plan to resell, Poshmark keeps 20% of sales over $15.
       </p>
       <button type="button" className={styles.quiet} onClick={onBack}>
         Back to the verdict

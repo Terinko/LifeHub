@@ -79,7 +79,7 @@ export class BackendStack extends cdk.Stack {
     const applicationsTable = dataTable("ApplicationsTable", pkAndSk);
     // Public poll snapshots, so Hockey can chart a team's rank by week.
     const hockeyTable = dataTable("HockeyTable", pkAndSk);
-    // Thrift's daily lookup counters and the group's sold-price checks.
+    // Thrift's daily lookup counters.
     const thriftTable = dataTable("ThriftTable", pkAndSk);
 
     const billsLambda = apiFunction(this, "LifeHubBillsHandler", "bills", {
@@ -142,14 +142,11 @@ export class BackendStack extends cdk.Stack {
       memorySize: 512,
     });
 
-    // Searches live eBay listings (Browse API). Without the eBay keys the
-    // tool answers "not connected yet" instead of failing.
+    // Reads recent sold listings from Poshmark's search page.
     const thriftLambda = apiFunction(this, "ThriftHandler", "thrift", {
       environment: {
         TABLE_NAME: thriftTable.tableName,
         USERS_TABLE: usersTable.tableName,
-        EBAY_CLIENT_ID: process.env.EBAY_CLIENT_ID || "",
-        EBAY_CLIENT_SECRET: process.env.EBAY_CLIENT_SECRET || "",
       },
       timeout: cdk.Duration.seconds(20),
     });
@@ -439,14 +436,12 @@ export class BackendStack extends cdk.Stack {
       thriftLambda,
     );
 
-    for (const path of ["/thrift/lookup", "/thrift/sales"]) {
-      httpApi.addRoutes({
-        path,
-        methods: [apigw.HttpMethod.POST],
-        integration: thriftIntegration,
-        authorizer,
-      });
-    }
+    httpApi.addRoutes({
+      path: "/thrift/lookup",
+      methods: [apigw.HttpMethod.POST],
+      integration: thriftIntegration,
+      authorizer,
+    });
 
     const websiteBucket = new s3.Bucket(this, "LifeHubFrontendBucket", {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,

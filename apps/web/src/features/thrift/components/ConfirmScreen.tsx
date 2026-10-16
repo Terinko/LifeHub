@@ -126,7 +126,7 @@ export function ConfirmScreen({
 
       {ready && form.itemType && (
         <div>
-          <span className={styles.label}>Will search eBay for</span>
+          <span className={styles.label}>Will search Poshmark sales for</span>
           <div className={styles.preview}>
             {thriftQuery({
               brand: form.brand,

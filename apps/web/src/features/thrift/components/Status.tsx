@@ -1,8 +1,8 @@
 import { ApiError } from "../../../shared/api/client";
-import { ebaySoldUrl, terapeakUrl } from "../lib/links";
+import { ebaySoldUrl, poshmarkSoldUrl } from "../lib/links";
 import styles from "../thrift.module.css";
 
-/** The two-step progress shown while the tag is read or eBay is searched. */
+/** The two-step progress shown while the tag is read or sales are found. */
 export function Checking({
   photoUrl,
   steps,
@@ -46,37 +46,27 @@ export function LookupError({
   onEdit: () => void;
 }) {
   const status = error instanceof ApiError ? error.status : 0;
-  const title =
-    status === 503
-      ? "eBay isn't connected yet"
-      : status === 429
-        ? "That's today's lookups"
-        : "Couldn't reach eBay";
   const body =
-    status === 503
-      ? "Current listings will show here once eBay is connected. You can still check real sales for this item now."
-      : status === 0
-        ? "Check your signal and try again. Your answers are kept."
-        : error.message;
+    status === 0
+      ? "Check your signal and try again. Your answers are kept."
+      : error.message;
 
   return (
     <>
       <div className={`${styles.verdict} ${styles.unsure}`}>
-        <div className={styles.word}>{title}</div>
+        <div className={styles.word}>Couldn't get sales</div>
         <div>{body}</div>
       </div>
-      {status !== 503 && status !== 429 && (
-        <button type="button" className={styles.main} onClick={onRetry}>
-          Try again
-        </button>
-      )}
+      <button type="button" className={styles.main} onClick={onRetry}>
+        Try again
+      </button>
       <a
-        className={status === 503 ? styles.main : styles.quiet}
-        href={terapeakUrl(query)}
+        className={styles.quiet}
+        href={poshmarkSoldUrl(query)}
         target="_blank"
         rel="noopener noreferrer"
       >
-        Check real sales in Terapeak ↗
+        See sold listings on Poshmark ↗
       </a>
       <a
         className={styles.textBtn}
@@ -85,7 +75,7 @@ export function LookupError({
         target="_blank"
         rel="noopener noreferrer"
       >
-        No seller account? eBay's Sold filter ↗
+        Or eBay's sold listings ↗
       </a>
       <button type="button" className={styles.textBtn} onClick={onEdit}>
         Edit the search

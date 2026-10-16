@@ -95,6 +95,7 @@
 .quiet {
   composes: btn;
   background: var(--room-card);
+  color: var(--room-ink);
   border: 1px solid var(--room-line);
   font-weight: 600;
 }
