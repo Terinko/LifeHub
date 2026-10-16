@@ -1,18 +1,14 @@
-import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
 import type {
   ThriftEstimate,
   ThriftItemType,
   ThriftLookup,
   ThriftVerdict,
 } from "@lifehub/shared";
-import { saveSale } from "../api";
-import { ebaySoldUrl, terapeakUrl } from "../lib/links";
+import { ebaySoldUrl, poshmarkSoldUrl } from "../lib/links";
 import {
   confidence,
   estimateText,
   howText,
-  money,
   VERDICT_WORDS,
   verdictLine,
 } from "../lib/present";
@@ -41,7 +37,6 @@ export function ResultScreen(props: Props) {
   const { data, estimate, verdict, tag } = props;
   const conf = confidence(estimate, props.brandFromTag);
   const total = data.listings.length;
-  const [checkedSales, setCheckedSales] = useState(false);
 
   return (
     <>
@@ -81,20 +76,16 @@ export function ResultScreen(props: Props) {
         <div>{verdictLine(verdict, tag, estimate)}</div>
       </div>
 
-      {estimate.kind !== "none" && (
+      {estimate.low !== null && (
         <div className={styles.estimate}>
           <div className={styles.label}>Likely sells for</div>
           <div className={`${styles.big} ${styles.num}`}>
             {estimateText(estimate)}
           </div>
-          <span className={styles.pill}>
-            {estimate.kind === "asking"
-              ? "Asking prices, not sales"
-              : "Estimate, not sold prices"}
-          </span>
+          <span className={styles.pill}>From real Poshmark sales</span>
           <PriceScale estimate={estimate} tag={tag} />
           <p className={styles.how}>
-            {howText(estimate, data.calibration, props.itemType)}{" "}
+            {howText(estimate)}{" "}
             <button
               type="button"
               className={styles.textBtn}
@@ -117,20 +108,19 @@ export function ResultScreen(props: Props) {
       {total > 0 && (
         <button
           type="button"
-          className={styles.quiet}
+          className={styles.main}
           onClick={props.onEvidence}
         >
-          See the {total} listing{total === 1 ? "" : "s"}
+          See the {total} sale{total === 1 ? "" : "s"}
         </button>
       )}
       <a
-        className={styles.main}
-        href={terapeakUrl(data.query)}
+        className={total > 0 ? styles.quiet : styles.main}
+        href={poshmarkSoldUrl(data.query)}
         target="_blank"
         rel="noopener noreferrer"
-        onClick={() => setCheckedSales(true)}
       >
-        Check real sales in Terapeak ↗
+        See these sales on Poshmark ↗
       </a>
       <a
         className={styles.textBtn}
@@ -138,20 +128,11 @@ export function ResultScreen(props: Props) {
         href={ebaySoldUrl(data.query)}
         target="_blank"
         rel="noopener noreferrer"
-        onClick={() => setCheckedSales(true)}
       >
-        No seller account? eBay's Sold filter ↗
+        Double-check eBay's sold listings ↗
       </a>
 
-      {checkedSales && estimate.ceiling !== null && (
-        <SaleCheck
-          itemType={props.itemType}
-          query={data.query}
-          ceiling={estimate.ceiling}
-        />
-      )}
-
-      {estimate.kind === "none" && (
+      {estimate.low === null && (
         <button type="button" className={styles.quiet} onClick={props.onEdit}>
           Broaden the search
         </button>
@@ -166,64 +147,5 @@ export function ResultScreen(props: Props) {
         Scan the next item
       </button>
     </>
-  );
-}
-
-type SaleProps = { itemType: ThriftItemType; query: string; ceiling: number };
-
-/** One optional question after Terapeak, which sharpens future estimates. */
-function SaleCheck({ itemType, query, ceiling }: SaleProps) {
-  const [value, setValue] = useState("");
-  const save = useMutation({ mutationFn: saveSale });
-  const sold = Number(value);
-
-  if (save.isSuccess) {
-    return (
-      <div className={styles.card}>
-        <span className={styles.label}>Saved</span>
-        <p style={{ margin: "4px 0 0" }}>
-          Thanks. Future estimates for items like this will use it.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <form
-      className={styles.card}
-      style={{ display: "grid", gap: 10 }}
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (sold > 0) save.mutate({ itemType, query, ceiling, sold });
-      }}
-    >
-      <span className={styles.label}>Back from Terapeak?</span>
-      <strong>What did they sell for?</strong>
-      <p className={styles.sec}>
-        Optional. Type the average sold price you saw. The cheapest asking price
-        here was {money(ceiling)}.
-      </p>
-      <div className={styles.tagPrice}>
-        <label htmlFor="thrift-sold">Average sold</label>
-        <span className={styles.sticker}>
-          $
-          <input
-            id="thrift-sold"
-            inputMode="decimal"
-            placeholder="0"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-          />
-        </span>
-      </div>
-      {save.isError && <p className={styles.sec}>{save.error.message}</p>}
-      <button
-        type="submit"
-        className={styles.main}
-        disabled={!(sold > 0) || save.isPending}
-      >
-        {save.isPending ? "Saving" : "Save"}
-      </button>
-    </form>
   );
 }

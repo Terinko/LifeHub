@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ebaySoldUrl, terapeakUrl } from "../lib/links";
+import { ebaySoldUrl, poshmarkSoldUrl } from "../lib/links";
 import { soldVerdict, VERDICT_WORDS } from "../lib/present";
 import styles from "../thrift.module.css";
 
@@ -22,8 +22,8 @@ const amount = (value: string) => {
 };
 
 /**
- * The verdict without live listings: the person looks up real sales on
- * eBay and types the typical sold price, so every number is one they saw.
+ * The verdict without the lookup: the person looks up real sales and types
+ * the typical sold price, so every number is one they saw.
  */
 export function SelfCheck(props: Props) {
   const [soldInput, setSoldInput] = useState("");
@@ -61,20 +61,20 @@ export function SelfCheck(props: Props) {
         <span className={styles.label}>1 · Look up real sales</span>
         <a
           className={styles.main}
-          href={ebaySoldUrl(props.query)}
+          href={poshmarkSoldUrl(props.query)}
           target="_blank"
           rel="noopener noreferrer"
         >
-          See sold listings on eBay ↗
+          See sold listings on Poshmark ↗
         </a>
         <a
           className={styles.textBtn}
           style={{ textAlign: "center" }}
-          href={terapeakUrl(props.query)}
+          href={ebaySoldUrl(props.query)}
           target="_blank"
           rel="noopener noreferrer"
         >
-          Have a seller account? Terapeak ↗
+          Or eBay's sold listings ↗
         </a>
       </div>
 

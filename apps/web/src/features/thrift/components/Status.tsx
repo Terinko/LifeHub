@@ -1,8 +1,8 @@
 import { ApiError } from "../../../shared/api/client";
-import { ebaySoldUrl, terapeakUrl } from "../lib/links";
+import { ebaySoldUrl, poshmarkSoldUrl } from "../lib/links";
 import styles from "../thrift.module.css";
 
-/** The two-step progress shown while the tag is read or eBay is searched. */
+/** The two-step progress shown while the tag is read or sales are found. */
 export function Checking({
   photoUrl,
   steps,
@@ -54,7 +54,7 @@ export function LookupError({
   return (
     <>
       <div className={`${styles.verdict} ${styles.unsure}`}>
-        <div className={styles.word}>Couldn't reach eBay</div>
+        <div className={styles.word}>Couldn't get sales</div>
         <div>{body}</div>
       </div>
       <button type="button" className={styles.main} onClick={onRetry}>
@@ -62,11 +62,11 @@ export function LookupError({
       </button>
       <a
         className={styles.quiet}
-        href={terapeakUrl(query)}
+        href={poshmarkSoldUrl(query)}
         target="_blank"
         rel="noopener noreferrer"
       >
-        Check real sales in Terapeak ↗
+        See sold listings on Poshmark ↗
       </a>
       <a
         className={styles.textBtn}
@@ -75,7 +75,7 @@ export function LookupError({
         target="_blank"
         rel="noopener noreferrer"
       >
-        No seller account? eBay's Sold filter ↗
+        Or eBay's sold listings ↗
       </a>
       <button type="button" className={styles.textBtn} onClick={onEdit}>
         Edit the search

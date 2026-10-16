@@ -20,7 +20,6 @@ export function markSuspects(
     listings
       .filter(
         (l) =>
-          l.kind === "fixed" &&
           (wantsBundle || !BUNDLE.test(l.title)) &&
           (wantsKids || !KIDS.test(l.title)),
       )
@@ -34,11 +33,9 @@ export function markSuspects(
         ? "Looks like a lot or bundle"
         : !wantsKids && KIDS.test(l.title)
           ? "Looks like a kids' size"
-          : l.kind === "fixed" && middle !== null && l.price > middle * OUTLIER
+          : middle !== null && l.price > middle * OUTLIER
             ? "Priced far above the rest"
-            : l.kind === "fixed" &&
-                middle !== null &&
-                l.price < middle / OUTLIER
+            : middle !== null && l.price < middle / OUTLIER
               ? "Priced far below the rest"
               : undefined;
     return suspect ? { ...l, suspect } : l;

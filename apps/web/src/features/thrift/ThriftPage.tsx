@@ -68,10 +68,7 @@ export function ThriftPage() {
   );
 
   const estimate = useMemo(
-    () =>
-      run.data
-        ? thriftEstimate(run.data.listings, excluded, run.data.calibration)
-        : undefined,
+    () => (run.data ? thriftEstimate(run.data.listings, excluded) : undefined),
     [run.data, excluded],
   );
   const tagNumber = Number.parseFloat(tagInput);
@@ -224,7 +221,7 @@ export function ThriftPage() {
             photoUrl={photoUrl}
             steps={[
               "Brand and item confirmed",
-              "Finding eBay listings and live auctions",
+              "Finding recent sales on Poshmark",
             ]}
           />
         )}

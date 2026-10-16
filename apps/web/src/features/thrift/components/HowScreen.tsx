@@ -1,4 +1,4 @@
-import { THRIFT_MIN_CHECKS, THRIFT_MIN_LISTINGS } from "@lifehub/shared";
+import { THRIFT_MIN_SALES } from "@lifehub/shared";
 import styles from "../thrift.module.css";
 
 /** How the estimate and verdict are worked out, in plain words. */
@@ -6,27 +6,26 @@ export function HowScreen({ onBack }: { onBack: () => void }) {
   return (
     <>
       <h2 style={{ margin: 0, fontSize: 20 }}>How the estimate works</h2>
-      <p className={styles.sec}>
-        eBay doesn't share sold prices with apps like this one, so the estimate
-        comes from what's for sale right now, checked against real sales people
-        in the group have looked up.
-      </p>
       <ol className={styles.howList}>
         <li>
-          <b>Live auctions with bids set the floor.</b> A bid is a real buyer's
-          commitment, and the final price only goes up from there.
+          <b>It finds recent sales.</b> The search reads Poshmark's sold
+          listings for the brand and detail you gave, up to 48 of the newest.
         </li>
         <li>
-          <b>The cheapest quarter of Buy It Now listings sets the ceiling.</b> A
-          buyer can always pay that, so similar items rarely sell above it.
+          <b>It drops the likely mismatches.</b> Lots, kids' sizes and prices
+          far from the rest are left out, and you can mark any other sale as not
+          a match.
         </li>
         <li>
-          <b>The group's Terapeak checks fill the gap.</b> When there are no
-          auctions, the estimate uses how far below asking prices this kind of
-          item actually sold, once there are {THRIFT_MIN_CHECKS} checks. Before
-          that it shows the asking price and says so.
+          <b>It takes the middle half.</b> "Likely sells for" runs from the
+          cheapest quarter to the dearest quarter of what's left, so a few odd
+          sales don't skew it.
         </li>
       </ol>
+      <p className={styles.sec}>
+        A Poshmark price is what the item was listed at when it sold. Buyers
+        often make offers, so the real sale can be a little lower.
+      </p>
       <div className={styles.card}>
         <span className={styles.label}>The verdict</span>
         <ul className={styles.howList} style={{ marginTop: 8 }}>
@@ -34,8 +33,8 @@ export function HowScreen({ onBack }: { onBack: () => void }) {
           <li>Fair price: at most two thirds.</li>
           <li>Skip: more than that.</li>
           <li>
-            Not sure: fewer than {THRIFT_MIN_LISTINGS} matching listings and no
-            auctions, or prices too spread out to trust.
+            Not sure: fewer than {THRIFT_MIN_SALES} matching sales, or prices
+            too spread out to trust.
           </li>
         </ul>
       </div>
