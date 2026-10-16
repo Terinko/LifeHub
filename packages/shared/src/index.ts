@@ -3,3 +3,4 @@ export * from "./applications";
 export * from "./fantasy";
 export * from "./kitchen";
 export * from "./hockey";
+export * from "./thrift";

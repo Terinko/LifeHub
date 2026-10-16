@@ -49,6 +49,12 @@ const TOOL_TILES: (HubTile & { key: ToolPermission })[] = [
     subtitle: "Scores, polls & the Bobcats",
     path: "/hockey",
   },
+  {
+    key: "thrift",
+    label: "Thrift",
+    subtitle: "Is this a good find?",
+    path: "/thrift",
+  },
 ];
 
 /** Only admins see these, after the tools. */
