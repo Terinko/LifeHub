@@ -7,7 +7,13 @@ import {
 } from "@lifehub/shared";
 import { matchBrands } from "./brands";
 import { terapeakUrl } from "./links";
-import { confidence, estimateText, howText, verdictLine } from "./present";
+import {
+  confidence,
+  estimateText,
+  howText,
+  soldVerdict,
+  verdictLine,
+} from "./present";
 
 const fixed = (prices: number[]): ThriftListing[] =>
   prices.map((price, i) => ({
@@ -145,5 +151,24 @@ describe("links and search", () => {
     expect(url.pathname).toBe("/sh/research");
     expect(url.searchParams.get("keywords")).toBe("coach bag");
     expect(url.searchParams.get("tabName")).toBe("SOLD");
+  });
+});
+
+describe("soldVerdict", () => {
+  it("waits for the sold price, then the tag price", () => {
+    expect(soldVerdict(8, null).verdict).toBeNull();
+    expect(soldVerdict(null, 30)).toEqual({
+      verdict: null,
+      line: "Type the tag price to get a verdict.",
+    });
+  });
+
+  it("judges the tag against what it sold for", () => {
+    expect(soldVerdict(9, 30)).toEqual({
+      verdict: "good",
+      line: "Tag $9 is about a third of the $30 you saw it sell for.",
+    });
+    expect(soldVerdict(18, 30).verdict).toBe("fair");
+    expect(soldVerdict(25, 30).verdict).toBe("skip");
   });
 });

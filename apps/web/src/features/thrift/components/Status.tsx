@@ -46,32 +46,22 @@ export function LookupError({
   onEdit: () => void;
 }) {
   const status = error instanceof ApiError ? error.status : 0;
-  const title =
-    status === 503
-      ? "eBay isn't connected yet"
-      : status === 429
-        ? "That's today's lookups"
-        : "Couldn't reach eBay";
   const body =
-    status === 503
-      ? "Current listings will show here once eBay is connected. You can still check real sales for this item now."
-      : status === 0
-        ? "Check your signal and try again. Your answers are kept."
-        : error.message;
+    status === 0
+      ? "Check your signal and try again. Your answers are kept."
+      : error.message;
 
   return (
     <>
       <div className={`${styles.verdict} ${styles.unsure}`}>
-        <div className={styles.word}>{title}</div>
+        <div className={styles.word}>Couldn't reach eBay</div>
         <div>{body}</div>
       </div>
-      {status !== 503 && status !== 429 && (
-        <button type="button" className={styles.main} onClick={onRetry}>
-          Try again
-        </button>
-      )}
+      <button type="button" className={styles.main} onClick={onRetry}>
+        Try again
+      </button>
       <a
-        className={status === 503 ? styles.main : styles.quiet}
+        className={styles.quiet}
         href={terapeakUrl(query)}
         target="_blank"
         rel="noopener noreferrer"

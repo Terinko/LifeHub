@@ -1,5 +1,6 @@
 import {
   THRIFT_MIN_CHECKS,
+  thriftVerdict,
   type ThriftCalibration,
   type ThriftEstimate,
   type ThriftItemType,
@@ -127,5 +128,42 @@ export function confidence(
           ? "Medium"
           : "Low",
     why: why.join(", "),
+  };
+}
+
+/** The verdict against a sold price the person looked up themselves. */
+export function soldVerdict(
+  tag: number | null,
+  sold: number | null,
+): { verdict: ThriftVerdict | null; line: string } {
+  if (sold === null) {
+    return { verdict: null, line: "Type what it sold for to get a verdict." };
+  }
+  const verdict = thriftVerdict(tag, {
+    kind: "range",
+    low: sold,
+    high: sold,
+    ceiling: null,
+    fixed: [],
+    bids: [],
+    spread: null,
+  });
+  if (tag === null) {
+    return { verdict, line: "Type the tag price to get a verdict." };
+  }
+  const r = tag / sold;
+  const share =
+    r <= 0.34
+      ? "about a third of"
+      : r <= 0.55
+        ? "about half of"
+        : r <= 0.7
+          ? "about two thirds of"
+          : r <= 1
+            ? "close to"
+            : "above";
+  return {
+    verdict,
+    line: `Tag ${money(tag)} is ${share} the ${money(sold)} you saw it sell for.`,
   };
 }

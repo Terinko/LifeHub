@@ -7,10 +7,12 @@ import { lookup } from "./api";
 import { ConfirmScreen, type ItemForm } from "./components/ConfirmScreen";
 import { EvidenceScreen } from "./components/EvidenceScreen";
 import { HowScreen } from "./components/HowScreen";
+import { SelfCheck } from "./components/SelfCheck";
 import { Checking, LookupError } from "./components/Status";
 import { ResultScreen } from "./components/ResultScreen";
 import { StartScreen } from "./components/StartScreen";
 import { matchBrands } from "./lib/brands";
+import { selfCheckReason } from "./lib/errors";
 import { readTag } from "./lib/ocr";
 import { useRoomBackground } from "./useRoomBackground";
 import { useThriftAccess } from "./useThriftAccess";
@@ -227,14 +229,29 @@ export function ThriftPage() {
           />
         )}
 
-        {screen === "result" && run.isError && form.itemType && (
-          <LookupError
-            error={run.error}
-            query={thriftQuery({ ...form, itemType: form.itemType })}
-            onRetry={runLookup}
-            onEdit={() => setScreen("confirm")}
-          />
-        )}
+        {screen === "result" &&
+          run.isError &&
+          form.itemType &&
+          (selfCheckReason(run.error) ? (
+            <SelfCheck
+              title={[form.brand, form.detail].filter(Boolean).join(" ")}
+              subtitle={`${form.brand} · ${form.itemType}`}
+              query={thriftQuery({ ...form, itemType: form.itemType })}
+              reason={selfCheckReason(run.error) ?? ""}
+              tag={tag}
+              tagInput={tagInput}
+              onTagInput={setTagInput}
+              onEdit={() => setScreen("confirm")}
+              onNext={next}
+            />
+          ) : (
+            <LookupError
+              error={run.error}
+              query={thriftQuery({ ...form, itemType: form.itemType })}
+              onRetry={runLookup}
+              onEdit={() => setScreen("confirm")}
+            />
+          ))}
 
         {screen === "result" && run.data && estimate && form.itemType && (
           <ResultScreen
