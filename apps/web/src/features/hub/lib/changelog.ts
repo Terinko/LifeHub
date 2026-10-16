@@ -8,6 +8,7 @@ const TOOL_LABELS: Record<string, string> = {
   fantasy: "Fantasy",
   weather: "Weather",
   hockey: "Hockey",
+  thrift: "Thrift",
 };
 
 /** The tag above a "What's New" entry: the tools it's about, or "General". */

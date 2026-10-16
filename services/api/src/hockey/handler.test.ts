@@ -10,7 +10,7 @@ vi.mock("../shared/db", () => ({ db: { send } }));
 process.env.TABLE_NAME = "Hockey";
 process.env.USERS_TABLE = "Users";
 const { handler } = await import("./handler");
-const { clearCache } = await import("./cache");
+const { clearCache } = await import("../shared/cache");
 
 const fixture = (name: string) =>
   readFileSync(new URL(`./fixtures/${name}`, import.meta.url), "utf8");
