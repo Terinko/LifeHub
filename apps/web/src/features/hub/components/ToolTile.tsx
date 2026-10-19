@@ -6,7 +6,6 @@ import {
   Receipt,
   ShieldCheck,
   Spade,
-  Tag,
   Tv,
   type LucideIcon,
 } from "lucide-react";
@@ -23,7 +22,6 @@ const ICONS: Record<TileKey, LucideIcon> = {
   fantasy: Tv,
   weather: CloudSun,
   hockey: Goal,
-  thrift: Tag,
   applications: Briefcase,
   admin: ShieldCheck,
 };

@@ -13,7 +13,7 @@ import {
 } from "@lifehub/shared";
 import { fetchJson, fetchText } from "../shared/fetchJson";
 import { notFound } from "../shared/http";
-import { cached } from "../shared/cache";
+import { cached } from "./cache";
 import { listPollSnapshots, savePollSnapshot } from "./repository";
 import { parseStats, STATS_URL } from "./sources/sidearmStats";
 import {

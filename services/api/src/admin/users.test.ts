@@ -143,7 +143,6 @@ describe("inviting", () => {
       fantasy: false,
       weather: false,
       hockey: false,
-      thrift: false,
     });
   });
 
