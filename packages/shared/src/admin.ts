@@ -7,7 +7,6 @@ export const TOOL_PERMISSIONS = [
   "fantasy",
   "weather",
   "hockey",
-  "thrift",
 ] as const;
 export type ToolPermission = (typeof TOOL_PERMISSIONS)[number];
 
@@ -31,7 +30,6 @@ export type UserProfile = {
   lastUsedPoker?: string;
   lastUsedFantasy?: string;
   lastUsedHockey?: string;
-  lastUsedThrift?: string;
 };
 
 /** One "What's New" entry (backend/lambda/admin/changelog.json). */

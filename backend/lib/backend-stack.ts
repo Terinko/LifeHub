@@ -79,8 +79,6 @@ export class BackendStack extends cdk.Stack {
     const applicationsTable = dataTable("ApplicationsTable", pkAndSk);
     // Public poll snapshots, so Hockey can chart a team's rank by week.
     const hockeyTable = dataTable("HockeyTable", pkAndSk);
-    // Thrift's daily lookup counters.
-    const thriftTable = dataTable("ThriftTable", pkAndSk);
 
     const billsLambda = apiFunction(this, "LifeHubBillsHandler", "bills", {
       environment: {
@@ -142,22 +140,12 @@ export class BackendStack extends cdk.Stack {
       memorySize: 512,
     });
 
-    // Reads recent sold listings from Poshmark's search page.
-    const thriftLambda = apiFunction(this, "ThriftHandler", "thrift", {
-      environment: {
-        TABLE_NAME: thriftTable.tableName,
-        USERS_TABLE: usersTable.tableName,
-      },
-      timeout: cdk.Duration.seconds(20),
-    });
-
     billsTable.grantReadWriteData(billsLambda);
     kitchenTable.grantReadWriteData(kitchenLambda);
     pokerTable.grantReadWriteData(pokerLambda);
     fantasyTable.grantReadWriteData(fantasyLambda);
     applicationsTable.grantReadWriteData(applicationsLambda);
     hockeyTable.grantReadWriteData(hockeyLambda);
-    thriftTable.grantReadWriteData(thriftLambda);
     // Read for permission checks; write so each tool can record a
     // lastUsed<Tool> timestamp on the caller's profile for admin visibility.
     usersTable.grantReadWriteData(pokerLambda);
@@ -165,7 +153,6 @@ export class BackendStack extends cdk.Stack {
     usersTable.grantWriteData(billsLambda);
     usersTable.grantReadWriteData(kitchenLambda);
     usersTable.grantReadWriteData(hockeyLambda);
-    usersTable.grantReadWriteData(thriftLambda);
     // Admin-only tool: just needs to re-verify the caller's role, no usage
     // stamping (the admin-visibility feature is about tracking everyone
     // *else*, not the admin's own use of an admin-only tool).
@@ -430,18 +417,6 @@ export class BackendStack extends cdk.Stack {
         authorizer,
       });
     }
-
-    const thriftIntegration = new HttpLambdaIntegration(
-      "ThriftIntegration",
-      thriftLambda,
-    );
-
-    httpApi.addRoutes({
-      path: "/thrift/lookup",
-      methods: [apigw.HttpMethod.POST],
-      integration: thriftIntegration,
-      authorizer,
-    });
 
     const websiteBucket = new s3.Bucket(this, "LifeHubFrontendBucket", {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
