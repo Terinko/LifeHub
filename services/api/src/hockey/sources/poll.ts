@@ -6,14 +6,22 @@ export const POLL_URL = "https://www.ncaa.com/rankings/icehockey-men/d1";
 
 type ParsedPoll = Omit<HockeyPoll, "history" | "seenAt">;
 
+/** "6", "T-6", "T6" or "6." → { rank: 6, tied }; NaN rank when not a rank. */
+function parseRank(text: string) {
+  const m = text.trim().match(/^(T-?)?\s*(\d+)\.?$/i);
+  return m ? { rank: Number(m[2]), tied: !!m[1] } : { rank: NaN, tied: false };
+}
+
 function parseRow(cells: string[]): HockeyPollRow | undefined {
   const [rank = "", teamCell = "", record = "", points = "0", previous = ""] =
     cells;
   const team = teamCell.match(/^(.*?)(?:\s*\((\d+)\))?$/);
-  if (!team || Number.isNaN(toNumber(rank))) return undefined;
-  const prev = toNumber(previous);
+  const current = parseRank(rank);
+  if (!team || Number.isNaN(current.rank)) return undefined;
+  const prev = parseRank(previous).rank;
   return {
-    rank: toNumber(rank),
+    rank: current.rank,
+    ...(current.tied ? { tied: true } : {}),
     team: (team[1] ?? "").trim(),
     firstPlaceVotes: team[2] ? Number(team[2]) : 0,
     record,

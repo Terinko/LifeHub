@@ -59,6 +59,8 @@ export type HockeyScoreboard = { date: string; games: HockeyGame[] };
 
 export type HockeyPollRow = {
   rank: number;
+  /** True when the rank is shared ("T-6" in the poll) */
+  tied?: boolean;
   team: string;
   firstPlaceVotes: number;
   record: string;
