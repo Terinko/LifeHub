@@ -1,4 +1,10 @@
-import { findRow, movement, rankTrend, votesOutside } from "../../lib/poll";
+import {
+  findRow,
+  movement,
+  rankLabel,
+  rankTrend,
+  votesOutside,
+} from "../../lib/poll";
 import { usePoll } from "../../queries";
 import card from "../chrome/card.module.css";
 import { Notice } from "../chrome/Notice";
@@ -38,7 +44,7 @@ export function PollTab({ teamName, onTeam }: Props) {
         >
           <div className={styles.mineHead}>
             <span className={`${card.score} ${styles.mineRank}`}>
-              {mine ? mine.rank : "NR"}
+              {mine ? rankLabel(mine) : "NR"}
             </span>
             <span className={styles.mineText}>
               <b>{teamName}</b>
@@ -68,7 +74,9 @@ export function PollTab({ teamName, onTeam }: Props) {
               data-mine={i === mineAt || undefined}
               onClick={() => onTeam(row.team)}
             >
-              <span className={`${card.score} ${styles.rank}`}>{row.rank}</span>
+              <span className={`${card.score} ${styles.rank}`}>
+                {rankLabel(row)}
+              </span>
               <span className={styles.team}>
                 <span className={styles.name}>{row.team}</span>
                 <span className={styles.points}>

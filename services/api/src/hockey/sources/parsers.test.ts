@@ -89,6 +89,35 @@ describe("USCHO poll", () => {
     expect(poll.others[0]).toEqual({ team: "Augustana", points: 70 });
     expect(poll.others).toHaveLength(17);
   });
+
+  it("keeps teams tied at a rank", () => {
+    // Quinnipiac and Western Michigan tied for 7th, Western Michigan was T-6.
+    const tied = fixture("ncaa-poll.html")
+      .replace(
+        "<td>7</td>\n          <td>Quinnipiac</td>",
+        "<td>T-7</td>\n          <td>Quinnipiac</td>",
+      )
+      .replace(
+        "<td>8</td>\n          <td>Western Michigan</td>",
+        "<td>T-7</td>\n          <td>Western Michigan</td>",
+      )
+      .replace(
+        "<td>653</td>\n          <td>6</td>",
+        "<td>653</td>\n          <td>T-6</td>",
+      );
+    const rows = parsePoll(tied).rows;
+    expect(rows).toHaveLength(20);
+    expect(rows.find((r) => r.team === "Quinnipiac")).toMatchObject({
+      rank: 7,
+      tied: true,
+    });
+    expect(rows.find((r) => r.team === "Western Michigan")).toMatchObject({
+      rank: 7,
+      tied: true,
+      previous: 6,
+    });
+    expect(rows[0]?.tied).toBeUndefined();
+  });
 });
 
 describe("CHN", () => {

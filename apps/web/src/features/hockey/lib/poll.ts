@@ -15,6 +15,10 @@ export function movement(row: HockeyPollRow): Movement {
   return { kind: "same" };
 }
 
+/** "6", or "T6" when the rank is shared. */
+export const rankLabel = (row: HockeyPollRow) =>
+  `${row.tied ? "T" : ""}${row.rank}`;
+
 export const findRow = (rows: { team: string }[], name: string) =>
   rows.findIndex((r) => sameHockeyTeam(r.team, name));
 
