@@ -85,7 +85,8 @@ describe("hockey handler", () => {
       ([c]) => c.constructor.name === "PutCommand",
     )?.[0];
     expect(put?.input).toMatchObject({
-      ConditionExpression: "attribute_not_exists(pk)",
+      ConditionExpression: "attribute_not_exists(pk) OR size(#rows) < :rows",
+      ExpressionAttributeValues: { ":rows": 20 },
       Item: { pk: "POLL#USCHO", sk: "Through Games SEP. 21, 2026" },
     });
   });
