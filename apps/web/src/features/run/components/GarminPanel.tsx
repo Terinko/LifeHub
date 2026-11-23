@@ -1,26 +1,20 @@
 import { useState } from "react";
 import type { RunGarminStatus } from "@lifehub/shared";
-import { garminRedirectUri } from "../lib/garminReturn";
-import { useDisconnectGarmin, useStartGarminConnect } from "../queries";
+import { useConnectGarmin, useDisconnectGarmin } from "../queries";
 import card from "./card.module.css";
 import styles from "./GarminPanel.module.css";
 
-type Props = {
-  status: RunGarminStatus;
-  error: string | undefined;
-};
-
 /** Connect or disconnect Garmin, and say why the runs are examples. */
-export function GarminPanel({ status, error }: Props) {
-  const connect = useStartGarminConnect();
+export function GarminPanel({ status }: { status: RunGarminStatus }) {
+  const connect = useConnectGarmin();
   const disconnect = useDisconnectGarmin();
   const [confirming, setConfirming] = useState(false);
-  const failure = error ?? connect.error?.message ?? disconnect.error?.message;
+  const failure = connect.error?.message ?? disconnect.error?.message;
 
   if (status === "connected") {
     return (
       <footer className={styles.footer}>
-        <span>Runs and VO₂ max come from Garmin Connect.</span>
+        <span>Runs and VO₂ max come from your Garmin Personal API key.</span>
         <button
           className={styles.link}
           disabled={disconnect.isPending}
@@ -29,7 +23,7 @@ export function GarminPanel({ status, error }: Props) {
           }
         >
           {confirming
-            ? "Disconnect and delete my Garmin runs"
+            ? "Disconnect and delete my copied runs"
             : "Disconnect Garmin"}
         </button>
         {failure && <span className={styles.error}>{failure}</span>}
@@ -42,21 +36,19 @@ export function GarminPanel({ status, error }: Props) {
       <div className={styles.text}>
         <h2 className={card.title}>These are example runs</h2>
         <p className={card.note}>
-          {status === "unavailable"
-            ? "Garmin isn't set up for LifeHub yet, so the page shows made-up runs."
-            : "Connect your Garmin account to see your own runs. New runs appear a few minutes after your watch syncs."}
+          {status === "available"
+            ? "Your Garmin key is set up. Connect it to see your own runs; the first load copies about two years of history."
+            : "Garmin isn't connected for your account, so the page shows made-up runs."}
         </p>
         {failure && <p className={styles.error}>{failure}</p>}
       </div>
-      {status === "not-connected" && (
+      {status === "available" && (
         <button
           className={styles.connect}
           disabled={connect.isPending}
-          onClick={() =>
-            connect.mutate(garminRedirectUri(window.location.origin))
-          }
+          onClick={() => connect.mutate()}
         >
-          {connect.isPending ? "Opening Garmin…" : "Connect Garmin"}
+          {connect.isPending ? "Copying your runs…" : "Connect Garmin"}
         </button>
       )}
     </section>

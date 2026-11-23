@@ -12,8 +12,7 @@ import card from "./components/card.module.css";
 import { buildDashboard, TREND_WEEKS } from "./lib/dashboard";
 import { localToday } from "./lib/dates";
 import { EASY_HR, WEEKLY_GOAL_MI } from "./lib/goals";
-import { useRunData } from "./queries";
-import { useGarminReturn } from "./useGarminReturn";
+import { useRefreshRuns, useRunData } from "./queries";
 import { useGroundBackground } from "./useGroundBackground";
 import { useRunAccess } from "./useRunAccess";
 import styles from "./RunPage.module.css";
@@ -22,8 +21,8 @@ export function RunPage() {
   useRunAccess();
   useGroundBackground();
   const navigate = useNavigate();
-  const garminReturn = useGarminReturn();
-  const run = useRunData(!garminReturn.finishing);
+  const run = useRunData();
+  const refresh = useRefreshRuns();
   const today = localToday();
   const dash = useMemo(
     () => (run.data ? buildDashboard(run.data, today) : undefined),
@@ -36,23 +35,21 @@ export function RunPage() {
         <RunHeader
           today={today}
           data={run.data}
-          refreshing={run.isFetching}
+          refreshing={run.isFetching || refresh.isPending}
           onBack={() => navigate("/")}
-          onRefresh={() => run.refetch()}
+          onRefresh={() => refresh.mutate()}
         />
-        {garminReturn.finishing ? (
-          <p className={styles.status}>Connecting Garmin…</p>
-        ) : run.isError ? (
+        {refresh.error && (
+          <p className={styles.status}>{refresh.error.message}</p>
+        )}
+        {run.isError ? (
           <p className={styles.status}>{run.error.message}</p>
         ) : !run.data || !dash ? (
           <p className={styles.status}>Loading your runs…</p>
         ) : (
           <>
             {run.data.garmin !== "connected" && (
-              <GarminPanel
-                status={run.data.garmin}
-                error={garminReturn.error}
-              />
+              <GarminPanel status={run.data.garmin} />
             )}
             <section aria-label="Summary" className={styles.kpis}>
               {dash.kpis.map((k) => (
@@ -84,7 +81,7 @@ export function RunPage() {
             </div>
             <RecentRuns runs={dash.recent} />
             {run.data.garmin === "connected" && (
-              <GarminPanel status="connected" error={garminReturn.error} />
+              <GarminPanel status="connected" />
             )}
           </>
         )}

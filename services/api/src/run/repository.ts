@@ -11,72 +11,58 @@ import {
 import type { RunActivity, RunVo2Reading } from "@lifehub/shared";
 import { db } from "../shared/db";
 import { requireEnv } from "../shared/env";
-import type { GarminTokens } from "./garmin/oauth";
+import { isConditionalCheckFailed } from "../shared/conditionalCheck";
 
-// Every DynamoDB call for the Run tool. Each user's runs, VO2 max readings
-// and Garmin tokens live under their own Cognito id; GARMIN#<id> maps a
-// webhook's Garmin user back to them.
+// Every DynamoDB call for the Run tool. The Garmin Personal API key reads one
+// person's data, so one LifeHub user owns it (CONFIG/GARMIN); their runs and
+// VO2 max readings are copied here so the page loads without calling Garmin.
 
 const table = () => requireEnv("TABLE_NAME");
 
-const userPk = (userId: string) => `USER#${userId}`;
 const runsPk = (userId: string) => `USER#${userId}#RUN`;
 const vo2Pk = (userId: string) => `USER#${userId}#VO2`;
-const garminPk = (garminUserId: string) => `GARMIN#${garminUserId}`;
+const OWNER_KEY = { pk: "CONFIG", sk: "GARMIN" };
 
-/** A user's Garmin connection. The tokens never leave the backend. */
-export type GarminLink = GarminTokens & {
-  garminUserId: string;
+/** Who the Garmin key belongs to, and the last time their runs were copied. */
+export type GarminOwner = {
+  userId: string;
   connectedAt: string;
+  /** ISO time of the last successful sync. */
   syncedAt?: string;
 };
 
-export async function getLink(userId: string): Promise<GarminLink | undefined> {
+export async function getOwner(): Promise<GarminOwner | undefined> {
   const res = await db.send(
-    new GetCommand({
-      TableName: table(),
-      Key: { pk: userPk(userId), sk: "GARMIN" },
-    }),
+    new GetCommand({ TableName: table(), Key: OWNER_KEY }),
   );
-  return res.Item as GarminLink | undefined;
+  if (!res.Item) return undefined;
+  const { userId, connectedAt, syncedAt } = res.Item as GarminOwner;
+  return { userId, connectedAt, syncedAt };
 }
 
-export async function putLink(userId: string, link: GarminLink) {
-  await db.send(
-    new PutCommand({
-      TableName: table(),
-      Item: { pk: userPk(userId), sk: "GARMIN", ...link },
-    }),
-  );
-  await db.send(
-    new PutCommand({
-      TableName: table(),
-      Item: { pk: garminPk(link.garminUserId), sk: "USER", userId },
-    }),
-  );
+/** Makes `userId` the key's owner, unless someone already is. Returns false if taken. */
+export async function claimOwner(userId: string, at: string): Promise<boolean> {
+  try {
+    await db.send(
+      new PutCommand({
+        TableName: table(),
+        Item: { ...OWNER_KEY, userId, connectedAt: at },
+        ConditionExpression: "attribute_not_exists(pk) OR userId = :me",
+        ExpressionAttributeValues: { ":me": userId },
+      }),
+    );
+    return true;
+  } catch (error) {
+    if (isConditionalCheckFailed(error)) return false;
+    throw error;
+  }
 }
 
-export async function saveTokens(userId: string, tokens: GarminTokens) {
+export async function markSynced(at: string) {
   await db.send(
     new UpdateCommand({
       TableName: table(),
-      Key: { pk: userPk(userId), sk: "GARMIN" },
-      UpdateExpression:
-        "SET accessToken = :a, refreshToken = :r, expiresAt = :e",
-      ExpressionAttributeValues: {
-        ":a": tokens.accessToken,
-        ":r": tokens.refreshToken,
-        ":e": tokens.expiresAt,
-      },
-    }),
-  );
-}
-
-export async function markSynced(userId: string, at: string) {
-  await db.send(
-    new UpdateCommand({
-      TableName: table(),
-      Key: { pk: userPk(userId), sk: "GARMIN" },
+      Key: OWNER_KEY,
       UpdateExpression: "SET syncedAt = :t",
       ConditionExpression: "attribute_exists(pk)",
       ExpressionAttributeValues: { ":t": at },
@@ -84,63 +70,43 @@ export async function markSynced(userId: string, at: string) {
   );
 }
 
-/** The LifeHub user a Garmin account is connected to, if any. */
-export async function userForGarmin(garminUserId: string) {
-  const res = await db.send(
-    new GetCommand({
-      TableName: table(),
-      Key: { pk: garminPk(garminUserId), sk: "USER" },
-    }),
-  );
-  return (res.Item as { userId: string } | undefined)?.userId;
-}
-
-export async function savePkce(
-  userId: string,
-  state: string,
-  verifier: string,
-) {
-  await db.send(
-    new PutCommand({
-      TableName: table(),
-      Item: {
-        pk: userPk(userId),
-        sk: `PKCE#${state}`,
-        verifier,
-        createdAt: new Date().toISOString(),
+export async function putRuns(userId: string, runs: RunActivity[]) {
+  await writeBatches(
+    runs.map((run) => ({
+      PutRequest: {
+        Item: { pk: runsPk(userId), sk: `${run.start}#${run.id}`, ...run },
       },
-    }),
+    })),
   );
 }
 
-/** Reads and deletes a sign-in attempt, so each state works once. */
-export async function takePkce(userId: string, state: string) {
-  const res = await db.send(
-    new DeleteCommand({
-      TableName: table(),
-      Key: { pk: userPk(userId), sk: `PKCE#${state}` },
-      ReturnValues: "ALL_OLD",
-    }),
-  );
-  return res.Attributes as { verifier: string; createdAt: string } | undefined;
-}
-
-export async function putRun(userId: string, run: RunActivity) {
-  await db.send(
-    new PutCommand({
-      TableName: table(),
-      Item: { pk: runsPk(userId), sk: `${run.start}#${run.id}`, ...run },
-    }),
+export async function putVo2s(userId: string, readings: RunVo2Reading[]) {
+  await writeBatches(
+    readings.map((reading) => ({
+      PutRequest: {
+        Item: { pk: vo2Pk(userId), sk: reading.date, ...reading },
+      },
+    })),
   );
 }
 
-export async function putVo2(userId: string, reading: RunVo2Reading) {
-  await db.send(
-    new PutCommand({
-      TableName: table(),
-      Item: { pk: vo2Pk(userId), sk: reading.date, ...reading },
-    }),
-  );
+type WriteRequest = NonNullable<
+  BatchWriteCommandInput["RequestItems"]
+>[string][number];
+
+/** Writes in DynamoDB's batches of 25, resending whatever it hands back. */
+async function writeBatches(writes: WriteRequest[]) {
+  for (let i = 0; i < writes.length; i += 25) {
+    let requests: BatchWriteCommandInput["RequestItems"] = {
+      [table()]: writes.slice(i, i + 25),
+    };
+    while (requests && Object.keys(requests).length > 0) {
+      const res: BatchWriteCommandOutput = await db.send(
+        new BatchWriteCommand({ RequestItems: requests }),
+      );
+      requests = res.UnprocessedItems;
+    }
+  }
 }
 
 /** Every item under a partition from `fromSk` on, following DynamoDB's pages. */
@@ -185,36 +151,14 @@ export async function listVo2(userId: string, from: string) {
 
 async function deleteAll(pk: string) {
   const items = await queryAll(pk);
-  for (let i = 0; i < items.length; i += 25) {
-    let requests: BatchWriteCommandInput["RequestItems"] = {
-      [table()]: items.slice(i, i + 25).map(({ pk, sk }) => ({
-        DeleteRequest: { Key: { pk, sk } },
-      })),
-    };
-    // DynamoDB can hand back part of a batch when busy; send that part again.
-    while (requests && Object.keys(requests).length > 0) {
-      const res: BatchWriteCommandOutput = await db.send(
-        new BatchWriteCommand({ RequestItems: requests }),
-      );
-      requests = res.UnprocessedItems;
-    }
-  }
+  await writeBatches(
+    items.map(({ pk, sk }) => ({ DeleteRequest: { Key: { pk, sk } } })),
+  );
 }
 
-/** Forgets the connection and every run and reading it brought in. */
-export async function deleteGarminData(userId: string, garminUserId: string) {
+/** Forgets the owner and every run and reading copied from Garmin. */
+export async function deleteGarminData(userId: string) {
   await deleteAll(runsPk(userId));
   await deleteAll(vo2Pk(userId));
-  await db.send(
-    new DeleteCommand({
-      TableName: table(),
-      Key: { pk: garminPk(garminUserId), sk: "USER" },
-    }),
-  );
-  await db.send(
-    new DeleteCommand({
-      TableName: table(),
-      Key: { pk: userPk(userId), sk: "GARMIN" },
-    }),
-  );
+  await db.send(new DeleteCommand({ TableName: table(), Key: OWNER_KEY }));
 }

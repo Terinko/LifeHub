@@ -4,7 +4,6 @@ import { heatDays, heatLevel } from "./consistency";
 import { dayDate, fullDate, isoWeek, localToday, weekStart } from "./dates";
 import { milesByDay } from "./days";
 import { easyPaceByWeek, paceGain } from "./easyPace";
-import { garminRedirectUri, readGarminReturn } from "./garminReturn";
 import { streakKpi, thisWeekKpi, vo2Kpi, yearKpi } from "./kpis";
 import { paceChart } from "./paceChart";
 import { personalRecords } from "./records";
@@ -208,20 +207,5 @@ describe("personal records", () => {
       ["10K", undefined, undefined],
       ["Half marathon", undefined, undefined],
     ]);
-  });
-});
-
-describe("returning from Garmin", () => {
-  it("reads the code, or a declined consent", () => {
-    expect(readGarminReturn("?code=abc&state=xyz")).toEqual({
-      kind: "code",
-      code: "abc",
-      state: "xyz",
-    });
-    expect(readGarminReturn("?error=access_denied")?.kind).toBe("error");
-    expect(readGarminReturn("")).toBeUndefined();
-    expect(garminRedirectUri("https://example.com")).toBe(
-      "https://example.com/run",
-    );
   });
 });

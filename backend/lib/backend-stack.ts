@@ -32,11 +32,10 @@ function apiFunction(
   id: string,
   tool: string,
   props: Pick<NodejsFunctionProps, "environment" | "timeout" | "memorySize">,
-  file = "handler",
 ) {
   return new NodejsFunction(scope, id, {
     runtime: lambda.Runtime.NODEJS_24_X,
-    entry: path.join(repoRoot, `services/api/src/${tool}/${file}.ts`),
+    entry: path.join(repoRoot, `services/api/src/${tool}/handler.ts`),
     handler: "handler",
     projectRoot: repoRoot,
     depsLockFilePath: path.join(repoRoot, "package-lock.json"),
@@ -143,51 +142,34 @@ export class BackendStack extends cdk.Stack {
       memorySize: 512,
     });
 
-    // Run: the caller's runs from Garmin, or example runs until they connect.
-    // LifeHub's Garmin app keys live in SSM Parameter Store, not in the
-    // template or the Lambda's environment; create them once with
-    //   aws ssm put-parameter --name /lifehub/garmin/client-id --type String --value ...
-    //   aws ssm put-parameter --name /lifehub/garmin/client-secret --type SecureString --value ...
-    // Until both exist, the tool shows example runs.
-    const garminParams = {
-      GARMIN_CLIENT_ID_PARAM: "/lifehub/garmin/client-id",
-      GARMIN_CLIENT_SECRET_PARAM: "/lifehub/garmin/client-secret",
-    };
+    // Run: the owner's runs from the Garmin Personal API, or example runs.
+    // The personal key lives in SSM Parameter Store, not in the template or
+    // the Lambda's environment; create it once with
+    //   aws ssm put-parameter --name /lifehub/garmin/personal-api-key --type SecureString --value ...
+    // Until it exists, the tool shows example runs.
+    const garminKeyParam = "/lifehub/garmin/personal-api-key";
     const runLambda = apiFunction(this, "RunHandler", "run", {
       environment: {
         TABLE_NAME: runTable.tableName,
         USERS_TABLE: usersTable.tableName,
-        ...garminParams,
+        GARMIN_API_KEY_PARAM: garminKeyParam,
       },
-      // Connecting asks Garmin for about two years of history, 30 days a call.
+      // The first load copies about two years of runs from Garmin.
       timeout: cdk.Duration.seconds(30),
     });
-    // Garmin's servers deliver new activities here, with no Cognito token.
-    const runWebhookLambda = apiFunction(
-      this,
-      "RunGarminWebhook",
-      "run",
-      {
-        environment: { TABLE_NAME: runTable.tableName, ...garminParams },
-        timeout: cdk.Duration.seconds(30),
-      },
-      "webhook",
+    runTable.grantReadWriteData(runLambda);
+    runLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ["ssm:GetParameter"],
+        resources: [
+          this.formatArn({
+            service: "ssm",
+            resource: "parameter",
+            resourceName: garminKeyParam.slice(1),
+          }),
+        ],
+      }),
     );
-    for (const fn of [runLambda, runWebhookLambda]) {
-      runTable.grantReadWriteData(fn);
-      fn.addToRolePolicy(
-        new iam.PolicyStatement({
-          actions: ["ssm:GetParameter"],
-          resources: Object.values(garminParams).map((name) =>
-            this.formatArn({
-              service: "ssm",
-              resource: "parameter",
-              resourceName: name.slice(1),
-            }),
-          ),
-        }),
-      );
-    }
 
     billsTable.grantReadWriteData(billsLambda);
     kitchenTable.grantReadWriteData(kitchenLambda);
@@ -468,11 +450,13 @@ export class BackendStack extends cdk.Stack {
       });
     }
 
-    const runIntegration = new HttpLambdaIntegration("RunIntegration", runLambda);
+    const runIntegration = new HttpLambdaIntegration(
+      "RunIntegration",
+      runLambda,
+    );
     for (const [path, method] of [
       ["/run", apigw.HttpMethod.GET],
-      ["/run/garmin/connect", apigw.HttpMethod.POST],
-      ["/run/garmin/callback", apigw.HttpMethod.POST],
+      ["/run/garmin", apigw.HttpMethod.POST],
       ["/run/garmin", apigw.HttpMethod.DELETE],
     ] as const) {
       httpApi.addRoutes({
@@ -482,16 +466,6 @@ export class BackendStack extends cdk.Stack {
         authorizer,
       });
     }
-    // Public on purpose: Garmin can't sign in. The Lambda checks the
-    // garmin-client-id header and only stores data for connected accounts.
-    httpApi.addRoutes({
-      path: "/run/garmin/webhook",
-      methods: [apigw.HttpMethod.POST],
-      integration: new HttpLambdaIntegration(
-        "RunWebhookIntegration",
-        runWebhookLambda,
-      ),
-    });
 
     const websiteBucket = new s3.Bucket(this, "LifeHubFrontendBucket", {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
@@ -522,13 +496,6 @@ export class BackendStack extends cdk.Stack {
           },
         ],
       },
-    );
-
-    // Garmin may only send the browser back to the Run page on LifeHub's own
-    // site (or the local dev server).
-    runLambda.addEnvironment(
-      "RUN_REDIRECT_URIS",
-      `https://${distribution.distributionDomainName}/run,http://localhost:5173/run`,
     );
 
     const distDir = path.join(__dirname, "../../apps/web/dist");

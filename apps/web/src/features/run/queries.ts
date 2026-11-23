@@ -1,31 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { RunData, RunGarminCallback } from "@lifehub/shared";
-import {
-  disconnectGarmin,
-  finishGarminConnect,
-  getRunData,
-  startGarminConnect,
-} from "./api";
+import type { RunData } from "@lifehub/shared";
+import { connectGarmin, disconnectGarmin, getRunData } from "./api";
 
 export const runKeys = { data: ["run", "data"] as const };
 
-/** Every run since the start of last year; it only changes after a run syncs. */
-export const useRunData = (enabled = true) =>
+/** Every run since the start of last year; the server copies new ones from Garmin. */
+export const useRunData = () =>
   useQuery({
     queryKey: runKeys.data,
-    queryFn: getRunData,
+    queryFn: () => getRunData(),
     staleTime: 5 * 60_000,
-    enabled,
   });
 
-/** Garmin's consent page is on garmin.com, so this leaves LifeHub on success. */
-export const useStartGarminConnect = () =>
-  useMutation({
-    mutationFn: startGarminConnect,
-    onSuccess: ({ url }) => window.location.assign(url),
-  });
-
-function useReplacesRunData<T>(mutationFn: (arg: T) => Promise<RunData>) {
+function useReplacesRunData(mutationFn: () => Promise<RunData>) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn,
@@ -33,8 +20,9 @@ function useReplacesRunData<T>(mutationFn: (arg: T) => Promise<RunData>) {
   });
 }
 
-export const useFinishGarminConnect = () =>
-  useReplacesRunData((body: RunGarminCallback) => finishGarminConnect(body));
+/** Refresh: ask Garmin for new runs now. */
+export const useRefreshRuns = () => useReplacesRunData(() => getRunData(true));
 
-export const useDisconnectGarmin = () =>
-  useReplacesRunData(() => disconnectGarmin());
+export const useConnectGarmin = () => useReplacesRunData(connectGarmin);
+
+export const useDisconnectGarmin = () => useReplacesRunData(disconnectGarmin);

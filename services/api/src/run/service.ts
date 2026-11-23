@@ -1,48 +1,83 @@
-import type { RunData, RunGarminCallback } from "@lifehub/shared";
-import { badRequest, HttpError } from "../shared/http";
+import type { RunData } from "@lifehub/shared";
+import { HttpError } from "../shared/http";
+import { isAdmin, type UserProfile } from "../shared/users";
 import { exampleRunData } from "./example";
-import { deregister, garminUserId, requestBackfill } from "./garmin/api";
-import { getGarminApp, type GarminApp } from "./garmin/app";
-import { GarminError } from "./garmin/http";
 import {
-  authorizeUrl,
-  exchangeCode,
-  newPkce,
-  refreshTokens,
-} from "./garmin/oauth";
+  isRun,
+  searchRuns,
+  toRunActivity,
+  vo2Readings,
+} from "./garmin/activities";
+import { getGarminKey } from "./garmin/app";
+import { bearerToken, GarminError } from "./garmin/http";
 import * as repo from "./repository";
 
-// Sign-in attempts older than this are refused.
-const PKCE_TTL_MS = 15 * 60_000;
+// Runs are copied from Garmin at most this often, unless Refresh is pressed.
+const SYNC_EVERY_MS = 15 * 60_000;
+// Re-read the last few days on each sync: runs can sync from the watch late.
+const OVERLAP_DAYS = 3;
+const VO2_CHUNK_DAYS = 120;
+const DAY_MS = 86_400_000;
 
-/** Where Garmin may send the browser back to: the Run page on LifeHub's own sites. */
-function checkRedirect(redirectUri: string) {
-  const allowed = (process.env.RUN_REDIRECT_URIS ?? "").split(",");
-  if (!allowed.includes(redirectUri))
-    throw badRequest("Unknown redirect address");
-}
-
-async function requireApp(): Promise<GarminApp> {
-  const app = await getGarminApp();
-  if (!app) throw new HttpError(503, "Garmin isn't set up yet");
-  return app;
-}
+const isoDay = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
 /** Jan 1 of last year: enough history for the year chart and this year's totals. */
 const historyStart = (now: Date) => `${now.getUTCFullYear() - 1}-01-01`;
 
-/** The caller's runs from Garmin, or example runs until they connect. */
+/** Copies runs and VO2 max from Garmin into the table, from `from` to today. */
+async function syncFrom(owner: string, from: string, now: Date) {
+  const key = await getGarminKey();
+  if (!key) return;
+  const bearer = await bearerToken(key, now.getTime());
+  // One day ahead covers runs logged after midnight UTC but before local midnight.
+  const to = isoDay(now.getTime() + DAY_MS);
+  const runs = await searchRuns(bearer, from, to);
+  await repo.putRuns(owner, runs.filter(isRun).map(toRunActivity));
+  for (
+    let ms = Date.parse(from);
+    ms <= now.getTime();
+    ms += VO2_CHUNK_DAYS * DAY_MS
+  ) {
+    const end = isoDay(
+      Math.min(ms + (VO2_CHUNK_DAYS - 1) * DAY_MS, now.getTime()),
+    );
+    try {
+      await repo.putVo2s(owner, await vo2Readings(bearer, isoDay(ms), end));
+    } catch (error) {
+      // VO2 max is a nice-to-have; the runs still count without it.
+      if (!(error instanceof GarminError)) throw error;
+      console.warn("Run: VO2 max unavailable", error.message);
+    }
+  }
+  await repo.markSynced(now.toISOString());
+}
+
+async function syncIfStale(owner: repo.GarminOwner, now: Date, force: boolean) {
+  const last = owner.syncedAt ? Date.parse(owner.syncedAt) : undefined;
+  if (!force && last && now.getTime() - last < SYNC_EVERY_MS)
+    return owner.syncedAt;
+  const from = last ? isoDay(last - OVERLAP_DAYS * DAY_MS) : historyStart(now);
+  await syncFrom(owner.userId, from, now);
+  return now.toISOString();
+}
+
+/**
+ * The caller's runs: from Garmin when they own the Personal API key (copying
+ * new runs first when the last copy is stale or `refresh` is set), otherwise
+ * example runs.
+ */
 export async function getRunData(
   userId: string,
-  now = new Date(),
+  profile: UserProfile | undefined,
+  { refresh = false, now = new Date() } = {},
 ): Promise<RunData> {
-  const [app, link] = await Promise.all([getGarminApp(), repo.getLink(userId)]);
-  if (!app || !link) {
-    return {
-      ...exampleRunData(now),
-      garmin: app ? "not-connected" : "unavailable",
-    };
+  const [key, owner] = await Promise.all([getGarminKey(), repo.getOwner()]);
+  if (!key || owner?.userId !== userId) {
+    const garmin =
+      key && !owner && isAdmin(profile) ? "available" : "unavailable";
+    return { ...exampleRunData(now), garmin };
   }
+  const syncedAt = await syncIfStale(owner, now, refresh);
   const from = historyStart(now);
   const [activities, vo2Max] = await Promise.all([
     repo.listRuns(userId, from),
@@ -51,87 +86,34 @@ export async function getRunData(
   return {
     source: "garmin",
     garmin: "connected",
-    syncedAt: link.syncedAt,
+    syncedAt,
     activities,
     vo2Max,
   };
 }
 
-/** Starts Garmin sign-in: remembers a PKCE verifier and returns the consent URL. */
-export async function startConnect(userId: string, redirectUri: string) {
-  checkRedirect(redirectUri);
-  const app = await requireApp();
-  const pkce = newPkce();
-  await repo.savePkce(userId, pkce.state, pkce.verifier);
-  return { url: authorizeUrl(app, pkce, redirectUri) };
-}
-
-/** Finishes sign-in: trades the code for tokens, links the account, asks for history. */
-export async function finishConnect(
+/** An admin claims the Garmin key as theirs; the first load copies their history. */
+export async function connect(
   userId: string,
-  { code, state, redirectUri }: RunGarminCallback,
-  now = new Date(),
+  profile: UserProfile | undefined,
 ) {
-  checkRedirect(redirectUri);
-  const app = await requireApp();
-  const attempt = await repo.takePkce(userId, state);
-  if (!attempt || now.getTime() - Date.parse(attempt.createdAt) > PKCE_TTL_MS) {
-    throw badRequest("That Garmin sign-in expired. Try connecting again.");
+  if (!isAdmin(profile))
+    throw new HttpError(403, "Only an admin can connect Garmin");
+  if (!(await getGarminKey()))
+    throw new HttpError(503, "Garmin isn't set up yet");
+  const now = new Date();
+  if (!(await repo.claimOwner(userId, now.toISOString()))) {
+    throw new HttpError(409, "Garmin is already connected to another account");
   }
-  const tokens = await exchangeCode(
-    app,
-    code,
-    attempt.verifier,
-    redirectUri,
-    now,
-  );
-  const gid = await garminUserId(tokens.accessToken);
-  const owner = await repo.userForGarmin(gid);
-  if (owner && owner !== userId) {
-    throw new HttpError(
-      409,
-      "That Garmin account is connected to someone else",
-    );
-  }
-  await repo.putLink(userId, {
-    ...tokens,
-    garminUserId: gid,
-    connectedAt: now.toISOString(),
-  });
-  const fromS = Math.floor(Date.parse(`${historyStart(now)}T00:00:00Z`) / 1000);
-  await requestBackfill(
-    tokens.accessToken,
-    fromS,
-    Math.floor(now.getTime() / 1000),
-  );
+  return getRunData(userId, profile, { now });
 }
 
-/** A usable access token for a linked user, refreshing it when it's about to expire. */
-export async function accessTokenFor(
+/** The owner disconnects: forget the claim and every copied run. */
+export async function disconnect(
   userId: string,
-  link: repo.GarminLink,
-  now = new Date(),
-): Promise<string> {
-  if (Date.parse(link.expiresAt) > now.getTime()) return link.accessToken;
-  const tokens = await refreshTokens(
-    await requireApp(),
-    link.refreshToken,
-    now,
-  );
-  await repo.saveTokens(userId, tokens);
-  return tokens.accessToken;
-}
-
-/** Disconnects Garmin and deletes everything it sent. */
-export async function disconnect(userId: string) {
-  const link = await repo.getLink(userId);
-  if (!link) return;
-  try {
-    await deregister(await accessTokenFor(userId, link));
-  } catch (error) {
-    // Already revoked on Garmin's side: still forget it here.
-    if (!(error instanceof GarminError)) throw error;
-    console.warn("Run: Garmin deregistration failed", error.message);
-  }
-  await repo.deleteGarminData(userId, link.garminUserId);
+  profile: UserProfile | undefined,
+) {
+  const owner = await repo.getOwner();
+  if (owner?.userId === userId) await repo.deleteGarminData(userId);
+  return getRunData(userId, profile);
 }

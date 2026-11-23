@@ -1,16 +1,10 @@
-import type {
-  RunData,
-  RunGarminCallback,
-  RunGarminConnectStart,
-} from "@lifehub/shared";
+import type { RunData } from "@lifehub/shared";
 import { api } from "../../shared/api/client";
 
-export const getRunData = () => api.get<RunData>("/run");
+/** `refresh` copies new runs from Garmin first instead of waiting up to 15 minutes. */
+export const getRunData = (refresh = false) =>
+  api.get<RunData>(refresh ? "/run?refresh=1" : "/run");
 
-export const startGarminConnect = (redirectUri: string) =>
-  api.post<RunGarminConnectStart>("/run/garmin/connect", { redirectUri });
-
-export const finishGarminConnect = (body: RunGarminCallback) =>
-  api.post<RunData>("/run/garmin/callback", body);
+export const connectGarmin = () => api.post<RunData>("/run/garmin");
 
 export const disconnectGarmin = () => api.delete<RunData>("/run/garmin");
