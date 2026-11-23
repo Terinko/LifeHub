@@ -8,7 +8,7 @@ import {
   toRunActivity,
   vo2Readings,
 } from "./garmin/activities";
-import { getGarminKey } from "./garmin/app";
+import { forgetGarminKey, getGarminKey } from "./garmin/app";
 import { bearerToken, GarminError } from "./garmin/http";
 import * as repo from "./repository";
 
@@ -26,9 +26,8 @@ const historyStart = (now: Date) => `${now.getUTCFullYear() - 1}-01-01`;
 
 /** Copies runs and VO2 max from Garmin into the table, from `from` to today. */
 async function syncFrom(owner: string, from: string, now: Date) {
-  const key = await getGarminKey();
-  if (!key) return;
-  const bearer = await bearerToken(key, now.getTime());
+  const bearer = await freshBearer(now);
+  if (!bearer) return;
   // One day ahead covers runs logged after midnight UTC but before local midnight.
   const to = isoDay(now.getTime() + DAY_MS);
   const runs = await searchRuns(bearer, from, to);
@@ -50,6 +49,27 @@ async function syncFrom(owner: string, from: string, now: Date) {
     }
   }
   await repo.markSynced(now.toISOString());
+}
+
+/**
+ * A bearer token for the current key. When Garmin rejects the key, reads it
+ * from Parameter Store again once, in case a new key was stored since this
+ * Lambda started.
+ */
+async function freshBearer(now: Date): Promise<string | undefined> {
+  const key = await getGarminKey();
+  if (!key) return undefined;
+  try {
+    return await bearerToken(key, now.getTime());
+  } catch (error) {
+    if (!(error instanceof GarminError) || error.status !== 401) throw error;
+    forgetGarminKey();
+    const newKey = await getGarminKey();
+    if (!newKey || newKey === key) {
+      throw new HttpError(502, "Garmin rejected the key. It may have expired.");
+    }
+    return bearerToken(newKey, now.getTime());
+  }
 }
 
 async function syncIfStale(owner: repo.GarminOwner, now: Date, force: boolean) {

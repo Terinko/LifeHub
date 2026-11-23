@@ -11,7 +11,10 @@ const { send, key } = vi.hoisted(() => ({
   key: vi.fn<() => Promise<string | undefined>>(),
 }));
 vi.mock("../shared/db", () => ({ db: { send } }));
-vi.mock("./garmin/app", () => ({ getGarminKey: key }));
+vi.mock("./garmin/app", () => ({
+  getGarminKey: key,
+  forgetGarminKey: vi.fn(),
+}));
 
 process.env.TABLE_NAME = "Run";
 process.env.USERS_TABLE = "Users";
@@ -232,6 +235,26 @@ describe("GET /run", () => {
       value: 51,
     });
     expect(batchPuts().filter((i) => i?.pk === "USER#u1#RUN")).toHaveLength(1);
+  });
+});
+
+describe("a replaced key", () => {
+  it("reads the key again when Garmin rejects the old one", async () => {
+    key
+      .mockResolvedValueOnce("old-key")
+      .mockResolvedValueOnce("old-key")
+      .mockResolvedValue("new-key");
+    garmin();
+    const ok = fetchMock.getMockImplementation();
+    fetchMock.mockImplementation(async (input, init) =>
+      JSON.stringify(init?.headers).includes("old-key")
+        ? new Response(null, { status: 401 })
+        : (ok?.(input, init) ?? new Response(null, { status: 500 })),
+    );
+    table({ owner: { userId: "u1", connectedAt: "x" } });
+    const res = parseResponse(await handler(apiEvent("GET /run")));
+    expect(res.status).toBe(200);
+    expect(res.body.source).toBe("garmin");
   });
 });
 

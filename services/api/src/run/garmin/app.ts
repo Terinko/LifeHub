@@ -31,3 +31,8 @@ export function getGarminKey(): Promise<string | undefined> {
   });
   return cached;
 }
+
+/** Read the key again on next use (after Garmin rejects it, it may have been replaced). */
+export const forgetGarminKey = () => {
+  cached = undefined;
+};

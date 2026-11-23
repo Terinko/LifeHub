@@ -144,9 +144,8 @@ export class BackendStack extends cdk.Stack {
 
     // Run: the owner's runs from the Garmin Personal API, or example runs.
     // The personal key lives in SSM Parameter Store, not in the template or
-    // the Lambda's environment; create it once with
-    //   aws ssm put-parameter --name /lifehub/garmin/personal-api-key --type SecureString --value ...
-    // Until it exists, the tool shows example runs.
+    // the Lambda's environment. The deploy workflow copies it there from the
+    // GARMIN_PERSONAL_API_KEY secret. Until it exists, the tool shows example runs.
     const garminKeyParam = "/lifehub/garmin/personal-api-key";
     const runLambda = apiFunction(this, "RunHandler", "run", {
       environment: {
