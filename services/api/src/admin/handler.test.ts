@@ -114,6 +114,7 @@ describe("admin handler: the caller's own profile", () => {
           fantasy: true,
           weather: true,
           hockey: true,
+          run: true,
         },
         createdAt: now,
         lastActiveAt: now,

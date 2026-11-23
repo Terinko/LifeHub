@@ -1,0 +1,60 @@
+.card {
+  min-width: 0;
+  box-sizing: border-box;
+  background: var(--log-card);
+  border: 1px solid var(--log-line);
+  border-radius: 10px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--log-ink-sec);
+  max-width: 60ch;
+}
+
+.kicker {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--log-ink-sec);
+}
+
+.num {
+  font-family: var(--log-font-num);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Two cards side by side, the first wide; they stack on a phone. */
+.pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.wide {
+  flex: 999 1 560px;
+}
+
+.narrow {
+  flex: 1 1 340px;
+}

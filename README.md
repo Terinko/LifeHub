@@ -1,6 +1,6 @@
 # LifeHub
 
-A personal hub of small tools: Bills, Kitchen, Poker, Fantasy, Applications and Weather, behind a Cognito login with an invite-only admin page.
+A personal hub of small tools: Bills, Kitchen, Poker, Fantasy, Applications, Weather, Hockey and Run, behind a Cognito login with an invite-only admin page.
 
 ## Repository layout
 

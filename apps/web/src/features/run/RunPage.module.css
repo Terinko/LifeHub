@@ -1,0 +1,41 @@
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap");
+
+.page {
+  flex: 1;
+  min-height: 100svh;
+  background: var(--log-ground);
+  color: var(--log-ink);
+  font-family: var(--log-font-ui);
+  font-size: 14px;
+  line-height: 1.4;
+  letter-spacing: normal;
+  text-align: left;
+}
+
+.content {
+  max-width: 1200px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  padding: calc(24px + var(--safe-top)) 16px calc(48px + var(--safe-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+@media (min-width: 720px) {
+  .content {
+    padding-left: max(16px, 3vw);
+    padding-right: max(16px, 3vw);
+  }
+}
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+  gap: 12px;
+}
+
+.status {
+  margin: 24px 0;
+  color: var(--log-ink-sec);
+}
