@@ -1,0 +1,37 @@
+.weeks {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.week {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.label {
+  width: 48px;
+  flex: none;
+}
+
+.cells {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.cell {
+  height: 18px;
+  border-radius: 3px;
+  background: var(--log-lift);
+}
+
+.cell[data-kind="run"] {
+  background: var(--log-blue);
+}
+
+.cell[data-status="skipped"] {
+  background: var(--log-skip-line);
+}

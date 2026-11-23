@@ -1,0 +1,30 @@
+.tabs {
+  display: flex;
+  gap: 6px;
+  position: sticky;
+  top: var(--safe-top, 0px);
+  z-index: 2;
+  margin: 0 -16px;
+  padding: 8px 16px;
+  background: var(--log-ground);
+}
+
+.tab {
+  flex: 1;
+  max-width: 160px;
+  min-height: 40px;
+  border-radius: 999px;
+  border: 1px solid var(--log-line);
+  background: var(--log-card);
+  color: var(--log-ink-2);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.tab[aria-current="page"] {
+  background: var(--log-ink);
+  border-color: var(--log-ink);
+  color: var(--log-card);
+  font-weight: 600;
+}

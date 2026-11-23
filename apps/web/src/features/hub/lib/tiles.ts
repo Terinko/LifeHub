@@ -51,8 +51,8 @@ const TOOL_TILES: (HubTile & { key: ToolPermission })[] = [
   },
   {
     key: "run",
-    label: "Run",
-    subtitle: "Training log from Garmin",
+    label: "Training",
+    subtitle: "Runs and lifts from Garmin",
     path: "/run",
   },
 ];

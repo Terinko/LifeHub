@@ -57,3 +57,38 @@
   font-size: 13px;
   color: var(--log-example-ink);
 }
+
+.check {
+  flex-basis: 100%;
+  margin: 0;
+  padding: 12px 14px;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-radius: 8px;
+  background: var(--log-card);
+  border: 1px solid var(--log-line);
+  color: var(--log-ink);
+}
+
+.check li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
+.check li::before {
+  content: "✓";
+  color: var(--log-good);
+  font-weight: 700;
+}
+
+.check li[data-ok="false"]::before {
+  content: "✕";
+  color: var(--log-goal);
+}
+
+.check span {
+  color: var(--log-ink-sec);
+}

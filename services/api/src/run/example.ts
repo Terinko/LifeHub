@@ -1,10 +1,20 @@
-import type { RunActivity, RunData, RunVo2Reading } from "@lifehub/shared";
+import type {
+  HrvReading,
+  LiftSession,
+  LiftSet,
+  Muscle,
+  RunActivity,
+  RunData,
+  RunVo2Reading,
+} from "@lifehub/shared";
 
-// Made-up runs shown until Garmin is connected, so the page has something
-// real-looking to draw. Generated from a fixed seed relative to today, so it
-// looks the same on every load and always ends with this week.
+// Made-up training shown until Garmin is connected, so the page has something
+// real-looking to draw: the Back + Bi, Chest + Tri, Run rotation with rest
+// days and the odd skipped session. Generated from a fixed seed relative to
+// today, so it looks the same on every load and always ends with this week.
 
 const MILE = 1609.344;
+const LB = 0.45359237;
 const DAY_MS = 86_400_000;
 
 /** A small seeded random number generator (mulberry32). */
@@ -18,81 +28,178 @@ function seeded(seed: number) {
   };
 }
 
-type Plan = { name: string; miles: number; pace: number; hr: number };
+const isoDate = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
-/**
- * What a day of the week usually holds; `fitness` runs 0 → 1 over the log,
- * and `load` eases off on lighter weeks.
- */
-function planFor(
-  dow: number,
+type Lift = {
+  exercise: string;
+  muscle: Muscle;
+  sets: number;
+  reps: number;
+  /** Starting weight in lb (added weight for pull-ups); grows with fitness. */
+  lb: number;
+};
+
+const BACK_BI: Lift[] = [
+  { exercise: "Row", muscle: "back", sets: 4, reps: 8, lb: 165 },
+  { exercise: "Weighted pull-up", muscle: "back", sets: 4, reps: 6, lb: 20 },
+  { exercise: "Lat pulldown", muscle: "back", sets: 3, reps: 10, lb: 140 },
+  { exercise: "Preacher curl", muscle: "biceps", sets: 3, reps: 10, lb: 60 },
+  { exercise: "Hammer curl", muscle: "biceps", sets: 3, reps: 12, lb: 30 },
+];
+
+const CHEST_TRI: Lift[] = [
+  { exercise: "Bench press", muscle: "chest", sets: 4, reps: 6, lb: 185 },
+  {
+    exercise: "Incline bench press",
+    muscle: "chest",
+    sets: 3,
+    reps: 8,
+    lb: 135,
+  },
+  { exercise: "Flye", muscle: "chest", sets: 3, reps: 12, lb: 35 },
+  {
+    exercise: "Triceps extension",
+    muscle: "triceps",
+    sets: 3,
+    reps: 12,
+    lb: 60,
+  },
+  { exercise: "Shoulder press", muscle: "shoulders", sets: 3, reps: 8, lb: 50 },
+];
+
+/** Rounds to the nearest 5 lb plate step, in kg. */
+const plates = (lb: number) =>
+  Math.round(Math.round(lb / 5) * 5 * LB * 10) / 10;
+
+function liftSession(
+  date: string,
+  kind: "back" | "chest",
   fitness: number,
-  load: number,
   rand: () => number,
-): Plan | null {
+  i: number,
+): LiftSession {
+  const plan = kind === "back" ? BACK_BI : CHEST_TRI;
+  const sets: LiftSet[] = plan.flatMap((lift) =>
+    Array.from({ length: lift.sets }, (_, s) => ({
+      exercise: lift.exercise,
+      muscle: lift.muscle,
+      reps: Math.max(
+        3,
+        lift.reps - (s === lift.sets - 1 && rand() < 0.4 ? 1 : 0),
+      ),
+      weightKg: plates(lift.lb * (1 + 0.16 * fitness)),
+    })),
+  );
+  return {
+    id: `example-lift-${i}`,
+    start: `${date}T17:${String(Math.floor(rand() * 50) + 5).padStart(2, "0")}:00`,
+    name: kind === "back" ? "Back + Bi" : "Chest + Tri",
+    durationS: Math.round((52 + rand() * 14) * 60),
+    avgHr: Math.round(108 + rand() * 12),
+    load: Math.round(38 + rand() * 22),
+    sets,
+  };
+}
+
+type RunPlan = { name: string; miles: number; pace: number; hr: number };
+
+function runPlan(dow: number, fitness: number, rand: () => number): RunPlan {
   const easy = 615 - 70 * fitness * fitness + rand() * 8;
-  const scale = (0.5 + 0.42 * fitness) * load;
-  const plans: (Plan | null)[] = [
-    { name: "Recovery jog", miles: 4 * scale, pace: easy + 25, hr: 138 },
-    { name: "Easy", miles: 5 * scale, pace: easy, hr: 143 },
-    rand() < 0.4
-      ? null
-      : { name: "Easy", miles: 4.5 * scale, pace: easy, hr: 142 },
-    { name: "Tempo 3 × 1.5 mi", miles: 6.5 * scale, pace: easy - 75, hr: 163 },
-    rand() < 0.5
-      ? null
-      : { name: "Easy", miles: 3.5 * scale, pace: easy + 5, hr: 141 },
-    { name: "Easy + strides", miles: 4 * scale, pace: easy - 5, hr: 144 },
-    {
+  const scale = 0.7 + 0.45 * fitness;
+  if (dow >= 5)
+    return {
       name: "Long run, river loop",
       miles: 10 * scale,
       pace: easy - 15,
       hr: 149,
-    },
-  ];
-  return plans[dow] ?? null;
+    };
+  if (rand() < 0.35)
+    return {
+      name: "Tempo 3 × 1.5 mi",
+      miles: 6.5 * scale,
+      pace: easy - 75,
+      hr: 163,
+    };
+  return { name: "Easy + strides", miles: 5 * scale, pace: easy, hr: 144 };
 }
 
-// The last two weeks have no rest days, so the example shows a live streak.
-const STREAK_FILLER: Plan = { name: "Easy", miles: 3.5, pace: 560, hr: 142 };
-
-const isoDate = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+function zonesFor(durationS: number, hr: number): number[] {
+  // Mostly zone 2 on easy runs, more zone 3–4 on harder ones.
+  const hard = Math.min(1, Math.max(0, (hr - 145) / 20));
+  const shares = [
+    0.1,
+    0.72 - 0.5 * hard,
+    0.12 + 0.2 * hard,
+    0.05 + 0.25 * hard,
+    0.01 + 0.05 * hard,
+  ];
+  const total = shares.reduce((a, b) => a + b, 0);
+  return shares.map((s) => Math.round((durationS * s) / total));
+}
 
 function run(
   date: string,
-  plan: Plan,
+  plan: RunPlan,
   rand: () => number,
   i: number,
 ): RunActivity {
   const miles = Math.round(plan.miles * (0.9 + rand() * 0.2) * 10) / 10;
+  const durationS = Math.round(miles * plan.pace);
+  const hr = Math.round(plan.hr + rand() * 4 - 2);
+  const effort = (factor: number, meters: number) =>
+    miles * MILE >= meters
+      ? Math.round((meters / MILE) * plan.pace * factor)
+      : undefined;
   return {
     id: `example-${i}`,
     start: `${date}T07:${String(Math.floor(rand() * 50) + 5).padStart(2, "0")}:00`,
     name: plan.name,
     distanceM: Math.round(miles * MILE),
-    durationS: Math.round(miles * plan.pace),
-    avgHr: Math.round(plan.hr + rand() * 4 - 2),
+    durationS,
+    avgHr: hr,
     elevGainM: Math.round(miles * (8 + rand() * 6)),
+    load: Math.round((durationS / 60) * ((hr - 95) / 30)),
+    zoneSecs: zonesFor(durationS, hr),
+    driftPct:
+      durationS >= 1800
+        ? Math.round((1.5 + rand() * 4 + (plan.miles > 8 ? 2 : 0)) * 10) / 10
+        : undefined,
+    bestEfforts: {
+      mile: effort(0.9, MILE),
+      k5: effort(0.95, 5000),
+      k10: effort(0.97, 10000),
+      half: effort(0.99, 21097.5),
+    },
   };
 }
 
-/** Every made-up run from Jan 1 last year through `today` ("YYYY-MM-DD"). */
-export function exampleRuns(today: string): RunActivity[] {
+const ROTATION = ["back", "chest", "run"] as const;
+
+/** Every made-up run and lift from Jan 1 last year through `today` ("YYYY-MM-DD"). */
+export function exampleTraining(today: string) {
   const rand = seeded(48);
   const first = Date.UTC(+today.slice(0, 4) - 1, 0, 1, 12);
   const last = Date.parse(`${today}T12:00:00Z`);
   const runs: RunActivity[] = [];
+  const lifts: LiftSession[] = [];
+  let next = 0;
   for (let ms = first; ms <= last; ms += DAY_MS) {
+    // About one rest day in four.
+    if (rand() < 0.24) continue;
+    // Now and then a session is skipped: the next one in the rotation is done instead.
+    if (rand() < 0.08) next += 1;
+    const kind = ROTATION[next % ROTATION.length] ?? "run";
+    next += 1;
     const date = isoDate(ms);
-    const dow = (new Date(ms).getUTCDay() + 6) % 7;
-    const recent = last - ms < 14 * DAY_MS;
-    // Every fifth week is a lighter one, as in a real training block.
-    const load = Math.floor((last - ms) / (7 * DAY_MS)) % 5 === 3 ? 0.65 : 1;
-    const plan = planFor(dow, (ms - first) / (last - first), load, rand);
-    if (!plan && !recent) continue;
-    runs.push(run(date, plan ?? STREAK_FILLER, rand, runs.length));
+    const fitness = (ms - first) / (last - first);
+    if (kind === "run") {
+      const dow = (new Date(ms).getUTCDay() + 6) % 7;
+      runs.push(run(date, runPlan(dow, fitness, rand), rand, runs.length));
+    } else {
+      lifts.push(liftSession(date, kind, fitness, rand, lifts.length));
+    }
   }
-  return runs;
+  return { runs, lifts };
 }
 
 function exampleVo2(today: string): RunVo2Reading[] {
@@ -103,15 +210,34 @@ function exampleVo2(today: string): RunVo2Reading[] {
   }));
 }
 
+/** HRV on the few nights the watch was worn: roughly one in five. */
+function exampleHrv(today: string): HrvReading[] {
+  const rand = seeded(7);
+  const last = Date.parse(`${today}T12:00:00Z`);
+  const out: HrvReading[] = [];
+  for (let d = 180; d >= 0; d--) {
+    if (rand() > 0.2) continue;
+    out.push({
+      date: isoDate(last - d * DAY_MS),
+      value: Math.round(50 + rand() * 14),
+    });
+  }
+  return out;
+}
+
 export function exampleRunData(now: Date): Omit<RunData, "garmin"> {
   // Tyler's calendar day; the example only needs to end on "today".
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/New_York",
   }).format(now);
+  const { runs, lifts } = exampleTraining(today);
   return {
     source: "example",
     syncedAt: now.toISOString(),
-    activities: exampleRuns(today),
+    activities: runs,
+    lifts,
     vo2Max: exampleVo2(today),
+    hrv: exampleHrv(today),
+    detailsPending: 0,
   };
 }

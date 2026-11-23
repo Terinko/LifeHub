@@ -1,0 +1,55 @@
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.label {
+  width: 72px;
+  flex: none;
+  font-size: 13px;
+}
+
+.track {
+  position: relative;
+  flex: 1;
+  height: 18px;
+  border-radius: 4px;
+  background: var(--log-ground);
+}
+
+.band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--log-lift-wash);
+}
+
+.fill {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 0;
+  border-radius: 3px;
+  background: var(--log-line);
+}
+
+.fill[data-level="some"] {
+  background: var(--log-lift-soft);
+}
+
+.fill[data-level="in"] {
+  background: var(--log-lift);
+}
+
+.count {
+  width: 24px;
+  text-align: right;
+  font-weight: 600;
+}

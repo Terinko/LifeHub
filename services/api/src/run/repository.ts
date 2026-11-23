@@ -8,7 +8,14 @@ import {
   QueryCommand,
   UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
-import type { RunActivity, RunVo2Reading } from "@lifehub/shared";
+import type {
+  HrvReading,
+  LiftSession,
+  LiftSet,
+  RunActivity,
+  RunBestEfforts,
+  RunVo2Reading,
+} from "@lifehub/shared";
 import { db } from "../shared/db";
 import { requireEnv } from "../shared/env";
 import { isConditionalCheckFailed } from "../shared/conditionalCheck";
@@ -21,6 +28,9 @@ const table = () => requireEnv("TABLE_NAME");
 
 const runsPk = (userId: string) => `USER#${userId}#RUN`;
 const vo2Pk = (userId: string) => `USER#${userId}#VO2`;
+const liftsPk = (userId: string) => `USER#${userId}#LIFT`;
+const hrvPk = (userId: string) => `USER#${userId}#HRV`;
+const detailPk = (userId: string) => `USER#${userId}#DETAIL`;
 const OWNER_KEY = { pk: "CONFIG", sk: "GARMIN" };
 
 /** Who the Garmin key belongs to, and the last time their runs were copied. */
@@ -80,6 +90,60 @@ export async function putRuns(userId: string, runs: RunActivity[]) {
   );
 }
 
+export async function putLifts(userId: string, lifts: LiftSession[]) {
+  await writeBatches(
+    lifts.map((lift) => ({
+      PutRequest: {
+        Item: { pk: liftsPk(userId), sk: `${lift.start}#${lift.id}`, ...lift },
+      },
+    })),
+  );
+}
+
+export async function putHrv(userId: string, readings: HrvReading[]) {
+  await writeBatches(
+    readings.map((reading) => ({
+      PutRequest: {
+        Item: { pk: hrvPk(userId), sk: reading.date, ...reading },
+      },
+    })),
+  );
+}
+
+/**
+ * What was read from one activity's own detail, stored apart from the
+ * activity so re-syncing the activity list never erases it. `found` is false
+ * when Garmin had nothing to read, so it isn't asked again.
+ */
+export type ActivityDetail = {
+  id: string;
+  found: boolean;
+  sets?: LiftSet[];
+  driftPct?: number;
+  bestEfforts?: RunBestEfforts;
+};
+
+export async function putDetail(userId: string, detail: ActivityDetail) {
+  await db.send(
+    new PutCommand({
+      TableName: table(),
+      Item: { pk: detailPk(userId), sk: detail.id, ...detail },
+    }),
+  );
+}
+
+export async function listDetails(
+  userId: string,
+): Promise<Map<string, ActivityDetail>> {
+  const items = await queryAll(detailPk(userId));
+  return new Map(
+    items.map((item) => {
+      const { id, found, sets, driftPct, bestEfforts } = item as ActivityDetail;
+      return [id, { id, found, sets, driftPct, bestEfforts }];
+    }),
+  );
+}
+
 export async function putVo2s(userId: string, readings: RunVo2Reading[]) {
   await writeBatches(
     readings.map((reading) => ({
@@ -128,20 +192,27 @@ async function queryAll(pk: string, fromSk = "") {
   return items;
 }
 
+/** An item without its table keys. */
+function withoutKeys(item: Record<string, unknown>) {
+  const rest = { ...item };
+  delete rest.pk;
+  delete rest.sk;
+  return rest;
+}
+
 export async function listRuns(userId: string, from: string) {
   const items = await queryAll(runsPk(userId), from);
-  return items.map(
-    ({ id, start, name, distanceM, durationS, avgHr, elevGainM }) =>
-      ({
-        id,
-        start,
-        name,
-        distanceM,
-        durationS,
-        avgHr,
-        elevGainM,
-      }) as RunActivity,
-  );
+  return items.map((item) => withoutKeys(item) as RunActivity);
+}
+
+export async function listLifts(userId: string, from: string) {
+  const items = await queryAll(liftsPk(userId), from);
+  return items.map((item) => withoutKeys(item) as LiftSession);
+}
+
+export async function listHrv(userId: string, from: string) {
+  const items = await queryAll(hrvPk(userId), from);
+  return items.map(({ date, value }) => ({ date, value }) as HrvReading);
 }
 
 export async function listVo2(userId: string, from: string) {
@@ -156,9 +227,12 @@ async function deleteAll(pk: string) {
   );
 }
 
-/** Forgets the owner and every run and reading copied from Garmin. */
+/** Forgets the owner and everything copied from Garmin. */
 export async function deleteGarminData(userId: string) {
   await deleteAll(runsPk(userId));
   await deleteAll(vo2Pk(userId));
+  await deleteAll(liftsPk(userId));
+  await deleteAll(hrvPk(userId));
+  await deleteAll(detailPk(userId));
   await db.send(new DeleteCommand({ TableName: table(), Key: OWNER_KEY }));
 }

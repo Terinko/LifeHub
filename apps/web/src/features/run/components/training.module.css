@@ -1,0 +1,237 @@
+/* Shared pieces for the Training cards: stat tiles, legends, bar rows,
+   sparklines and pills. Colors come from the --log-* tokens. */
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+  gap: 12px;
+}
+
+.tile {
+  composes: card from "./card.module.css";
+  gap: 4px;
+  padding: 14px 16px;
+}
+
+.tileValue {
+  font-family: var(--log-font-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.tileUnit {
+  margin-left: 4px;
+  font-family: var(--log-font-ui);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--log-ink-sec);
+}
+
+.small {
+  font-size: 12px;
+  color: var(--log-ink-sec);
+}
+
+.good {
+  color: var(--log-good-ink);
+  font-weight: 600;
+}
+
+.warn {
+  color: var(--log-goal-ink);
+  font-weight: 600;
+}
+
+.pill {
+  font-family: var(--log-font-num);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  background: var(--log-track);
+  color: var(--log-ink-2);
+}
+
+.pill[data-tone="up"],
+.pill[data-tone="balanced"] {
+  background: var(--log-good-wash);
+  color: var(--log-good-ink);
+}
+
+.pill[data-tone="down"],
+.pill[data-tone="high"] {
+  background: var(--log-skip-wash);
+  color: var(--log-goal-ink);
+}
+
+.pill[data-tone="low"] {
+  background: var(--log-blue-wash);
+  color: var(--log-blue-deep);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 12px;
+  color: var(--log-ink-sec);
+}
+
+.legend span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.swatch[data-c="run"] {
+  background: var(--log-blue);
+}
+.swatch[data-c="lift"] {
+  background: var(--log-lift);
+}
+.swatch[data-c="mid"] {
+  background: var(--log-mid);
+}
+.swatch[data-c="hard"] {
+  background: var(--log-goal);
+}
+.swatch[data-c="skip"] {
+  background: var(--log-skip-line);
+}
+.swatch[data-c="hrv"] {
+  background: var(--log-hrv);
+  border-radius: 50%;
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--log-grid);
+}
+
+.row:first-child {
+  border-top: 0;
+}
+
+.rowMain {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rowTitle {
+  font-weight: 500;
+}
+
+.num {
+  font-family: var(--log-font-num);
+  font-variant-numeric: tabular-nums;
+}
+
+.spark {
+  width: 100%;
+  height: 36px;
+  display: block;
+}
+
+.spark polyline {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.spark[data-c="run"] polyline {
+  stroke: var(--log-blue);
+}
+
+.spark[data-c="lift"] polyline {
+  stroke: var(--log-lift);
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+  gap: 10px;
+}
+
+.inset {
+  background: var(--log-ground);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.callout {
+  background: var(--log-ground);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.toggle {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 8px;
+  background: var(--log-ground);
+}
+
+.toggle button {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--log-ink-sec);
+  cursor: pointer;
+}
+
+.toggle button[aria-pressed="true"] {
+  background: var(--log-card);
+  color: var(--log-ink);
+}
+
+.svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+.svg text {
+  font-family: var(--log-font-num);
+  font-size: 11px;
+  fill: var(--log-ink-sec);
+}
+
+.empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--log-ink-sec);
+}

@@ -14,7 +14,8 @@ import styles from "./WeeklyMileage.module.css";
 type Props = {
   days: Map<string, number>;
   today: string;
-  goal: number;
+  /** Average of the last four finished weeks, drawn as a dashed line. */
+  average: number;
 };
 
 const RANGES: { key: WeekRange; label: string }[] = [
@@ -23,11 +24,11 @@ const RANGES: { key: WeekRange; label: string }[] = [
   { key: "1yr", label: "1 yr" },
 ];
 
-/** Miles per week as bars, against the dashed weekly goal. */
-export function WeeklyMileage({ days, today, goal }: Props) {
+/** Miles per week as bars, against the dashed 4-week average. */
+export function WeeklyMileage({ days, today, average }: Props) {
   const [range, setRange] = useState<WeekRange>("16wk");
   const weeks = weeklyTotals(days, today, WEEK_COUNTS[range]);
-  const axis = weekAxis(weeks, goal);
+  const axis = weekAxis(weeks, average);
   const pct = (miles: number) => `${(miles / axis.max) * 100}%`;
 
   return (
@@ -56,9 +57,11 @@ export function WeeklyMileage({ days, today, goal }: Props) {
           ))}
         </div>
         <div className={styles.plot}>
-          <div className={styles.goal} style={{ bottom: pct(goal) }}>
-            <span>goal {goal} mi</span>
-          </div>
+          {average > 0 && (
+            <div className={styles.goal} style={{ bottom: pct(average) }}>
+              <span>4-wk avg {formatMiles(average)} mi</span>
+            </div>
+          )}
           <div
             className={styles.bars}
             data-dense={range === "1yr" || undefined}
@@ -68,7 +71,7 @@ export function WeeklyMileage({ days, today, goal }: Props) {
                 <div
                   className={styles.bar}
                   data-state={
-                    w.current ? "current" : w.miles >= goal ? "hit" : "under"
+                    w.current ? "current" : w.miles >= average ? "hit" : "under"
                   }
                   style={{ height: pct(w.miles) }}
                   title={`Week of ${w.label}: ${formatMiles(w.miles)} mi`}
@@ -86,11 +89,11 @@ export function WeeklyMileage({ days, today, goal }: Props) {
       <div className={styles.legend}>
         <span>
           <i data-state="hit" />
-          Hit goal
+          At or above average
         </span>
         <span>
           <i data-state="under" />
-          Under goal
+          Below average
         </span>
         <span>
           <i data-state="current" />

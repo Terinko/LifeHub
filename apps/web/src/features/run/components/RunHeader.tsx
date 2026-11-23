@@ -35,7 +35,7 @@ export function RunHeader({
         <span className={styles.date}>
           Week {isoWeek(today)} · {fullDate(today)}
         </span>
-        <h1 className={styles.title}>Training Log</h1>
+        <h1 className={styles.title}>Training</h1>
       </div>
       <div className={styles.meta}>
         {data?.source === "example" && (

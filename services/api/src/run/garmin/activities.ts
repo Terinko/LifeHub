@@ -1,4 +1,9 @@
-import type { RunActivity, RunVo2Reading } from "@lifehub/shared";
+import type {
+  HrvReading,
+  LiftSession,
+  RunActivity,
+  RunVo2Reading,
+} from "@lifehub/shared";
 import { garminGet } from "./http";
 
 /** An activity from Garmin's activity search (only the fields LifeHub reads). */
@@ -15,15 +20,21 @@ export type GarminActivity = {
   averageHR?: number;
   /** Meters */
   elevationGain?: number;
+  activityTrainingLoad?: number;
+  hrTimeInZone_1?: number;
+  hrTimeInZone_2?: number;
+  hrTimeInZone_3?: number;
+  hrTimeInZone_4?: number;
+  hrTimeInZone_5?: number;
 };
 
 const PAGE = 100;
 
 /**
- * Every running activity (road, trail, treadmill, track…) that started on the
+ * Every activity (runs, strength and anything else) that started on the
  * local dates `from` to `to`, both "YYYY-MM-DD", following Garmin's pages.
  */
-export async function searchRuns(
+export async function searchActivities(
   bearer: string,
   from: string,
   to: string,
@@ -32,13 +43,7 @@ export async function searchRuns(
   for (let start = 0; ; start += PAGE) {
     const page = await garminGet<GarminActivity[]>(
       "/activitylist-service/activities/search/activities",
-      {
-        start,
-        limit: PAGE,
-        startDate: from,
-        endDate: to,
-        activityType: "running",
-      },
+      { start, limit: PAGE, startDate: from, endDate: to },
       bearer,
     );
     all.push(...page);
@@ -49,16 +54,49 @@ export async function searchRuns(
 export const isRun = (a: GarminActivity) =>
   !!a.activityType?.typeKey?.includes("running") && (a.distance ?? 0) > 0;
 
+export const isLift = (a: GarminActivity) =>
+  !!a.activityType?.typeKey?.includes("strength");
+
+const startOf = (a: GarminActivity) =>
+  a.startTimeLocal.replace(" ", "T").slice(0, 19);
+
+const round = (n: number | null | undefined) =>
+  n === undefined || n === null ? undefined : Math.round(n);
+
+function zoneSecs(a: GarminActivity): number[] | undefined {
+  const zones = [
+    a.hrTimeInZone_1,
+    a.hrTimeInZone_2,
+    a.hrTimeInZone_3,
+    a.hrTimeInZone_4,
+    a.hrTimeInZone_5,
+  ];
+  if (zones.every((z) => z === undefined || z === null)) return undefined;
+  return zones.map((z) => Math.round(z ?? 0));
+}
+
+export function toLiftSession(a: GarminActivity): LiftSession {
+  return {
+    id: String(a.activityId),
+    start: startOf(a),
+    name: a.activityName?.trim() || "Strength",
+    durationS: Math.round(a.duration ?? 0),
+    avgHr: round(a.averageHR),
+    load: round(a.activityTrainingLoad),
+  };
+}
+
 export function toRunActivity(a: GarminActivity): RunActivity {
   return {
     id: String(a.activityId),
-    start: a.startTimeLocal.replace(" ", "T").slice(0, 19),
+    start: startOf(a),
     name: a.activityName?.trim() || "Run",
     distanceM: Math.round(a.distance ?? 0),
     durationS: Math.round(a.duration ?? 0),
-    avgHr: a.averageHR === undefined ? undefined : Math.round(a.averageHR),
-    elevGainM:
-      a.elevationGain === undefined ? undefined : Math.round(a.elevationGain),
+    avgHr: round(a.averageHR),
+    elevGainM: round(a.elevationGain),
+    load: round(a.activityTrainingLoad),
+    zoneSecs: zoneSecs(a),
   };
 }
 
@@ -88,4 +126,25 @@ export async function vo2Readings(
       ? [{ date: generic.calendarDate, value: Math.round(value) }]
       : [];
   });
+}
+
+/** One night from Garmin's HRV history. */
+type GarminHrvDay = { calendarDate?: string; lastNightAvg?: number | null };
+
+/** Overnight HRV between two local dates; nights without the watch are absent. */
+export async function hrvReadings(
+  bearer: string,
+  from: string,
+  to: string,
+): Promise<HrvReading[]> {
+  const res = await garminGet<{ hrvSummaries?: GarminHrvDay[] }>(
+    `/hrv-service/hrv/daily/${from}/${to}`,
+    {},
+    bearer,
+  );
+  return (res.hrvSummaries ?? []).flatMap((d) =>
+    d.calendarDate && d.lastNightAvg
+      ? [{ date: d.calendarDate, value: Math.round(d.lastNightAvg) }]
+      : [],
+  );
 }

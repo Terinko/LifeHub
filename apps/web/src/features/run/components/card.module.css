@@ -51,10 +51,11 @@
   gap: 12px;
 }
 
-.wide {
+/* Only inside a .pair row: in a column, a flex basis would set the height. */
+.pair > .wide {
   flex: 999 1 560px;
 }
 
-.narrow {
+.pair > .narrow {
   flex: 1 1 340px;
 }

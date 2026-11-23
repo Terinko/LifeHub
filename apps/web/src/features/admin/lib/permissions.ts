@@ -13,7 +13,7 @@ export const PERMISSION_OPTIONS: {
   { key: "fantasy", label: "Fantasy", icon: "🏈" },
   { key: "weather", label: "Weather", icon: "🌦️" },
   { key: "hockey", label: "Hockey", icon: "🏒" },
-  { key: "run", label: "Run", icon: "🏃" },
+  { key: "run", label: "Training", icon: "🏃" },
 ];
 
 /** What a new invite starts with: no tools. */

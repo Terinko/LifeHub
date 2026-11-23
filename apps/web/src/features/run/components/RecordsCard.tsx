@@ -10,7 +10,9 @@ export function RecordsCard({ records }: { records: RunRecord[] }) {
     <section className={`${card.card} ${card.narrow}`}>
       <div>
         <h2 className={card.title}>Personal records</h2>
-        <p className={card.note}>Fastest whole run at each distance</p>
+        <p className={card.note}>
+          Fastest stretch at each distance, including inside longer runs
+        </p>
       </div>
       <div className={styles.list}>
         {records.map((r) => (

@@ -191,8 +191,9 @@
   --rink-font-ui: "Public Sans", system-ui, sans-serif;
   --rink-font-score: "Saira Condensed", "Arial Narrow", sans-serif;
 
-  /* Training Log: the calm data theme (Run). White cards on cool gray, one
-     blue for miles, green for on-track, burnt orange for the goal line. */
+  /* Training: the calm data theme (Run). White cards on cool gray, blue for
+     running, teal for lifting, green for progress, burnt orange for warnings
+     and skipped sessions, purple for HRV. */
   --log-ground: #f3f6f9;
   --log-card: #ffffff;
   --log-line: #dce2e8;
@@ -217,6 +218,14 @@
   --log-goal-ink: #8a4209;
   --log-example-wash: #fdebd3;
   --log-example-ink: #7a3e06;
+  --log-lift: #0f7a6e;
+  --log-lift-deep: #0b5a51;
+  --log-lift-soft: #7fc4ba;
+  --log-lift-wash: #e5f4f1;
+  --log-mid: #d9a25b;
+  --log-skip-wash: #fff4e8;
+  --log-skip-line: #f0d4b4;
+  --log-hrv: #5b3fa8;
   --log-font-ui: "IBM Plex Sans", system-ui, sans-serif;
   --log-font-num: "IBM Plex Mono", ui-monospace, Menlo, monospace;
 }

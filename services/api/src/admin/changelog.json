@@ -82,5 +82,18 @@
       "Weekly mileage over 8 weeks, 16 weeks or a year, a grid of run days, easy-run pace at the same heart rate, and your fastest 5K, 10K and more.",
       "It reads your runs with a Garmin Personal API key and checks for new ones every time you open it (or tap Refresh). Until Garmin is connected it shows example runs."
     ]
+  },
+  {
+    "id": "2026-11-23-training-dashboard",
+    "date": "2026-11-23",
+    "tools": ["run"],
+    "bullets": [
+      "Run is now Training: one dashboard for running and lifting, with Week, Running, Lifting and Insights tabs.",
+      "Week tracks your Back + Bi, Chest + Tri, Run rotation. Rest days just push the next session back, and doing a different session than the one due marks that one skipped.",
+      "Lifting reads sets, reps and weight from your Garmin strength workouts: working sets per muscle, estimated 1-rep max for bench, row, preacher curl, hammer curl and weighted pull-ups, session volume, and your last session against the time before.",
+      "Running adds race predictions from VO₂ max, time in heart-rate zones, heart-rate drift on each run, and best efforts found inside longer runs.",
+      "Insights shows how a lift day changes your next easy run, where your time goes, rotation adherence, and HRV on the nights you wore the watch.",
+      "Mileage goals are gone; progress is shown as trends instead."
+    ]
   }
 ]

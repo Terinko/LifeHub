@@ -29,3 +29,16 @@ export const formatPace = (secondsPerMile: number) =>
 
 export const formatFeet = (meters: number) =>
   `${Math.round(meters * FEET_PER_METER).toLocaleString("en-US")} ft`;
+
+const LB_PER_KG = 2.20462;
+
+export const toLb = (kg: number) => kg * LB_PER_KG;
+
+/** 1234.5 → "1,235" */
+export const formatWhole = (n: number) => Math.round(n).toLocaleString("en-US");
+
+/** 3725 seconds → "1:02" (hours and minutes). */
+export function formatHours(seconds: number): string {
+  const minutes = Math.round(seconds / 60);
+  return `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, "0")}`;
+}

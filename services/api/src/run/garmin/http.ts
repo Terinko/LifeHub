@@ -73,3 +73,16 @@ export async function garminGet<T>(
   if (!res.ok) throw new GarminError(path, res.status);
   return (await res.json()) as T;
 }
+
+/** GETs a file (an activity's original FIT archive) from the Personal API. */
+export async function garminBytes(
+  path: string,
+  bearer: string,
+): Promise<Uint8Array> {
+  const res = await fetch(`${BASE}${path}`, {
+    headers: { Accept: "*/*", Authorization: `Bearer ${bearer}` },
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+  });
+  if (!res.ok) throw new GarminError(path, res.status);
+  return new Uint8Array(await res.arrayBuffer());
+}

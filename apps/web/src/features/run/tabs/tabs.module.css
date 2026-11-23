@@ -1,0 +1,23 @@
+/* One column on a phone, two side by side from tablet width. */
+.columns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.column {
+  flex: 1 1 360px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.notice {
+  margin: 0;
+  background: var(--log-skip-wash);
+  border-color: var(--log-skip-line);
+  color: var(--log-goal-ink);
+  font-size: 13px;
+}

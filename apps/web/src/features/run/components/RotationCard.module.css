@@ -1,0 +1,58 @@
+.track {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.slot {
+  min-width: 0;
+  border-radius: 8px;
+  padding: 8px 4px;
+  text-align: center;
+  border: 1px solid var(--log-line);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.slot[data-status="done"][data-kind="lift"] {
+  background: var(--log-lift-wash);
+  border-color: var(--log-lift-wash);
+  color: var(--log-lift-deep);
+}
+
+.slot[data-status="done"][data-kind="run"] {
+  background: var(--log-blue-wash);
+  border-color: var(--log-blue-wash);
+  color: var(--log-blue-deep);
+}
+
+.slot[data-status="skipped"] {
+  background: var(--log-skip-wash);
+  border-color: var(--log-skip-line);
+  color: var(--log-goal-ink);
+}
+
+.slot[data-status="next"] {
+  border: 2px dashed var(--log-lift);
+  color: var(--log-lift-deep);
+}
+
+.slot[data-status="next"][data-kind="run"] {
+  border-color: var(--log-blue);
+  color: var(--log-blue-deep);
+}
+
+.when {
+  font-size: 11px;
+  color: var(--log-ink-sec);
+}
+
+.what {
+  font-size: 12px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
