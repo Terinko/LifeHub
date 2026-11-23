@@ -218,8 +218,17 @@ async function queryAll(pk: string, fromSk = "") {
     const res = await db.send(
       new QueryCommand({
         TableName: table(),
-        KeyConditionExpression: "pk = :pk AND sk >= :from",
-        ExpressionAttributeValues: { ":pk": pk, ":from": fromSk },
+        // DynamoDB refuses an empty string in a key condition, so "from the
+        // start" leaves the sort key out.
+        ...(fromSk
+          ? {
+              KeyConditionExpression: "pk = :pk AND sk >= :from",
+              ExpressionAttributeValues: { ":pk": pk, ":from": fromSk },
+            }
+          : {
+              KeyConditionExpression: "pk = :pk",
+              ExpressionAttributeValues: { ":pk": pk },
+            }),
         ExclusiveStartKey: start,
       }),
     );
