@@ -15,6 +15,7 @@ import { liftSets, runDetail } from "./garmin/sync";
 import { forgetGarminKey, getGarminKey } from "./garmin/app";
 import { bearerToken, GarminError } from "./garmin/http";
 import * as repo from "./repository";
+import { describe, step } from "./steps";
 
 // Runs are copied from Garmin at most this often, unless Refresh is pressed.
 const SYNC_EVERY_MS = 15 * 60_000;
@@ -38,17 +39,22 @@ const isoDay = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 /** Jan 1 of last year: enough history for the year chart and this year's totals. */
 const historyStart = (now: Date) => `${now.getUTCFullYear() - 1}-01-01`;
 
-/** Calls `read` for consecutive date ranges of `days` days from `from` to today. */
+/**
+ * Calls `read` for consecutive date ranges of `days` days from `from` to
+ * today, all at once, so a full-history copy stays quick.
+ */
 async function inChunks(
   from: string,
   now: Date,
   days: number,
   read: (start: string, end: string) => Promise<void>,
 ) {
+  const reads: Promise<void>[] = [];
   for (let ms = Date.parse(from); ms <= now.getTime(); ms += days * DAY_MS) {
     const end = isoDay(Math.min(ms + (days - 1) * DAY_MS, now.getTime()));
-    await read(isoDay(ms), end);
+    reads.push(read(isoDay(ms), end));
   }
+  await Promise.all(reads);
 }
 
 /** Runs past the nice-to-have readings (VO2 max, HRV) when they can't be read. */
@@ -58,17 +64,6 @@ async function optional(label: string, read: () => Promise<void>) {
   } catch (error) {
     console.warn(`Run: ${label} unavailable`, describe(error));
   }
-}
-
-/**
- * A short reason for a failure, safe to show: Garmin errors name only the
- * path and status, and other errors only their type.
- */
-function describe(error: unknown): string {
-  if (error instanceof GarminError || error instanceof HttpError) {
-    return error.message;
-  }
-  return error instanceof Error ? error.name : "Unknown error";
 }
 
 /** Copies activities, VO2 max and HRV from Garmin into the table, from `from` to today. */
@@ -215,7 +210,9 @@ export async function getRunData(
   profile: UserProfile | undefined,
   { refresh = false, now = new Date() } = {},
 ): Promise<RunData> {
-  const [key, owner] = await Promise.all([getGarminKey(), repo.getOwner()]);
+  const [key, owner] = await step("reading the Garmin setup", () =>
+    Promise.all([getGarminKey(), repo.getOwner()]),
+  );
   if (!key || owner?.userId !== userId) {
     const garmin =
       key && !owner && isAdmin(profile) ? "available" : "unavailable";
@@ -224,32 +221,45 @@ export async function getRunData(
   const started = Date.now();
   const sync = await syncIfStale(owner, now, refresh);
   const from = historyStart(now);
-  const [runs, lifts, vo2Max, hrv, details] = await Promise.all([
-    repo.listRuns(userId, from),
-    repo.listLifts(userId, from),
-    repo.listVo2(userId, from),
-    repo.listHrv(userId, from),
-    repo.listDetails(userId),
-  ]);
-  const pending: Pending[] = [
-    ...runs.map((r) => ({ id: r.id, kind: "run" as const, start: r.start })),
-    ...lifts.map((l) => ({ id: l.id, kind: "lift" as const, start: l.start })),
-  ]
-    .filter((a) => !details.has(a.id))
-    .sort((a, b) => b.start.localeCompare(a.start));
-  for (const detail of await readDetails(userId, pending, now, started)) {
+  const [runs, lifts, vo2Max, hrv, details] = await step(
+    "reading saved activities",
+    () =>
+      Promise.all([
+        repo.listRuns(userId, from),
+        repo.listLifts(userId, from),
+        repo.listVo2(userId, from),
+        repo.listHrv(userId, from),
+        repo.listDetails(userId),
+      ]),
+  );
+  const pending = await step("sorting saved activities", async () =>
+    [
+      ...runs.map((r): Pending => ({ id: r.id, kind: "run", start: r.start })),
+      ...lifts.map((l): Pending => ({
+        id: l.id,
+        kind: "lift",
+        start: l.start,
+      })),
+    ]
+      .filter((a) => !details.has(a.id))
+      .sort((a, b) => String(b.start).localeCompare(String(a.start))),
+  );
+  const read = await step("reading activity detail", () =>
+    readDetails(userId, pending, now, started),
+  );
+  for (const detail of read) {
     details.set(detail.id, detail);
   }
-  return {
-    source: "garmin",
-    garmin: "connected",
+  return step("putting the page together", async () => ({
+    source: "garmin" as const,
+    garmin: "connected" as const,
     ...sync,
     activities: runs.map((r) => withRunDetail(r, details.get(r.id))),
     lifts: lifts.map((l) => withSets(l, details.get(l.id))),
     vo2Max,
     hrv,
     detailsPending: pending.filter((a) => !details.has(a.id)).length,
-  };
+  }));
 }
 
 function withRunDetail(
