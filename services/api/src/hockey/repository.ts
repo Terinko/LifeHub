@@ -10,14 +10,20 @@ const POLL_PK = "POLL#USCHO";
 
 const table = () => requireEnv("TABLE_NAME");
 
-/** Saves this poll once; later sightings of the same week are no-ops. */
+/**
+ * Saves this poll once; later sightings of the same week are no-ops, unless
+ * they have more rows. That repairs a week saved short, as when tied ranks
+ * ("T-6") used to be dropped by the parser.
+ */
 export async function savePollSnapshot(snapshot: HockeyPollSnapshot) {
   try {
     await db.send(
       new PutCommand({
         TableName: table(),
         Item: { pk: POLL_PK, sk: snapshot.through, ...snapshot },
-        ConditionExpression: "attribute_not_exists(pk)",
+        ConditionExpression: "attribute_not_exists(pk) OR size(#rows) < :rows",
+        ExpressionAttributeNames: { "#rows": "rows" },
+        ExpressionAttributeValues: { ":rows": snapshot.rows.length },
       }),
     );
   } catch (error) {
