@@ -30,7 +30,12 @@ const jwt = (exp: number) =>
 
 type Setup = {
   role?: "ADMIN" | "USER";
-  owner?: { userId: string; connectedAt: string; syncedAt?: string };
+  owner?: {
+    userId: string;
+    connectedAt: string;
+    syncedAt?: string;
+    syncVersion?: number;
+  };
   runs?: unknown[];
   details?: unknown[];
 };
@@ -172,7 +177,7 @@ describe("GET /run", () => {
     key.mockResolvedValue("personal-key");
     const syncedAt = new Date(Date.now() - 60_000).toISOString();
     table({
-      owner: { userId: "u1", connectedAt: "x", syncedAt },
+      owner: { userId: "u1", connectedAt: "x", syncedAt, syncVersion: 2 },
       runs: [
         {
           pk: "USER#u1#RUN",
@@ -260,6 +265,88 @@ describe("GET /run", () => {
     expect(batchPuts()).toContainEqual(
       expect.objectContaining({ pk: "USER#u1#LIFT", id: "9" }),
     );
+  });
+});
+
+describe("when Garmin misbehaves", () => {
+  const recentOwner = (syncVersion?: number) => ({
+    userId: "u1",
+    connectedAt: "x",
+    syncedAt: new Date(Date.now() - 20 * 60_000).toISOString(),
+    syncVersion,
+  });
+
+  it("still loads when HRV comes back as an empty body", async () => {
+    key.mockResolvedValue("personal-key");
+    garmin();
+    const ok = fetchMock.getMockImplementation();
+    fetchMock.mockImplementation(async (input, init) =>
+      String(input).includes("/hrv-service/")
+        ? new Response("", { status: 200 })
+        : (ok?.(input, init) ?? new Response(null, { status: 500 })),
+    );
+    table({ owner: recentOwner(2) });
+    const res = parseResponse(await handler(apiEvent("GET /run")));
+    expect(res.status).toBe(200);
+    expect(res.body.syncError).toBeUndefined();
+  });
+
+  it("shows what was copied before, with the reason, when the copy fails", async () => {
+    key.mockResolvedValue("personal-key");
+    garmin();
+    const ok = fetchMock.getMockImplementation();
+    fetchMock.mockImplementation(async (input, init) =>
+      String(input).includes("/activities/search/")
+        ? new Response(null, { status: 503 })
+        : (ok?.(input, init) ?? new Response(null, { status: 500 })),
+    );
+    const owner = recentOwner(2);
+    table({ owner });
+    const res = parseResponse(await handler(apiEvent("GET /run")));
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      source: "garmin",
+      syncedAt: owner.syncedAt,
+      syncError:
+        "Garmin /activitylist-service/activities/search/activities → HTTP 503",
+    });
+    expect(
+      sentCommands(send).some((c) =>
+        String(c.input.UpdateExpression).includes("syncedAt"),
+      ),
+    ).toBe(false);
+  });
+
+  it("copies the whole history once after a sync from before lifts and HRV", async () => {
+    key.mockResolvedValue("personal-key");
+    garmin();
+    table({ owner: recentOwner(undefined) });
+    await handler(apiEvent("GET /run"));
+    const search = fetchMock.mock.calls
+      .map(([input]) => String(input))
+      .find((url) => url.includes("/activities/search/"));
+    expect(search).toContain(
+      `startDate=${new Date().getUTCFullYear() - 1}-01-01`,
+    );
+    const mark = sentCommands(send).find((c) =>
+      String(c.input.UpdateExpression).includes("syncedAt"),
+    );
+    expect(mark?.input.ExpressionAttributeValues).toMatchObject({ ":v": 2 });
+  });
+
+  it("writes a key named twice in one batch only once", async () => {
+    key.mockResolvedValue("personal-key");
+    garmin([garminActivity, garminActivity]);
+    table({ owner: recentOwner(2) });
+    await handler(apiEvent("GET /run"));
+    const batches = sentCommands(send)
+      .filter((c) => c.name === "BatchWriteCommand")
+      .map(
+        (c) => Object.values(c.input.RequestItems as object)[0] as unknown[],
+      );
+    expect(
+      batches.flat().filter((w) => JSON.stringify(w).includes("#RUN")),
+    ).toHaveLength(1);
   });
 });
 

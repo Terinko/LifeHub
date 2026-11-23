@@ -57,6 +57,12 @@ export function RunPage() {
           <p className={styles.status}>Loading your training…</p>
         ) : (
           <>
+            {run.data.syncError && (
+              <p className={styles.status}>
+                Couldn't copy new activities from Garmin ({run.data.syncError}).
+                Showing what was copied before.
+              </p>
+            )}
             {run.data.garmin !== "connected" && (
               <GarminPanel status={run.data.garmin} />
             )}

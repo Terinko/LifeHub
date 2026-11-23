@@ -94,6 +94,8 @@ export type RunData = {
   garmin: RunGarminStatus;
   /** ISO time the data was last copied from Garmin, when connected. */
   syncedAt?: string;
+  /** Why the latest copy from Garmin failed; the stored data is shown instead. */
+  syncError?: string;
   activities: RunActivity[];
   lifts: LiftSession[];
   vo2Max: RunVo2Reading[];
