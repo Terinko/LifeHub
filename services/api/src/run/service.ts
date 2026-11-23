@@ -25,8 +25,12 @@ const VO2_CHUNK_DAYS = 120;
 const HRV_CHUNK_DAYS = 28;
 const HRV_HISTORY_DAYS = 180;
 // Each load reads sets and second-by-second detail for a few more
-// activities, newest first, stopping after this long so the page stays quick.
-const DETAIL_BUDGET_MS = 8_000;
+// activities, newest first, until this long after the request started, so
+// the page stays quick and the Lambda finishes well inside its 30 seconds.
+const DETAIL_UNTIL_MS = 12_000;
+// Bumped when a sync starts copying a new kind of data: an owner synced by an
+// older version gets the whole history again once (2: strength and HRV).
+const SYNC_VERSION = 2;
 const DAY_MS = 86_400_000;
 
 const isoDay = (ms: number) => new Date(ms).toISOString().slice(0, 10);
@@ -47,14 +51,24 @@ async function inChunks(
   }
 }
 
-/** Runs past the nice-to-have readings (VO2 max, HRV) when Garmin refuses them. */
+/** Runs past the nice-to-have readings (VO2 max, HRV) when they can't be read. */
 async function optional(label: string, read: () => Promise<void>) {
   try {
     await read();
   } catch (error) {
-    if (!(error instanceof GarminError)) throw error;
-    console.warn(`Run: ${label} unavailable`, error.message);
+    console.warn(`Run: ${label} unavailable`, describe(error));
   }
+}
+
+/**
+ * A short reason for a failure, safe to show: Garmin errors name only the
+ * path and status, and other errors only their type.
+ */
+function describe(error: unknown): string {
+  if (error instanceof GarminError || error instanceof HttpError) {
+    return error.message;
+  }
+  return error instanceof Error ? error.name : "Unknown error";
 }
 
 /** Copies activities, VO2 max and HRV from Garmin into the table, from `from` to today. */
@@ -66,20 +80,22 @@ async function syncFrom(owner: string, from: string, now: Date) {
   const activities = await searchActivities(bearer, from, to);
   await repo.putRuns(owner, activities.filter(isRun).map(toRunActivity));
   await repo.putLifts(owner, activities.filter(isLift).map(toLiftSession));
-  await optional("VO2 max", () =>
-    inChunks(from, now, VO2_CHUNK_DAYS, async (start, end) =>
-      repo.putVo2s(owner, await vo2Readings(bearer, start, end)),
-    ),
-  );
   const hrvFrom = isoDay(
     Math.max(Date.parse(from), now.getTime() - HRV_HISTORY_DAYS * DAY_MS),
   );
-  await optional("HRV", () =>
-    inChunks(hrvFrom, now, HRV_CHUNK_DAYS, async (start, end) =>
-      repo.putHrv(owner, await hrvReadings(bearer, start, end)),
+  await Promise.all([
+    optional("VO2 max", () =>
+      inChunks(from, now, VO2_CHUNK_DAYS, async (start, end) =>
+        repo.putVo2s(owner, await vo2Readings(bearer, start, end)),
+      ),
     ),
-  );
-  await repo.markSynced(now.toISOString());
+    optional("HRV", () =>
+      inChunks(hrvFrom, now, HRV_CHUNK_DAYS, async (start, end) =>
+        repo.putHrv(owner, await hrvReadings(bearer, start, end)),
+      ),
+    ),
+  ]);
+  await repo.markSynced(now.toISOString(), SYNC_VERSION);
 }
 
 type Pending = { id: string; kind: "run" | "lift"; start: string };
@@ -93,15 +109,15 @@ async function readDetails(
   owner: string,
   pending: Pending[],
   now: Date,
+  started: number,
 ): Promise<repo.ActivityDetail[]> {
   if (pending.length === 0) return [];
   const read: repo.ActivityDetail[] = [];
   try {
     const bearer = await freshBearer(now);
     if (!bearer) return [];
-    const started = Date.now();
     for (const item of pending) {
-      if (Date.now() - started > DETAIL_BUDGET_MS) break;
+      if (Date.now() - started > DETAIL_UNTIL_MS) break;
       const detail = await readDetail(bearer, item);
       if (!detail) break;
       await repo.putDetail(owner, detail);
@@ -165,13 +181,28 @@ export async function freshBearer(now: Date): Promise<string | undefined> {
   }
 }
 
-async function syncIfStale(owner: repo.GarminOwner, now: Date, force: boolean) {
+/**
+ * Copies from Garmin when the last copy is stale. A failed copy doesn't stop
+ * the page: it shows what was copied before, with the reason.
+ */
+async function syncIfStale(
+  owner: repo.GarminOwner,
+  now: Date,
+  force: boolean,
+): Promise<{ syncedAt?: string; syncError?: string }> {
+  const current = owner.syncVersion === SYNC_VERSION;
   const last = owner.syncedAt ? Date.parse(owner.syncedAt) : undefined;
-  if (!force && last && now.getTime() - last < SYNC_EVERY_MS)
-    return owner.syncedAt;
-  const from = last ? isoDay(last - OVERLAP_DAYS * DAY_MS) : historyStart(now);
-  await syncFrom(owner.userId, from, now);
-  return now.toISOString();
+  if (!force && current && last && now.getTime() - last < SYNC_EVERY_MS)
+    return { syncedAt: owner.syncedAt };
+  const from =
+    current && last ? isoDay(last - OVERLAP_DAYS * DAY_MS) : historyStart(now);
+  try {
+    await syncFrom(owner.userId, from, now);
+    return { syncedAt: now.toISOString() };
+  } catch (error) {
+    console.error("Run: copying from Garmin failed", error);
+    return { syncedAt: owner.syncedAt, syncError: describe(error) };
+  }
 }
 
 /**
@@ -190,7 +221,8 @@ export async function getRunData(
       key && !owner && isAdmin(profile) ? "available" : "unavailable";
     return { ...exampleRunData(now), garmin };
   }
-  const syncedAt = await syncIfStale(owner, now, refresh);
+  const started = Date.now();
+  const sync = await syncIfStale(owner, now, refresh);
   const from = historyStart(now);
   const [runs, lifts, vo2Max, hrv, details] = await Promise.all([
     repo.listRuns(userId, from),
@@ -205,13 +237,13 @@ export async function getRunData(
   ]
     .filter((a) => !details.has(a.id))
     .sort((a, b) => b.start.localeCompare(a.start));
-  for (const detail of await readDetails(userId, pending, now)) {
+  for (const detail of await readDetails(userId, pending, now, started)) {
     details.set(detail.id, detail);
   }
   return {
     source: "garmin",
     garmin: "connected",
-    syncedAt,
+    ...sync,
     activities: runs.map((r) => withRunDetail(r, details.get(r.id))),
     lifts: lifts.map((l) => withSets(l, details.get(l.id))),
     vo2Max,

@@ -55,6 +55,8 @@ export type GarminOwner = {
   connectedAt: string;
   /** ISO time of the last successful sync. */
   syncedAt?: string;
+  /** Which kinds of data that sync copied (see SYNC_VERSION in service.ts). */
+  syncVersion?: number;
 };
 
 export async function getOwner(): Promise<GarminOwner | undefined> {
@@ -62,8 +64,9 @@ export async function getOwner(): Promise<GarminOwner | undefined> {
     new GetCommand({ TableName: table(), Key: OWNER_KEY }),
   );
   if (!res.Item) return undefined;
-  const { userId, connectedAt, syncedAt } = res.Item as GarminOwner;
-  return { userId, connectedAt, syncedAt };
+  const { userId, connectedAt, syncedAt, syncVersion } =
+    res.Item as GarminOwner;
+  return { userId, connectedAt, syncedAt, syncVersion };
 }
 
 /** Makes `userId` the key's owner, unless someone already is. Returns false if taken. */
@@ -84,14 +87,14 @@ export async function claimOwner(userId: string, at: string): Promise<boolean> {
   }
 }
 
-export async function markSynced(at: string) {
+export async function markSynced(at: string, version: number) {
   await db.send(
     new UpdateCommand({
       TableName: table(),
       Key: OWNER_KEY,
-      UpdateExpression: "SET syncedAt = :t",
+      UpdateExpression: "SET syncedAt = :t, syncVersion = :v",
       ConditionExpression: "attribute_exists(pk)",
-      ExpressionAttributeValues: { ":t": at },
+      ExpressionAttributeValues: { ":t": at, ":v": version },
     }),
   );
 }
@@ -182,8 +185,18 @@ type WriteRequest = NonNullable<
   BatchWriteCommandInput["RequestItems"]
 >[string][number];
 
-/** Writes in DynamoDB's batches of 25, resending whatever it hands back. */
-async function writeBatches(writes: WriteRequest[]) {
+const keyOf = (write: WriteRequest) => {
+  const key = write.PutRequest?.Item ?? write.DeleteRequest?.Key ?? {};
+  return `${String(key.pk)}|${String(key.sk)}`;
+};
+
+/**
+ * Writes in DynamoDB's batches of 25, resending whatever it hands back. A
+ * batch may not name one key twice, so a later write of a key replaces an
+ * earlier one.
+ */
+async function writeBatches(all: WriteRequest[]) {
+  const writes = [...new Map(all.map((w) => [keyOf(w), w])).values()];
   for (let i = 0; i < writes.length; i += 25) {
     let requests: BatchWriteCommandInput["RequestItems"] = {
       [table()]: writes.slice(i, i + 25),

@@ -12,8 +12,8 @@ const EARLY_MS = 60 * 60_000;
 export class GarminError extends Error {
   readonly status: number;
 
-  constructor(path: string, status: number) {
-    super(`Garmin ${path} → HTTP ${status}`);
+  constructor(path: string, status: number, problem = `HTTP ${status}`) {
+    super(`Garmin ${path} → ${problem}`);
     this.name = "GarminError";
     this.status = status;
   }
@@ -71,7 +71,14 @@ export async function garminGet<T>(
     signal: AbortSignal.timeout(TIMEOUT_MS),
   });
   if (!res.ok) throw new GarminError(path, res.status);
-  return (await res.json()) as T;
+  // Garmin answers some ranges with no data as an empty body, not as [] or {}.
+  const text = await res.text();
+  if (!text.trim()) throw new GarminError(path, res.status, "no data");
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new GarminError(path, res.status, "not JSON");
+  }
 }
 
 /** GETs a file (an activity's original FIT archive) from the Personal API. */
