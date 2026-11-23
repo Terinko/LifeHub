@@ -26,6 +26,22 @@ import { isConditionalCheckFailed } from "../shared/conditionalCheck";
 
 const table = () => requireEnv("TABLE_NAME");
 
+/**
+ * The item without undefined fields (Garmin leaves out what it doesn't
+ * have), which DynamoDB would otherwise reject. Nested objects too.
+ */
+export function defined<T>(value: T): T {
+  if (Array.isArray(value)) return value.map(defined) as T;
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([, v]) => v !== undefined)
+        .map(([k, v]) => [k, defined(v)]),
+    ) as T;
+  }
+  return value;
+}
+
 const runsPk = (userId: string) => `USER#${userId}#RUN`;
 const vo2Pk = (userId: string) => `USER#${userId}#VO2`;
 const liftsPk = (userId: string) => `USER#${userId}#LIFT`;
@@ -84,7 +100,11 @@ export async function putRuns(userId: string, runs: RunActivity[]) {
   await writeBatches(
     runs.map((run) => ({
       PutRequest: {
-        Item: { pk: runsPk(userId), sk: `${run.start}#${run.id}`, ...run },
+        Item: defined({
+          pk: runsPk(userId),
+          sk: `${run.start}#${run.id}`,
+          ...run,
+        }),
       },
     })),
   );
@@ -94,7 +114,11 @@ export async function putLifts(userId: string, lifts: LiftSession[]) {
   await writeBatches(
     lifts.map((lift) => ({
       PutRequest: {
-        Item: { pk: liftsPk(userId), sk: `${lift.start}#${lift.id}`, ...lift },
+        Item: defined({
+          pk: liftsPk(userId),
+          sk: `${lift.start}#${lift.id}`,
+          ...lift,
+        }),
       },
     })),
   );
@@ -127,7 +151,7 @@ export async function putDetail(userId: string, detail: ActivityDetail) {
   await db.send(
     new PutCommand({
       TableName: table(),
-      Item: { pk: detailPk(userId), sk: detail.id, ...detail },
+      Item: defined({ pk: detailPk(userId), sk: detail.id, ...detail }),
     }),
   );
 }
