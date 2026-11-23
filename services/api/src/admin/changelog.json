@@ -71,5 +71,16 @@
     "bullets": [
       "Quinnipiac box scores now fill in live during the game (goals, assists, shots and goalies from the Bobcats' live stats) instead of waiting for the box score to be posted afterward."
     ]
+  },
+  {
+    "id": "2026-11-23-run-tool",
+    "date": "2026-11-23",
+    "tools": ["run"],
+    "bullets": [
+      "New Run tool: a training log built from your Garmin runs.",
+      "This week and the year against your mileage goals, your run streak and VO₂ max.",
+      "Weekly mileage over 8 weeks, 16 weeks or a year, a grid of run days, easy-run pace at the same heart rate, and your fastest 5K, 10K and more.",
+      "It reads your runs with a Garmin Personal API key and checks for new ones every time you open it (or tap Refresh). Until Garmin is connected it shows example runs."
+    ]
   }
 ]

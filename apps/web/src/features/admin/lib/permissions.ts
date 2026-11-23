@@ -13,6 +13,7 @@ export const PERMISSION_OPTIONS: {
   { key: "fantasy", label: "Fantasy", icon: "🏈" },
   { key: "weather", label: "Weather", icon: "🌦️" },
   { key: "hockey", label: "Hockey", icon: "🏒" },
+  { key: "run", label: "Run", icon: "🏃" },
 ];
 
 /** What a new invite starts with: no tools. */
@@ -24,6 +25,7 @@ export const noPermissions = (): Record<ToolPermission, boolean> => ({
   fantasy: false,
   weather: false,
   hockey: false,
+  run: false,
 });
 
 /** `permissions` with one tool switched on or off. */

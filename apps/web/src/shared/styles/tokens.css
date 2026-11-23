@@ -190,4 +190,33 @@
     inset 0 -1px 0 rgba(14, 27, 43, 0.05), 0 12px 32px rgba(14, 27, 43, 0.14);
   --rink-font-ui: "Public Sans", system-ui, sans-serif;
   --rink-font-score: "Saira Condensed", "Arial Narrow", sans-serif;
+
+  /* Training Log: the calm data theme (Run). White cards on cool gray, one
+     blue for miles, green for on-track, burnt orange for the goal line. */
+  --log-ground: #f3f6f9;
+  --log-card: #ffffff;
+  --log-line: #dce2e8;
+  --log-grid: #eef1f4;
+  --log-axis: #c5ced8;
+  --log-track: #e6ebf0;
+  --log-ink: #15202b;
+  --log-ink-2: #3a4652;
+  --log-ink-sec: #5b6875;
+  --log-blue: #1f5fbf;
+  --log-blue-deep: #163f80;
+  --log-blue-wash: #eaf1fb;
+  --log-blue-soft: #a9bedd;
+  --log-heat-1: #c9d8f0;
+  --log-heat-2: #84a7da;
+  --log-heat-3: #3f76c9;
+  --log-heat-4: #163f80;
+  --log-good: #1e7a4c;
+  --log-good-wash: #ddf1e5;
+  --log-good-ink: #14563a;
+  --log-goal: #b0560f;
+  --log-goal-ink: #8a4209;
+  --log-example-wash: #fdebd3;
+  --log-example-ink: #7a3e06;
+  --log-font-ui: "IBM Plex Sans", system-ui, sans-serif;
+  --log-font-num: "IBM Plex Mono", ui-monospace, Menlo, monospace;
 }

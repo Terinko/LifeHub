@@ -40,6 +40,19 @@ jobs:
         working-directory: ./backend
         run: npm ci
 
+      # Copies the GARMIN_PERSONAL_API_KEY secret into SSM Parameter Store,
+      # where the Run Lambda reads it, so the key never lands in the
+      # CloudFormation template or a Lambda environment variable.
+      - name: Store Garmin key in Parameter Store
+        env:
+          GARMIN_PERSONAL_API_KEY: ${{ secrets.GARMIN_PERSONAL_API_KEY }}
+        run: |
+          if [ -n "$GARMIN_PERSONAL_API_KEY" ]; then
+            aws ssm put-parameter --name /lifehub/garmin/personal-api-key \
+              --type SecureString --overwrite \
+              --value "$GARMIN_PERSONAL_API_KEY" > /dev/null
+          fi
+
       - name: Deploy CDK Stack
         working-directory: ./backend
         # --require-approval never tells CDK not to pause and wait for a human to type 'y'

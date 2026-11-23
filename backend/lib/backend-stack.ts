@@ -79,6 +79,8 @@ export class BackendStack extends cdk.Stack {
     const applicationsTable = dataTable("ApplicationsTable", pkAndSk);
     // Public poll snapshots, so Hockey can chart a team's rank by week.
     const hockeyTable = dataTable("HockeyTable", pkAndSk);
+    // Each user's runs and VO2 max readings from Garmin, and their tokens.
+    const runTable = dataTable("RunTable", pkAndSk);
 
     const billsLambda = apiFunction(this, "LifeHubBillsHandler", "bills", {
       environment: {
@@ -140,6 +142,34 @@ export class BackendStack extends cdk.Stack {
       memorySize: 512,
     });
 
+    // Run: the owner's runs from the Garmin Personal API, or example runs.
+    // The personal key lives in SSM Parameter Store, not in the template or
+    // the Lambda's environment. The deploy workflow copies it there from the
+    // GARMIN_PERSONAL_API_KEY secret. Until it exists, the tool shows example runs.
+    const garminKeyParam = "/lifehub/garmin/personal-api-key";
+    const runLambda = apiFunction(this, "RunHandler", "run", {
+      environment: {
+        TABLE_NAME: runTable.tableName,
+        USERS_TABLE: usersTable.tableName,
+        GARMIN_API_KEY_PARAM: garminKeyParam,
+      },
+      // The first load copies about two years of runs from Garmin.
+      timeout: cdk.Duration.seconds(30),
+    });
+    runTable.grantReadWriteData(runLambda);
+    runLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ["ssm:GetParameter"],
+        resources: [
+          this.formatArn({
+            service: "ssm",
+            resource: "parameter",
+            resourceName: garminKeyParam.slice(1),
+          }),
+        ],
+      }),
+    );
+
     billsTable.grantReadWriteData(billsLambda);
     kitchenTable.grantReadWriteData(kitchenLambda);
     pokerTable.grantReadWriteData(pokerLambda);
@@ -153,6 +183,7 @@ export class BackendStack extends cdk.Stack {
     usersTable.grantWriteData(billsLambda);
     usersTable.grantReadWriteData(kitchenLambda);
     usersTable.grantReadWriteData(hockeyLambda);
+    usersTable.grantReadWriteData(runLambda);
     // Admin-only tool: just needs to re-verify the caller's role, no usage
     // stamping (the admin-visibility feature is about tracking everyone
     // *else*, not the admin's own use of an admin-only tool).
@@ -414,6 +445,23 @@ export class BackendStack extends cdk.Stack {
         path,
         methods: [apigw.HttpMethod.GET],
         integration: hockeyIntegration,
+        authorizer,
+      });
+    }
+
+    const runIntegration = new HttpLambdaIntegration(
+      "RunIntegration",
+      runLambda,
+    );
+    for (const [path, method] of [
+      ["/run", apigw.HttpMethod.GET],
+      ["/run/garmin", apigw.HttpMethod.POST],
+      ["/run/garmin", apigw.HttpMethod.DELETE],
+    ] as const) {
+      httpApi.addRoutes({
+        path,
+        methods: [method],
+        integration: runIntegration,
         authorizer,
       });
     }

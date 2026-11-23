@@ -1,0 +1,53 @@
+.pace {
+  gap: 10px;
+}
+
+.gain {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--log-ink-sec);
+}
+
+.gain[data-better] {
+  color: var(--log-good);
+}
+
+.svg {
+  width: 100%;
+  height: auto;
+}
+
+.grid {
+  stroke: var(--log-grid);
+}
+
+.axis {
+  stroke: var(--log-axis);
+}
+
+.label {
+  fill: var(--log-ink-sec);
+}
+
+.area {
+  fill: var(--log-blue-wash);
+}
+
+.line {
+  fill: none;
+  stroke: var(--log-blue);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.dot {
+  fill: var(--log-blue);
+  stroke: var(--log-card);
+  stroke-width: 2;
+}
+
+.value {
+  fill: var(--log-ink);
+  font-weight: 500;
+}
