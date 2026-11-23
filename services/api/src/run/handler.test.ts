@@ -334,6 +334,29 @@ describe("when Garmin misbehaves", () => {
     expect(mark?.input.ExpressionAttributeValues).toMatchObject({ ":v": 2 });
   });
 
+  it("says which step failed when loading breaks", async () => {
+    key.mockResolvedValue("personal-key");
+    garmin();
+    table({ owner: recentOwner(2) });
+    const ok = send.getMockImplementation();
+    send.mockImplementation(async (cmd) => {
+      if (cmd.constructor.name === "QueryCommand") {
+        const error = new Error("boom");
+        error.name = "ProvisionedThroughputExceededException";
+        throw error;
+      }
+      return ok?.(cmd);
+    });
+    const res = parseResponse(await handler(apiEvent("GET /run")));
+    expect(res).toEqual({
+      status: 500,
+      body: {
+        error:
+          "Couldn't load your training from Garmin while reading saved activities (ProvisionedThroughputExceededException)",
+      },
+    });
+  });
+
   it("writes a key named twice in one batch only once", async () => {
     key.mockResolvedValue("personal-key");
     garmin([garminActivity, garminActivity]);

@@ -52,7 +52,10 @@ export function RunPage() {
           <p className={styles.status}>{refresh.error.message}</p>
         )}
         {run.isError ? (
-          <p className={styles.status}>{run.error.message}</p>
+          <>
+            <p className={styles.status}>{run.error.message}</p>
+            <GarminPanel status="connected" />
+          </>
         ) : !run.data || !dash ? (
           <p className={styles.status}>Loading your training…</p>
         ) : (
