@@ -1,3 +1,4 @@
+import { marshall } from "@aws-sdk/util-dynamodb";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   apiEvent,
@@ -44,6 +45,16 @@ function table({
   let owner = initialOwner;
   send.mockImplementation(async (cmd: CommandLike) => {
     const name = cmd.constructor.name;
+    // Like DynamoDB, refuse items with undefined fields.
+    if (name === "PutCommand") marshall(cmd.input.Item);
+    if (name === "BatchWriteCommand")
+      for (const writes of Object.values(
+        cmd.input.RequestItems as Record<
+          string,
+          { PutRequest?: { Item: object } }[]
+        >,
+      ))
+        for (const w of writes) if (w.PutRequest) marshall(w.PutRequest.Item);
     if (name === "DeleteCommand") owner = undefined;
     if (name === "GetCommand" && cmd.input.TableName === "Users") {
       return { Item: { role, permissions: { run: true } } };
