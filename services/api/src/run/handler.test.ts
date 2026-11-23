@@ -67,6 +67,15 @@ function table({
     if (name === "GetCommand")
       return { Item: owner && { pk: "CONFIG", ...owner } };
     if (name === "QueryCommand") {
+      // Like DynamoDB, refuse an empty string in a key condition.
+      const values = Object.values(
+        cmd.input.ExpressionAttributeValues as Record<string, unknown>,
+      );
+      if (values.includes("")) {
+        const error = new Error("empty key value");
+        error.name = "ValidationException";
+        throw error;
+      }
       const pk = (
         cmd.input.ExpressionAttributeValues as Record<string, string>
       )[":pk"];
