@@ -1,15 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { RunActivity } from "@lifehub/shared";
-import { heatDays, heatLevel } from "./consistency";
 import { dayDate, fullDate, isoWeek, localToday, weekStart } from "./dates";
 import { milesByDay } from "./days";
 import { easyPaceByWeek, paceGain } from "./easyPace";
-import { streakKpi, thisWeekKpi, vo2Kpi, yearKpi } from "./kpis";
 import { paceChart } from "./paceChart";
 import { personalRecords } from "./records";
-import { currentStreak, longestStreak } from "./streaks";
 import { formatDuration, formatMiles, METERS_PER_MILE } from "./units";
-import { showsLabel, weekAxis, weeklyTotals, weeksAtGoal } from "./weeks";
+import { showsLabel, weekAxis, weeklyTotals } from "./weeks";
 
 const MON = "2026-11-23";
 
@@ -52,27 +49,6 @@ describe("units", () => {
   });
 });
 
-describe("streaks", () => {
-  const days = milesByDay([
-    run("2026-11-20", 3),
-    run("2026-11-21", 4),
-    run("2026-11-22", 12),
-    run("2026-11-10", 5),
-    run("2026-11-11", 5),
-    run("2026-11-12", 5),
-    run("2026-11-13", 5),
-  ]);
-
-  it("stays alive until the day is over", () => {
-    expect(currentStreak(days, MON)).toBe(3);
-    expect(currentStreak(days, "2026-11-24")).toBe(0);
-  });
-
-  it("finds the longest stretch", () => {
-    expect(longestStreak(days, "2026-01-01", MON)).toBe(4);
-  });
-});
-
 describe("weeks", () => {
   const days = milesByDay([
     run("2026-11-16", 30),
@@ -93,10 +69,6 @@ describe("weeks", () => {
     ]);
   });
 
-  it("counts finished weeks at goal back from last week", () => {
-    expect(weeksAtGoal(weeks, 25)).toBe(2);
-  });
-
   it("rounds the axis above the data and the goal", () => {
     expect(weekAxis(weeks, 25)).toEqual({
       max: 40,
@@ -107,57 +79,6 @@ describe("weeks", () => {
 
   it("always labels this week", () => {
     expect([0, 1, 2, 3].filter((i) => showsLabel(i, 4, 3))).toEqual([0, 3]);
-  });
-});
-
-describe("summary cards", () => {
-  const days = milesByDay([run(MON, 6.2), run("2026-01-05", 1000)]);
-
-  it("tracks this week against the goal", () => {
-    const kpi = thisWeekKpi(days, MON, 25);
-    expect(kpi).toMatchObject({
-      value: "6.2",
-      pill: "Day 1 of 7",
-      percent: 25,
-    });
-    expect(kpi.note).toBe("18.8 mi to go · about 2.7 mi/day");
-  });
-
-  it("compares the year with goal pace", () => {
-    const kpi = yearKpi(days, MON, 1200);
-    expect(kpi).toMatchObject({
-      value: "1,006",
-      pill: "Behind",
-      tone: "behind",
-    });
-  });
-
-  it("shows the streak", () => {
-    expect(streakKpi(days, MON)).toMatchObject({ value: "1", unit: "day" });
-  });
-
-  it("shows VO2 max and its change, or nothing without readings", () => {
-    const readings = [
-      { date: "2026-08-03", value: 49 },
-      { date: "2026-08-10", value: 49 },
-      { date: "2026-11-20", value: 51 },
-    ];
-    expect(vo2Kpi(readings, "2026-08-10")).toMatchObject({
-      value: "51",
-      pill: "+2 since Aug",
-    });
-    expect(vo2Kpi([], "2026-08-10")).toBeUndefined();
-  });
-});
-
-describe("consistency grid", () => {
-  it("steps up with miles and leaves future days blank", () => {
-    expect([0, 3, 5, 8, 12].map(heatLevel)).toEqual([0, 1, 2, 3, 4]);
-    const grid = heatDays(milesByDay([run(MON, 6)]), MON, 2);
-    expect(grid).toHaveLength(14);
-    expect(grid[0]?.date).toBe("2026-11-16");
-    expect(grid[7]).toMatchObject({ date: MON, level: 2 });
-    expect(grid[8]?.level).toBeUndefined();
   });
 });
 

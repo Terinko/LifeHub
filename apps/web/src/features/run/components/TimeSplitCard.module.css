@@ -1,0 +1,26 @@
+.bars {
+  height: 130px;
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.col {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 2px;
+}
+
+.lift {
+  background: var(--log-lift);
+  border-radius: 3px 3px 0 0;
+}
+
+.run {
+  background: var(--log-blue);
+  border-radius: 0 0 3px 3px;
+}

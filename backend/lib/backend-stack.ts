@@ -153,8 +153,10 @@ export class BackendStack extends cdk.Stack {
         USERS_TABLE: usersTable.tableName,
         GARMIN_API_KEY_PARAM: garminKeyParam,
       },
-      // The first load copies about two years of runs from Garmin.
+      // The first load copies about two years of activities from Garmin,
+      // and FIT files are decoded in memory.
       timeout: cdk.Duration.seconds(30),
+      memorySize: 512,
     });
     runTable.grantReadWriteData(runLambda);
     runLambda.addToRolePolicy(
@@ -457,6 +459,7 @@ export class BackendStack extends cdk.Stack {
       ["/run", apigw.HttpMethod.GET],
       ["/run/garmin", apigw.HttpMethod.POST],
       ["/run/garmin", apigw.HttpMethod.DELETE],
+      ["/run/garmin/check", apigw.HttpMethod.GET],
     ] as const) {
       httpApi.addRoutes({
         path,

@@ -31,10 +31,16 @@ type Setup = {
   role?: "ADMIN" | "USER";
   owner?: { userId: string; connectedAt: string; syncedAt?: string };
   runs?: unknown[];
+  details?: unknown[];
 };
 
 /** DynamoDB with the caller's profile, the key's owner and stored runs. */
-function table({ role = "USER", owner: initialOwner, runs = [] }: Setup = {}) {
+function table({
+  role = "USER",
+  owner: initialOwner,
+  runs = [],
+  details = [],
+}: Setup = {}) {
   let owner = initialOwner;
   send.mockImplementation(async (cmd: CommandLike) => {
     const name = cmd.constructor.name;
@@ -48,7 +54,9 @@ function table({ role = "USER", owner: initialOwner, runs = [] }: Setup = {}) {
       const pk = (
         cmd.input.ExpressionAttributeValues as Record<string, string>
       )[":pk"];
-      return { Items: pk?.endsWith("#RUN") ? runs : [] };
+      if (pk?.endsWith("#RUN")) return { Items: runs };
+      if (pk?.endsWith("#DETAIL")) return { Items: details };
+      return { Items: [] };
     }
     return {};
   });
@@ -122,7 +130,9 @@ describe("GET /run", () => {
       source: "example",
       garmin: "unavailable",
     });
-    expect(res.body.activities.length).toBeGreaterThan(300);
+    expect(res.body.activities.length).toBeGreaterThan(80);
+    expect(res.body.lifts.length).toBeGreaterThan(150);
+    expect(res.body.lifts[0].sets.length).toBeGreaterThan(10);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -163,6 +173,7 @@ describe("GET /run", () => {
           durationS: 1500,
         },
       ],
+      details: [{ pk: "USER#u1#DETAIL", sk: "1", id: "1", found: false }],
     });
     const res = parseResponse(await handler(apiEvent("GET /run")));
     expect(res.body).toMatchObject({
@@ -215,7 +226,7 @@ describe("GET /run", () => {
     for (const [, init] of dataCalls) {
       expect(JSON.stringify(init?.headers)).not.toContain("personal-key");
     }
-    expect(String(dataCalls[0]?.[0])).toContain("activityType=running");
+    expect(String(dataCalls[0]?.[0])).toContain("/activities/search/");
 
     expect(batchPuts()).toContainEqual({
       pk: "USER#u1#RUN",
@@ -235,6 +246,9 @@ describe("GET /run", () => {
       value: 51,
     });
     expect(batchPuts().filter((i) => i?.pk === "USER#u1#RUN")).toHaveLength(1);
+    expect(batchPuts()).toContainEqual(
+      expect.objectContaining({ pk: "USER#u1#LIFT", id: "9" }),
+    );
   });
 });
 

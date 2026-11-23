@@ -1,13 +1,17 @@
-import type { RunData } from "@lifehub/shared";
+import type { LiftSession, RunActivity, RunData } from "@lifehub/shared";
 import { HttpError } from "../shared/http";
 import { isAdmin, type UserProfile } from "../shared/users";
 import { exampleRunData } from "./example";
 import {
+  hrvReadings,
+  isLift,
   isRun,
-  searchRuns,
+  searchActivities,
+  toLiftSession,
   toRunActivity,
   vo2Readings,
 } from "./garmin/activities";
+import { liftSets, runDetail } from "./garmin/sync";
 import { forgetGarminKey, getGarminKey } from "./garmin/app";
 import { bearerToken, GarminError } from "./garmin/http";
 import * as repo from "./repository";
@@ -17,6 +21,12 @@ const SYNC_EVERY_MS = 15 * 60_000;
 // Re-read the last few days on each sync: runs can sync from the watch late.
 const OVERLAP_DAYS = 3;
 const VO2_CHUNK_DAYS = 120;
+// HRV is asked for in month-sized pieces, and only for recent months.
+const HRV_CHUNK_DAYS = 28;
+const HRV_HISTORY_DAYS = 180;
+// Each load reads sets and second-by-second detail for a few more
+// activities, newest first, stopping after this long so the page stays quick.
+const DETAIL_BUDGET_MS = 8_000;
 const DAY_MS = 86_400_000;
 
 const isoDay = (ms: number) => new Date(ms).toISOString().slice(0, 10);
@@ -24,39 +34,122 @@ const isoDay = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 /** Jan 1 of last year: enough history for the year chart and this year's totals. */
 const historyStart = (now: Date) => `${now.getUTCFullYear() - 1}-01-01`;
 
-/** Copies runs and VO2 max from Garmin into the table, from `from` to today. */
+/** Calls `read` for consecutive date ranges of `days` days from `from` to today. */
+async function inChunks(
+  from: string,
+  now: Date,
+  days: number,
+  read: (start: string, end: string) => Promise<void>,
+) {
+  for (let ms = Date.parse(from); ms <= now.getTime(); ms += days * DAY_MS) {
+    const end = isoDay(Math.min(ms + (days - 1) * DAY_MS, now.getTime()));
+    await read(isoDay(ms), end);
+  }
+}
+
+/** Runs past the nice-to-have readings (VO2 max, HRV) when Garmin refuses them. */
+async function optional(label: string, read: () => Promise<void>) {
+  try {
+    await read();
+  } catch (error) {
+    if (!(error instanceof GarminError)) throw error;
+    console.warn(`Run: ${label} unavailable`, error.message);
+  }
+}
+
+/** Copies activities, VO2 max and HRV from Garmin into the table, from `from` to today. */
 async function syncFrom(owner: string, from: string, now: Date) {
   const bearer = await freshBearer(now);
   if (!bearer) return;
-  // One day ahead covers runs logged after midnight UTC but before local midnight.
+  // One day ahead covers activities logged after midnight UTC but before local midnight.
   const to = isoDay(now.getTime() + DAY_MS);
-  const runs = await searchRuns(bearer, from, to);
-  await repo.putRuns(owner, runs.filter(isRun).map(toRunActivity));
-  for (
-    let ms = Date.parse(from);
-    ms <= now.getTime();
-    ms += VO2_CHUNK_DAYS * DAY_MS
-  ) {
-    const end = isoDay(
-      Math.min(ms + (VO2_CHUNK_DAYS - 1) * DAY_MS, now.getTime()),
-    );
-    try {
-      await repo.putVo2s(owner, await vo2Readings(bearer, isoDay(ms), end));
-    } catch (error) {
-      // VO2 max is a nice-to-have; the runs still count without it.
-      if (!(error instanceof GarminError)) throw error;
-      console.warn("Run: VO2 max unavailable", error.message);
-    }
-  }
+  const activities = await searchActivities(bearer, from, to);
+  await repo.putRuns(owner, activities.filter(isRun).map(toRunActivity));
+  await repo.putLifts(owner, activities.filter(isLift).map(toLiftSession));
+  await optional("VO2 max", () =>
+    inChunks(from, now, VO2_CHUNK_DAYS, async (start, end) =>
+      repo.putVo2s(owner, await vo2Readings(bearer, start, end)),
+    ),
+  );
+  const hrvFrom = isoDay(
+    Math.max(Date.parse(from), now.getTime() - HRV_HISTORY_DAYS * DAY_MS),
+  );
+  await optional("HRV", () =>
+    inChunks(hrvFrom, now, HRV_CHUNK_DAYS, async (start, end) =>
+      repo.putHrv(owner, await hrvReadings(bearer, start, end)),
+    ),
+  );
   await repo.markSynced(now.toISOString());
 }
 
+type Pending = { id: string; kind: "run" | "lift"; start: string };
+
+/**
+ * Reads sets (strength) or best efforts and drift (runs) for activities that
+ * don't have them yet, newest first, until the time budget runs out. Returns
+ * the details it read.
+ */
+async function readDetails(
+  owner: string,
+  pending: Pending[],
+  now: Date,
+): Promise<repo.ActivityDetail[]> {
+  if (pending.length === 0) return [];
+  const read: repo.ActivityDetail[] = [];
+  try {
+    const bearer = await freshBearer(now);
+    if (!bearer) return [];
+    const started = Date.now();
+    for (const item of pending) {
+      if (Date.now() - started > DETAIL_BUDGET_MS) break;
+      const detail = await readDetail(bearer, item);
+      if (!detail) break;
+      await repo.putDetail(owner, detail);
+      read.push(detail);
+    }
+  } catch (error) {
+    // Detail is extra: the page still loads with what was read so far.
+    console.warn(
+      "Run: reading activity detail stopped",
+      (error as Error).message,
+    );
+  }
+  return read;
+}
+
+// Network trouble, not a problem with the activity itself.
+const isTransient = (error: unknown) =>
+  (error instanceof GarminError && error.status !== 404) ||
+  ["TypeError", "TimeoutError", "AbortError"].includes((error as Error).name);
+
+/** One activity's detail; undefined when Garmin is busy, so the rest wait. */
+async function readDetail(
+  bearer: string,
+  item: Pending,
+): Promise<repo.ActivityDetail | undefined> {
+  try {
+    return item.kind === "lift"
+      ? { id: item.id, found: true, sets: await liftSets(bearer, item.id) }
+      : { id: item.id, found: true, ...(await runDetail(bearer, item.id)) };
+  } catch (error) {
+    if (isTransient(error)) {
+      console.warn(
+        "Run: activity detail unavailable",
+        (error as Error).message,
+      );
+      return undefined;
+    }
+    // Missing or unreadable: remember that, so it isn't asked again.
+    console.warn("Run: no detail for an activity", (error as Error).message);
+    return { id: item.id, found: false };
+  }
+}
 /**
  * A bearer token for the current key. When Garmin rejects the key, reads it
  * from Parameter Store again once, in case a new key was stored since this
  * Lambda started.
  */
-async function freshBearer(now: Date): Promise<string | undefined> {
+export async function freshBearer(now: Date): Promise<string | undefined> {
   const key = await getGarminKey();
   if (!key) return undefined;
   try {
@@ -99,17 +192,49 @@ export async function getRunData(
   }
   const syncedAt = await syncIfStale(owner, now, refresh);
   const from = historyStart(now);
-  const [activities, vo2Max] = await Promise.all([
+  const [runs, lifts, vo2Max, hrv, details] = await Promise.all([
     repo.listRuns(userId, from),
+    repo.listLifts(userId, from),
     repo.listVo2(userId, from),
+    repo.listHrv(userId, from),
+    repo.listDetails(userId),
   ]);
+  const pending: Pending[] = [
+    ...runs.map((r) => ({ id: r.id, kind: "run" as const, start: r.start })),
+    ...lifts.map((l) => ({ id: l.id, kind: "lift" as const, start: l.start })),
+  ]
+    .filter((a) => !details.has(a.id))
+    .sort((a, b) => b.start.localeCompare(a.start));
+  for (const detail of await readDetails(userId, pending, now)) {
+    details.set(detail.id, detail);
+  }
   return {
     source: "garmin",
     garmin: "connected",
     syncedAt,
-    activities,
+    activities: runs.map((r) => withRunDetail(r, details.get(r.id))),
+    lifts: lifts.map((l) => withSets(l, details.get(l.id))),
     vo2Max,
+    hrv,
+    detailsPending: pending.filter((a) => !details.has(a.id)).length,
   };
+}
+
+function withRunDetail(
+  run: RunActivity,
+  detail: repo.ActivityDetail | undefined,
+): RunActivity {
+  if (!detail?.found) return run;
+  return { ...run, driftPct: detail.driftPct, bestEfforts: detail.bestEfforts };
+}
+
+function withSets(
+  lift: LiftSession,
+  detail: repo.ActivityDetail | undefined,
+): LiftSession {
+  return detail?.found && detail.sets?.length
+    ? { ...lift, sets: detail.sets }
+    : lift;
 }
 
 /** An admin claims the Garmin key as theirs; the first load copies their history. */

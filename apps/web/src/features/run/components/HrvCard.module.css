@@ -1,0 +1,8 @@
+.axis {
+  stroke: var(--log-axis);
+}
+
+.dot {
+  fill: var(--log-hrv);
+  opacity: 0.85;
+}

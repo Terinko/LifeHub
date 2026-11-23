@@ -1,0 +1,23 @@
+.band {
+  fill: var(--log-good-wash);
+}
+
+.one {
+  stroke: var(--log-axis);
+  stroke-dasharray: 3 3;
+}
+
+.line {
+  fill: none;
+  stroke: var(--log-ink);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.dot {
+  fill: var(--log-ink);
+}
+
+.dot[data-tone="high"] {
+  fill: var(--log-goal);
+}

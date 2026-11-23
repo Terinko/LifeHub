@@ -1,0 +1,41 @@
+.strip {
+  display: grid;
+  grid-template-columns: repeat(14, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.day {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.bars {
+  height: 96px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 2px;
+}
+
+.run {
+  background: var(--log-blue);
+  border-radius: 3px;
+}
+
+.lift {
+  background: var(--log-lift);
+  border-radius: 3px;
+}
+
+.letter {
+  text-align: center;
+  font-size: 10px;
+  color: var(--log-ink-sec);
+}
+
+.letter[data-today] {
+  color: var(--log-ink);
+  font-weight: 700;
+}

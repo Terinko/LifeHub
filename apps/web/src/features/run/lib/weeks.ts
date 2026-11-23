@@ -37,20 +37,9 @@ export function weeklyTotals(
   });
 }
 
-/** Finished weeks in a row, newest back, that reached the goal. */
-export function weeksAtGoal(weeks: WeekTotal[], goal: number): number {
-  let count = 0;
-  for (const week of [...weeks].reverse()) {
-    if (week.current) continue;
-    if (week.miles < goal) break;
-    count += 1;
-  }
-  return count;
-}
-
-/** The chart's value axis: a round top above the data and goal, and its ticks. */
-export function weekAxis(weeks: WeekTotal[], goal: number) {
-  const top = Math.max(goal, ...weeks.map((w) => w.miles));
+/** The chart's value axis: a round top above the data and the average line, and its ticks. */
+export function weekAxis(weeks: WeekTotal[], line: number) {
+  const top = Math.max(line, ...weeks.map((w) => w.miles));
   const step = top < 50 ? 10 : 20;
   const max = Math.floor(top / step) * step + step;
   const ticks = Array.from(

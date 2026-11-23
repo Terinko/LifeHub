@@ -1,10 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { RunData } from "@lifehub/shared";
-import { connectGarmin, disconnectGarmin, getRunData } from "./api";
+import {
+  checkGarmin,
+  connectGarmin,
+  disconnectGarmin,
+  getRunData,
+} from "./api";
 
 export const runKeys = { data: ["run", "data"] as const };
 
-/** Every run since the start of last year; the server copies new ones from Garmin. */
+/** Every run and lift since the start of last year; the server copies new ones from Garmin. */
 export const useRunData = () =>
   useQuery({
     queryKey: runKeys.data,
@@ -20,9 +25,12 @@ function useReplacesRunData(mutationFn: () => Promise<RunData>) {
   });
 }
 
-/** Refresh: ask Garmin for new runs now. */
+/** Refresh: ask Garmin for new activities now. */
 export const useRefreshRuns = () => useReplacesRunData(() => getRunData(true));
 
 export const useConnectGarmin = () => useReplacesRunData(connectGarmin);
 
 export const useDisconnectGarmin = () => useReplacesRunData(disconnectGarmin);
+
+/** Runs the data check on demand (it calls Garmin several times). */
+export const useGarminCheck = () => useMutation({ mutationFn: checkGarmin });

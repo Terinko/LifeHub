@@ -1,26 +1,29 @@
 import { useMemo } from "react";
-import { useNavigate } from "react-router-dom";
-import { ConsistencyCard } from "./components/ConsistencyCard";
-import { EasyPaceCard } from "./components/EasyPaceCard";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { GarminPanel } from "./components/GarminPanel";
-import { KpiCard } from "./components/KpiCard";
-import { RecentRuns } from "./components/RecentRuns";
-import { RecordsCard } from "./components/RecordsCard";
 import { RunHeader } from "./components/RunHeader";
-import { WeeklyMileage } from "./components/WeeklyMileage";
-import card from "./components/card.module.css";
-import { buildDashboard, TREND_WEEKS } from "./lib/dashboard";
+import { TabBar } from "./components/TabBar";
+import { buildDashboard } from "./lib/dashboard";
 import { localToday } from "./lib/dates";
-import { EASY_HR, WEEKLY_GOAL_MI } from "./lib/goals";
+import { TABS, type Tab } from "./lib/tabs";
 import { useRefreshRuns, useRunData } from "./queries";
+import { InsightsTab } from "./tabs/InsightsTab";
+import { LiftingTab } from "./tabs/LiftingTab";
+import { RunningTab } from "./tabs/RunningTab";
+import { WeekTab } from "./tabs/WeekTab";
 import { useGroundBackground } from "./useGroundBackground";
 import { useRunAccess } from "./useRunAccess";
 import styles from "./RunPage.module.css";
+
+const isTab = (v: string | null): v is Tab => TABS.some((t) => t.key === v);
 
 export function RunPage() {
   useRunAccess();
   useGroundBackground();
   const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
+  const tabParam = params.get("tab");
+  const tab: Tab = isTab(tabParam) ? tabParam : "week";
   const run = useRunData();
   const refresh = useRefreshRuns();
   const today = localToday();
@@ -39,47 +42,30 @@ export function RunPage() {
           onBack={() => navigate("/")}
           onRefresh={() => refresh.mutate()}
         />
+        <TabBar
+          tab={tab}
+          onChange={(next) =>
+            setParams(next === "week" ? {} : { tab: next }, { replace: true })
+          }
+        />
         {refresh.error && (
           <p className={styles.status}>{refresh.error.message}</p>
         )}
         {run.isError ? (
           <p className={styles.status}>{run.error.message}</p>
         ) : !run.data || !dash ? (
-          <p className={styles.status}>Loading your runs…</p>
+          <p className={styles.status}>Loading your training…</p>
         ) : (
           <>
             {run.data.garmin !== "connected" && (
               <GarminPanel status={run.data.garmin} />
             )}
-            <section aria-label="Summary" className={styles.kpis}>
-              {dash.kpis.map((k) => (
-                <KpiCard key={k.label} kpi={k} />
-              ))}
-            </section>
-            <div className={card.pair}>
-              <WeeklyMileage
-                days={dash.days}
-                today={today}
-                goal={WEEKLY_GOAL_MI}
-              />
-              <ConsistencyCard
-                days={dash.days}
-                today={today}
-                streak={dash.streak}
-                weeksAtGoal={dash.weeksAtGoal}
-                longest={dash.longestStreak}
-              />
-            </div>
-            <div className={card.pair}>
-              <EasyPaceCard
-                points={dash.easyPace}
-                band={EASY_HR}
-                first={dash.trendStart}
-                weeks={TREND_WEEKS}
-              />
-              <RecordsCard records={dash.records} />
-            </div>
-            <RecentRuns runs={dash.recent} />
+            {tab === "week" && <WeekTab dash={dash} today={today} />}
+            {tab === "running" && <RunningTab dash={dash} today={today} />}
+            {tab === "lifting" && (
+              <LiftingTab dash={dash} pending={run.data.detailsPending} />
+            )}
+            {tab === "insights" && <InsightsTab dash={dash} />}
             {run.data.garmin === "connected" && (
               <GarminPanel status="connected" />
             )}

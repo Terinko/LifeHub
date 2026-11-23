@@ -1,7 +1,6 @@
 import type { RunActivity } from "@lifehub/shared";
 import { dayDate } from "../lib/dates";
 import {
-  formatFeet,
   formatMiles,
   formatPace,
   paceSecondsPerMile,
@@ -14,7 +13,13 @@ import styles from "./RecentRuns.module.css";
 export function RecentRuns({ runs }: { runs: RunActivity[] }) {
   return (
     <section className={card.card}>
-      <h2 className={card.title}>Recent runs</h2>
+      <div>
+        <h2 className={card.title}>Recent runs</h2>
+        <p className={card.note}>
+          HR drift is how much heart rate rose in the second half at the same
+          pace. Under 5% means the run stayed aerobic.
+        </p>
+      </div>
       {runs.length === 0 ? (
         <p className={card.note}>
           No runs yet. They show up here after your watch syncs.
@@ -29,7 +34,7 @@ export function RecentRuns({ runs }: { runs: RunActivity[] }) {
                 <th className={styles.right}>Distance</th>
                 <th className={styles.right}>Pace</th>
                 <th className={styles.right}>Avg HR</th>
-                <th className={styles.right}>Elev gain</th>
+                <th className={styles.right}>HR drift</th>
               </tr>
             </thead>
             <tbody>
@@ -50,7 +55,7 @@ export function RecentRuns({ runs }: { runs: RunActivity[] }) {
                     {r.avgHr ?? "—"}
                   </td>
                   <td className={`${styles.right} ${card.num}`}>
-                    {r.elevGainM === undefined ? "—" : formatFeet(r.elevGainM)}
+                    {r.driftPct === undefined ? "—" : `${r.driftPct}%`}
                   </td>
                 </tr>
               ))}

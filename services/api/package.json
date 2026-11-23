@@ -24,6 +24,8 @@
     "@aws-sdk/client-dynamodb": "^3.1142.0",
     "@aws-sdk/client-ssm": "^3.1142.0",
     "@aws-sdk/lib-dynamodb": "^3.1142.0",
-    "@lifehub/shared": "^0.0.0"
+    "@garmin/fitsdk": "^21.222.0",
+    "@lifehub/shared": "^0.0.0",
+    "fflate": "^0.8.3"
   }
 }
